@@ -116,14 +116,15 @@ static void draw(uint32_t index,uint32_t elapsed,uint32_t page) {
     barrier();check_guards();
 }
 static void publish_ui(uint32_t active) {
+    const struct ui_state *shown=&snapshots[active].state;
     ++ui_info.sequence;barrier();
     ui_info.magic=0x55493131u;ui_info.snapshot_base=(uint32_t)snapshots;
     ui_info.snapshot_stride=sizeof(struct ui_snapshot);ui_info.model_bytes=sizeof(state);
     ui_info.active_index=active;ui_info.elapsed_ms=snapshots[active].elapsed_ms;
     ui_info.generation=snapshots[active].generation;ui_info.last_render_ms=last_render_ms;
-    ui_info.max_render_ms=max_render_ms;ui_info.epoch=state.epoch;
-    ui_info.history_count=state.history_count;ui_info.final_count=state.final_count;
-    ui_info.rejected_events=state.rejected_events;ui_info.command_ack=ui_command.ack_sequence;
+    ui_info.max_render_ms=max_render_ms;ui_info.epoch=shown->epoch;
+    ui_info.history_count=shown->history_count;ui_info.final_count=shown->final_count;
+    ui_info.rejected_events=shown->rejected_events;ui_info.command_ack=ui_command.ack_sequence;
     ui_info.asset_checks=3;barrier();++ui_info.sequence;barrier();
 }
 int main(void) {
@@ -169,6 +170,9 @@ int main(void) {
         if(report.last_frame_pixels!=FB_WIDTH*FB_HEIGHT) fail(7);
         uint32_t pause=now_ms();while(now_ms()-pause<500u) {
             check_video();process_controls();
+#ifdef UI_BACKGROUND_TICK
+            UI_BACKGROUND_TICK(&state,now_ms());
+#endif
 #ifdef Z7_NANO_TOUCH
             if(previous_sequence!=state.change_sequence) break;
 #endif

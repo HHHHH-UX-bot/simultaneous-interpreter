@@ -90,7 +90,7 @@ P2b-3 板端测试由专用 UI 入口选择 ELF，再由共享显示驱动配置
 
 ## C 云端语音接入
 
-方案与阶段顺序由 [CLOUD_SPEECH](../design/CLOUD_SPEECH.md#分阶段放行)维护。当前 C0 和 C1-0 已在各自范围验收；实际结果由 NOW 路由，持续传输与可信 TLS/WSS 仍待执行。
+方案与阶段顺序由 [CLOUD_SPEECH](../design/CLOUD_SPEECH.md#分阶段放行)维护。当前 C0 和 C1-0 已在各自范围验收；C1-1 有短时有效吞吐结果但未放行，可信 TLS/WSS 仍待执行；实际结果由 NOW 路由。
 
 C1-0 入口为 [固定查询工具](../../scripts/probe_z7_nano_capabilities.py)。在项目根目录选择 machine 环境；前置是匹配的 Z7N3 平台、当前源码验证和 ARM 构建。重新下载依次 stop Host → program → run；之后执行下列已实测命令：
 
@@ -102,6 +102,10 @@ python -B scripts/run_z7_nano_usb_live.py start --platform network
 ```
 
 查询只从本次程序的空闲状态触发一次；已有活动关联时不复用该入口。完成后核对当前程序的画面与触摸；复测使用新的匹配启动记录，不能把旧产物作为本次运行。C1-0 查询没有配置无线、证书、Flash 或云端 Key；后续连接操作另按其前置条件实施。
+
+C1-1 的逐包入口是 [measure_z7_nano_upload](../../scripts/measure_z7_nano_upload.py)，已执行 `--seconds 60 --local-ip <当前 WLAN IPv4>`；前置为匹配程序、活动 Host、关联记录和空闲 LAN 服务。透传入口是 [measure_z7_nano_passthrough](../../scripts/measure_z7_nano_passthrough.py)，使用同样时长与地址参数，加 `--credentials-stdin` 从隐藏输入取得运行凭据；前置为新启动的空闲程序。工具先绑定测试监听，再经 RAM 请求板卡连接，退出前确认普通 AT 模式及 TCP 关闭。接收端核对全部块的长度、序号、内容和完整发送时长，保留失败指标；短试验不足时不进入长试验。两档透传实机均失败，当前代码仅保留为诊断入口，容量边界见 [C1-1](../design/CLOUD_SPEECH.md#c1-1-连续上传与串口调度)。
+
+C2-PC 已用 [公开合成英语文件](../../output/model_backend/fixtures/english_reference.wav)执行一次真实云端对照。使用 machine 环境，从项目根目录运行 [run_bailian_file](../../scripts/run_bailian_file.py)，以 `--audio` 指定该 WAV、`--bind-ip` 指定当前实际 WLAN IPv4。输入须为 16 kHz、单声道、16 位 PCM；业务空间和 Key 由终端隐藏输入提供，不能放入参数、文件或原始日志。客户端验证 TLS、禁用代理并等待服务端完成，结果写入独立尝试目录；方法、结果与验收边界由 [C2-PC](../design/CLOUD_SPEECH.md#c2-pc-受控音频云端对照)维护。新网络或凭据不能沿用历史成功结论。
 
 ## P3 USB 触摸
 

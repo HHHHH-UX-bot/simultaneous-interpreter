@@ -1,11 +1,13 @@
 #include "network.h"
 _Static_assert(sizeof(struct network_status)==64,"Network public ABI");
 _Static_assert(sizeof(struct network_configuration)==128,"Network private configuration ABI");
-__attribute__((section(".network_mailbox"),used)) volatile struct network_status network_info;
+volatile struct network_status network_info;
+__attribute__((section(".network_mailbox"),used)) volatile struct network_status network_report;
 __attribute__((section(".network_config"),used)) volatile struct network_configuration network_config;
 #ifdef Z7_NETWORK_CAPABILITIES
 _Static_assert(sizeof(struct network_capability_status)==64,"Capability public ABI");
-__attribute__((section(".network_capabilities"),used)) volatile struct network_capability_status network_capabilities;
+volatile struct network_capability_status network_capabilities;
+__attribute__((section(".network_capabilities"),used)) volatile struct network_capability_status network_capability_report;
 static uint32_t capability_query;
 static const char *const capability_commands[]={"AT+CIPSSLSIZE?\r\n","AT+CIPSSLCCONF?\r\n",
     "AT+CIPSSLCSNI?\r\n","AT+CIPSSLCCN?\r\n","AT+CIPSNTPCFG?\r\n"};
@@ -14,19 +16,33 @@ static const char *const capability_tags[]={"+CIPSSLSIZE:","+CIPSSLCCONF:",
 #endif
 static wifi_read_fn read_reg;static wifi_write_fn write_reg;
 static struct ui_state *model;
-static uint32_t current_time,setup_step,enabled,ipd_left,ipd_client,line_used,frame_used,frame_expected,frame_ready;
+static uint32_t current_time,report_ms,setup_step,enabled,ipd_left,ipd_client,line_used,frame_used,frame_expected,frame_ready;
 static uint32_t command_phase,command_size,command_pos,command_deadline,reply_size,reply_line_start,ack_pending,last_request,prompt_padding;
 static char command[320],reply[512],line[128],join_command[240];
 enum setup_state { SETUP_ECHO,SETUP_VERSION,SETUP_STOP_SERVER,SETUP_VOLATILE,
     SETUP_STATION,SETUP_JOIN,SETUP_IP,SETUP_MULTIPLEX,SETUP_IPD_SIMPLE,
     SETUP_ACTIVE_RECEIVE,SETUP_SERVER,SETUP_COUNT };
-static uint8_t frame[NET_FRAME_BYTES],ack[32];
+static uint8_t frame[NET_FRAME_BYTES],ack[2048];
+static uint32_t send_size;
+static uint32_t peer,peer_port,raw_state,raw_deadline;
 static void fence(void) {
 #if defined(__arm__)
     __asm__ volatile("dsb sy" ::: "memory");
 #else
     __sync_synchronize();
 #endif
+}
+static void publish_report(uint32_t now) {
+    if(now-report_ms<200u) return;
+    report_ms=now;++network_report.sequence;fence();
+    volatile uint32_t *out=(volatile uint32_t *)&network_report;
+    const volatile uint32_t *in=(const volatile uint32_t *)&network_info;
+    for(uint32_t i=0;i<16;++i) if(i!=1) out[i]=in[i];
+#ifdef Z7_NETWORK_CAPABILITIES
+    out=(volatile uint32_t *)&network_capability_report;in=(const volatile uint32_t *)&network_capabilities;
+    for(uint32_t i=0;i<16;++i) out[i]=in[i];
+#endif
+    fence();++network_report.sequence;fence();
 }
 static uint32_t length(const char *s) {uint32_t n=0;while(s[n]) ++n;return n;}
 static int same(const char *a,const char *b) {while(*a && *a==*b) {++a;++b;}return *a==*b;}
@@ -35,6 +51,15 @@ static int contains(const char *s,const char *key) {
 }
 static void wipe(char *p,uint32_t n) {volatile char *v=p;while(n--) *v++=0;fence();}
 static void fault(uint32_t error) {
+    if(raw_state>=6) {
+        raw_state=command_phase=ack_pending=0;network_info.phase=6;
+        if(!network_info.error) network_info.error=error;
+        wipe(command,sizeof(command));wipe(reply,sizeof(reply));return;
+    }
+    if(raw_state) {
+        if(!network_info.error) network_info.error=error;
+        network_stop();return;
+    }
 #ifdef Z7_NETWORK_CAPABILITIES
     if(network_capabilities.phase==1) {network_capabilities.phase=6;network_capabilities.error=error;}
 #endif
@@ -57,14 +82,40 @@ static uint32_t decimal(char *p,uint32_t v) {
 static void send_ack_command(void) {
     char text[48];uint32_t n=0;const char *prefix="AT+CIPSEND=";
     while(*prefix) text[n++]=*prefix++;
-    n+=decimal(text+n,network_info.client);text[n++]=',';n+=decimal(text+n,32);
+    n+=decimal(text+n,network_info.client);text[n++]=',';n+=decimal(text+n,send_size);
     text[n++]='\r';text[n++]='\n';text[n]=0;begin_command(text,4000);
+}
+int network_send(const uint8_t *data,uint32_t size) {
+    if(network_info.phase!=4 || command_phase || ack_pending || frame_ready || !size || size>sizeof(ack)) return 0;
+    for(uint32_t i=0;i<size;++i) ack[i]=data[i];
+    send_size=size;ack_pending=1;
+    if(raw_state==1) {command_phase=3;command_pos=0;command_deadline=current_time+4000;}
+    else send_ack_command();
+    return 1;
+}
+void network_stop(void) {
+    if(raw_state!=1) return;
+    raw_state=2;raw_deadline=current_time+4000;network_info.phase=7;
+    (void)ui_control(model,UI_PAUSE);
 }
 static void issue_setup(void) {
     static const char *const commands[]={"ATE0\r\n","AT+GMR\r\n","AT+CIPSERVER=0\r\n","AT+SYSSTORE=0\r\n",
         "AT+CWMODE=1\r\n",0,"AT+CIFSR\r\n","AT+CIPMUX=1\r\n","AT+CIPDINFO=0\r\n","AT+CIPRECVMODE=0\r\n","AT+CIPSERVER=1,8266\r\n"};
     _Static_assert(sizeof(commands)/sizeof(commands[0])==SETUP_COUNT,"Setup command count");
     network_info.last_code=setup_step;
+    if(peer) {
+        if(setup_step==SETUP_STOP_SERVER) {begin_command("AT+CIPSERVER=0,1\r\n",4000);return;}
+        if(setup_step==SETUP_MULTIPLEX) {begin_command("AT+CIPMUX=0\r\n",4000);return;}
+        if(setup_step==SETUP_IPD_SIMPLE) {
+            char text[80];uint32_t n=0;const char *prefix="AT+CIPSTART=\"TCP\",\"";
+            while(*prefix) text[n++]=*prefix++;
+            for(uint32_t i=0;i<4;++i) {n+=decimal(text+n,(peer>>(24-8*i))&255u);if(i!=3) text[n++]='.';}
+            text[n++]='"';text[n++]=',';n+=decimal(text+n,peer_port);
+            text[n++]='\r';text[n++]='\n';text[n]=0;begin_command(text,15000);return;
+        }
+        if(setup_step==SETUP_ACTIVE_RECEIVE) {begin_command("AT+CIPMODE=1\r\n",4000);return;}
+        if(setup_step==SETUP_SERVER) {begin_command("AT+CIPSEND\r\n",4000);return;}
+    }
     begin_command(setup_step==SETUP_JOIN?join_command:commands[setup_step],setup_step==SETUP_JOIN?25000u:4000u);
 }
 static uint32_t parse_ip(const char *s) {
@@ -155,7 +206,8 @@ static void configuration(void) {
 #endif
     uint32_t sn=network_config.ssid_bytes,pn=network_config.password_bytes;
     int valid=network_config.magic==0x3146434eu && network_config.action==1 && sn>=1 && sn<=32 && pn>=8 && pn<=64 &&
-        (network_config.port==0 || network_config.port==8266) && network_config.reserved==0;
+        (network_config.reserved ? network_config.port>=1 && network_config.port<=65535 :
+         (network_config.port==0 || network_config.port==8266));
     uint32_t n=0;const char *prefix="AT+CWJAP=\"";while(*prefix) join_command[n++]=*prefix++;
     if(valid) for(uint32_t part=0;part<2;++part) {
         uint32_t count=part?pn:sn;
@@ -171,6 +223,7 @@ static void configuration(void) {
     for(uint32_t i=0;i<100;++i) network_config.credentials[i]=0;
     network_config.ssid_bytes=network_config.password_bytes=0;fence();network_info.config_ack=request;
     if(!valid || request!=network_config.request_sequence) {fault(11);return;}
+    peer=network_config.reserved;peer_port=network_config.port;
     if(enabled) (void)ui_control(model,UI_PAUSE);
     setup_step=0;frame_used=frame_ready=ipd_left=line_used=last_request=ack_pending=0;
     network_info.phase=1;network_info.error=network_info.sta_ip=network_info.echo_verified=0;
@@ -192,7 +245,7 @@ static void commit_frame(void) {
     uint32_t code=net_apply(model,frame,frame_used,&last_request);
     network_info.last_request=net_word(frame+8);network_info.last_code=code;
     if(code) ++network_info.rejected;else ++network_info.accepted;
-    net_ack(ack,frame,code,model);ack_pending=1;frame_used=frame_ready=0;
+    net_ack(ack,frame,code,model);send_size=32;ack_pending=1;frame_used=frame_ready=0;
 }
 static void line_event(void) {
 #ifdef Z7_NETWORK_CAPABILITIES
@@ -262,8 +315,9 @@ static void command_tick(void) {
         if(command_pos<command_size || (read_reg(4)&4u)) return;
         command_phase=2;wipe(command,sizeof(command));reply_size=0;reply[0]=0;
     } else if(command_phase==3) {
-        for(uint32_t budget=0;budget<32 && command_pos<32 && (read_reg(4)&2u);++budget) write_reg(16,ack[command_pos++]);
-        if(command_pos<32 || (read_reg(4)&4u)) return;
+        for(uint32_t budget=0;budget<2048 && command_pos<send_size && (read_reg(4)&2u);++budget) write_reg(16,ack[command_pos++]);
+        if(command_pos<send_size || (read_reg(4)&4u)) return;
+        if(raw_state==1 || raw_state==2) {command_phase=ack_pending=0;return;}
         command_phase=4;reply_size=0;reply[0]=0;
     }
     if(command_phase==4) {
@@ -272,6 +326,15 @@ static void command_tick(void) {
         return;
     }
     if(command_phase!=2) return;
+    if(peer && setup_step==SETUP_SERVER && !raw_state) {
+        if(contains(reply,"ERROR") || contains(reply,"FAIL")) fault(29);
+        else if(contains(reply,">")) {
+            command_phase=0;line_used=reply_size=0;reply[0]=0;raw_state=1;
+            network_info.phase=4;network_info.client=0;enabled=1;
+            (void)ui_control(model,UI_CLEAR);(void)ui_control(model,UI_START);
+        }
+        return;
+    }
     if(network_info.phase==4 && ack_pending) {
         if(contains(reply,"ERROR") || contains(reply,"FAIL")) fault(28);
         else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=0;reply[0]=0;command_deadline=current_time+4000;}
@@ -279,6 +342,13 @@ static void command_tick(void) {
     }
     int failure=contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n");
     if(!contains(reply,"\r\nOK\r\n") && !failure) return;
+    if(raw_state>=6) {
+        command_phase=0;wipe(reply,sizeof(reply));line_used=0;
+        if(failure) {if(!network_info.error) network_info.error=41;raw_state=0;network_info.phase=6;return;}
+        if(raw_state==6) {raw_state=7;begin_command("AT+CIPCLOSE\r\n",4000);}
+        else {raw_state=0;enabled=0;network_info.client=0xffffffffu;network_info.phase=network_info.error?6:0;}
+        return;
+    }
 #ifdef Z7_NETWORK_CAPABILITIES
     if(network_capabilities.phase==1) {capability_result(failure);return;}
 #endif
@@ -295,9 +365,27 @@ static void command_tick(void) {
     if(++setup_step<SETUP_COUNT) issue_setup();
     else {network_info.phase=3;enabled=1;(void)ui_control(model,UI_CLEAR);(void)ui_control(model,UI_START);}
 }
+static void raw_cleanup(void) {
+    if(raw_state==2) {
+        if(command_phase==3) command_tick();
+        if(command_phase || (read_reg(4)&4u)) {
+            if((int32_t)(current_time-raw_deadline)>=0) {raw_state=command_phase=ack_pending=0;network_info.phase=6;if(!network_info.error) network_info.error=42;}
+            return;
+        }
+        raw_state=3;raw_deadline=current_time+21;
+    } else if(raw_state==3 && (int32_t)(current_time-raw_deadline)>=0) {
+        write_reg(16,'+');write_reg(16,'+');write_reg(16,'+');raw_state=4;raw_deadline=current_time+4000;
+    } else if(raw_state==4) {
+        if(!(read_reg(4)&4u)) {raw_state=5;raw_deadline=current_time+1000;}
+        else if((int32_t)(current_time-raw_deadline)>=0) {raw_state=0;network_info.phase=6;if(!network_info.error) network_info.error=42;}
+    } else if(raw_state==5 && (int32_t)(current_time-raw_deadline)>=0) {
+        raw_state=6;begin_command("AT+CIPMODE=0\r\n",4000);
+    }
+}
 void network_init(wifi_read_fn r,wifi_write_fn w) {
     read_reg=r;write_reg=w;
     volatile uint32_t *words=(volatile uint32_t *)&network_info;for(uint32_t i=0;i<16;++i) words[i]=0;
+    words=(volatile uint32_t *)&network_report;for(uint32_t i=0;i<16;++i) words[i]=0;
     words=(volatile uint32_t *)&network_config;for(uint32_t i=0;i<32;++i) words[i]=0;
 #ifdef Z7_NETWORK_CAPABILITIES
     words=(volatile uint32_t *)&network_capabilities;for(uint32_t i=0;i<16;++i) words[i]=0;
@@ -305,19 +393,30 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
 #endif
     network_info.magic=0x3154454eu;network_info.client=0xffffffffu;network_config.magic=0x3146434eu;
     enabled=ipd_left=line_used=frame_used=frame_ready=command_phase=ack_pending=prompt_padding=0;wipe(join_command,sizeof(join_command));
+    send_size=32;peer=peer_port=raw_state=raw_deadline=0;
+    report_ms=(uint32_t)-200;publish_report(0);
 }
 int network_owns_ui(void) {return enabled!=0;}
 void network_tick(struct ui_state *state,uint32_t now) {
     model=state;current_time=now;++network_info.sequence;fence();
     configuration();network_info.overflow=read_reg(32);network_info.framing=read_reg(36);
-    if(network_info.overflow || network_info.framing) fault(32);
+    if((network_info.overflow || network_info.framing) && (!raw_state || !network_info.error)) fault(32);
+    if(raw_state && raw_state<=5) {
+        /* Passthrough RX is data, never AT replies or the LAN frame format. */
+        for(uint32_t budget=0;budget<2048 && (read_reg(4)&1u);++budget) {
+            if(!(read_reg(20)&0x80000000u)) break;
+            ++network_info.received_bytes;
+        }
+        if(raw_state==1) command_tick();else raw_cleanup();
+        goto done;
+    }
     if(network_info.phase!=6 && network_info.phase!=0) {
         if(command_phase && (int32_t)(current_time-command_deadline)>=0) fault(27);
         // Promote a fully transmitted command BEFORE draining its response.
         // RX remains buffered while FIFO/prefetch/PHY is still busy.
         if(command_phase==1 && command_pos==command_size && !(read_reg(4)&4u)) {
             command_phase=2;wipe(command,sizeof(command));reply_size=0;reply[0]=0;
-        } else if(command_phase==3 && command_pos==32 && !(read_reg(4)&4u)) {
+        } else if(command_phase==3 && command_pos==send_size && !(read_reg(4)&4u)) {
             command_phase=4;reply_size=0;reply[0]=0;
         }
         if(network_info.phase==6) goto done;
@@ -334,5 +433,5 @@ void network_tick(struct ui_state *state,uint32_t now) {
         }
     }
 done:
-    network_info.epoch=state->epoch;fence();++network_info.sequence;fence();
+    network_info.epoch=state->epoch;fence();++network_info.sequence;fence();publish_report(now);
 }

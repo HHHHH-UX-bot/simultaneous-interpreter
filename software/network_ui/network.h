@@ -9,19 +9,25 @@ struct network_status {
 struct network_configuration {
     uint32_t magic,request_sequence,action,ssid_bytes,password_bytes;
     uint8_t credentials[100];
-    uint32_t port,reserved;
+    uint32_t port,reserved; /* reserved=0: LAN server; otherwise single TCP peer IPv4. */
 };
 extern volatile struct network_status network_info;
+extern volatile struct network_status network_report;
 extern volatile struct network_configuration network_config;
 #ifdef Z7_NETWORK_CAPABILITIES
-/* Public numeric query results; published under network_info.sequence. */
+/* Live query state; the OCM copy is published under network_report.sequence. */
 struct network_capability_status {
     uint32_t magic,phase,error,query_index,queried_mask,ok_mask,error_mask,invalid_mask;
     uint32_t ssl_buffer,auth_count,auth_args[4],response_bytes,firmware_hash;
 };
 extern volatile struct network_capability_status network_capabilities;
+extern volatile struct network_capability_status network_capability_report;
 #endif
 void network_init(wifi_read_fn read,wifi_write_fn write);
 void network_tick(struct ui_state *state,uint32_t now);
 int network_owns_ui(void);
+/* Queue at most 2048 bytes; the caller may reuse its input after success. */
+int network_send(const uint8_t *data,uint32_t size);
+/* Finish the queued raw block, escape passthrough and close its TCP link. */
+void network_stop(void);
 #endif

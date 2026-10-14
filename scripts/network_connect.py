@@ -19,12 +19,13 @@ def read_credentials_line():
         elif ord(char)<32:raise ValueError('Unsupported console input')
         else:chars.append(char)
     raise ValueError('Private input is too long')
-def payload(credentials):
+def payload(credentials,peer_ip=0,port=0):
     ssid=credentials['ssid'].encode('ascii');password=credentials['password'].encode('ascii')
     if not 1<=len(ssid)<=32 or not 8<=len(password)<=64 or any(c<32 or c>126 for c in ssid+password):
         raise ValueError('Unsupported Wi-Fi credential format')
     raw=bytearray(128);struct.pack_into('<5I',raw,0,0x3146434e,0,1,len(ssid),len(password))
     raw[20:20+len(ssid)]=ssid;raw[53:53+len(password)]=password
+    struct.pack_into('<2I',raw,120,port,peer_ip)
     return ' '.join(f'{w:08x}' for w in struct.unpack('<32I',raw))+'\n'
 def private_command(xsdb,data,folder):
     app.net.fb.save('failure_state.json',{'CPUState':'unknown','OwnTreeStopped':False,'Status':'pending_private_config'})

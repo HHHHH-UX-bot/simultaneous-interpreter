@@ -40,6 +40,7 @@ def private_submit(args, data, folder, serial):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--credentials-stdin", action="store_true", required=True)
+    parser.add_argument("--lan-cidr", type=ipaddress.IPv4Network, default=ipaddress.IPv4Network("192.168.31.0/24"))
     parser.add_argument("--vivado", type=Path, default=display.base.VIVADO)
     parser.add_argument("--xsdb", type=Path, default=display.base.XSDB)
     args = parser.parse_args()
@@ -77,9 +78,9 @@ def main():
             if public["Phase"]!=3 or public["Error"] or public["EchoVerified"]!=1 or public["Overflow"] or public["Framing"]:
                 raise RuntimeError("Autonomous association/TCP server did not reach ready state")
             address = ipaddress.IPv4Address(public["StationIP"])
-            if address not in ipaddress.IPv4Network("192.168.31.0/24") or address.packed[-1] in (0,255):
+            if address not in args.lan_cidr or address in (args.lan_cidr.network_address,args.lan_cidr.broadcast_address):
                 raise RuntimeError("Station address is outside the confirmed LAN")
-            record.update(status="passed", station_address=str(address), public=public,
+            record.update(status="passed", station_address=str(address), lan_cidr=str(args.lan_cidr), public=public,
                 evidence=after["attempt"]+"/network.json", samples=samples,
                 private_storage="stdin/volatile RAM only; firmware wipes credentials")
         except (Exception, KeyboardInterrupt) as error:

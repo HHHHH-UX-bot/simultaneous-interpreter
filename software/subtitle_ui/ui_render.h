@@ -10,6 +10,7 @@ struct ui_render_stats {
     uint32_t source_lines,history_lines,pixels_written;
 };
 void ui_format_elapsed(uint32_t elapsed_ms,uint32_t text[16]);
+void ui_render_set_service(void (*service)(void));
 void ui_render(uint32_t *pixels,const struct ui_state *state,uint32_t elapsed_ms,
                uint32_t requested_page,struct ui_render_stats *stats);
 #endif

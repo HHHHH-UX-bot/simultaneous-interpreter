@@ -22,6 +22,8 @@ def main():
                 '    ASSERT(SIZEOF(.network_config) == 0x80, "Network private ABI changed")\n')
     sections += ('    .network_capabilities 0x0001E200 (NOLOAD) : { KEEP(*(.network_capabilities)) } > OCM\n'
                  '    ASSERT(SIZEOF(.network_capabilities) == 0x40, "Capability public ABI changed")\n')
+    sections += ('    .network_upload_control 0x0001E240 (NOLOAD) : { KEEP(*(.network_upload_control)) } > OCM\n'
+                 '    ASSERT(SIZEOF(.network_upload_control) == 4, "Upload control ABI changed")\n')
     (folder/"ui_network.ld").write_text(linker.replace(anchor, sections+anchor), encoding="utf-8")
     print("PASS_Z7_NANO_NETWORK_PREPARE")
 

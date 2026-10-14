@@ -56,7 +56,7 @@ def build(a):
     net.runner.command([a.gcc,*flags,*[ROOT/p for p in sources],'-lgcc','-o',OUT/'framebuffer_app.elf'],'app/arm.log')
     symbols=net.runner.command([a.gcc.with_name('arm-none-eabi-nm.exe'),'-n',OUT/'framebuffer_app.elf'],'app/symbols.log')
     for name,address in (('_start',0x10000),('report',0x1e000),('ui_info',0x1e080),('ui_command',0x1e0c0),
-                         ('wifi_info',0x1e100),('network_info',0x1e140),('network_config',0x1e180),('snapshots',0x1b00000)):
+                         ('wifi_info',0x1e100),('network_report',0x1e140),('network_config',0x1e180),('snapshots',0x1b00000)):
         m=re.search(r'^([0-9a-fA-F]+)\s+\w\s+'+name+r'$',symbols,re.M)
         if not m or int(m[1],16)!=address:raise RuntimeError('ARM mailbox/layout mismatch: '+name)
     if net.fb.hashes(APP_INPUTS)!=record['SourceHashes']:raise RuntimeError('Network inputs changed during build')

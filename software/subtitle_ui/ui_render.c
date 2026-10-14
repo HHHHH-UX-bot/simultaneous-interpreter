@@ -12,6 +12,8 @@
 struct paint {uint32_t *pixels;struct ui_render_stats *stats;};
 struct text_lines {uint16_t begin[UI_MAX_TEXT],end[UI_MAX_TEXT];uint32_t count;};
 struct clip {int x,y,w,h;};
+static void (*render_service)(void);
+void ui_render_set_service(void (*service)(void)) {render_service=service;}
 static int key_equal(const char *a,const char *b) {
     while (*a && *a==*b) {++a;++b;}
     return *a==*b;
@@ -43,7 +45,10 @@ static void rect(struct paint *p,int x,int y,int w,int h,uint32_t color) {
     int x0=x<0?0:x,y0=y<0?0:y,x1=x+w,y1=y+h;
     if(x1>(int)UI_WIDTH) x1=UI_WIDTH;
     if(y1>(int)UI_HEIGHT) y1=UI_HEIGHT;
-    for(int row=y0;row<y1;++row) for(int col=x0;col<x1;++col) p->pixels[row*UI_WIDTH+col]=color;
+    for(int row=y0;row<y1;++row) {
+        for(int col=x0;col<x1;++col) p->pixels[row*UI_WIDTH+col]=color;
+        if(render_service && (row&3)==0) render_service();
+    }
     if(x1>x0 && y1>y0) p->stats->pixels_written+=(uint32_t)((x1-x0)*(y1-y0));
 }
 static void round_rect(struct paint *p,int x,int y,int w,int h,int radius,uint32_t color) {
@@ -90,6 +95,7 @@ static void draw_line(struct paint *p,const struct ui_font *f,const uint32_t *te
                       uint32_t begin,uint32_t end,int x,int y,uint32_t color,struct clip c) {
     for(uint32_t i=begin;i<end && text[i];++i) {
         put_glyph(p,f,text[i],x,y,color,c);x+=(int)advance(f,text[i]);
+        if(render_service) render_service();
     }
 }
 static void one_line(struct paint *p,const uint32_t *text,uint32_t size,int x,int y,int width,uint32_t color) {

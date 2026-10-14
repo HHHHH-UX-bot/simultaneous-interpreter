@@ -1,6 +1,6 @@
 # 云端语音翻译与独立终端
 
-方案核验日期：2026-10-14，范围为官方接口文档与当前板卡能力之间的接入设计；尚未执行云端语音调用。选择来源见 [D13](../context/DECISIONS.md#d13-云端语音翻译与独立终端)，实际进展由 [NOW](../context/NOW.md)维护。
+方案核验日期：2026-10-14，范围为官方接口、电脑受控文件调用与板卡测试数据传输；板端云端语音尚未完成。选择来源见 [D13](../context/DECISIONS.md#d13-云端语音翻译与独立终端)，实际进展由 [NOW](../context/NOW.md)维护。
 
 ## 已选方案与替代项
 
@@ -13,7 +13,7 @@
 
 以上是接入适配性的选择，不是同条件速度、质量或费用排名。官方延迟宣传不能替代本产品实测；此次没有购买服务或代办云账号设置。
 
-串口 C0 的执行证据由 [高速 UART](BOARD_MIGRATION.md#m5-2-921600-串口)路由；C1-0 已取得下方固定查询证据，持续传输、可信 TLS/WSS 和云端语音仍待验证。当前状态统一见 NOW，不把本文件的计划当成放行记录。
+串口 C0 的执行证据由 [高速 UART](BOARD_MIGRATION.md#m5-2-921600-串口)路由；C1-0 已取得下方固定查询证据，板端持续带宽与可信 TLS/WSS 仍待验证；电脑云端对照见 C2-PC。当前状态统一见 NOW，不把本文件的计划当成放行记录。
 
 ## 产品结构
 
@@ -29,7 +29,7 @@
 
 会话使用 `session.output_modalities=["text"]`，目标设为中文。输入采用 16 kHz 单声道 16 位 PCM，按接口封装 Base64 音频块；处理原文增量/完成和译文增量/完成，结束会话等待服务端确认。[接口合同](https://help.aliyun.com/zh/model-studio/qwen3-5-livetranslate-flash-realtime)。旧 3.5 版本字段不同，不混用事件协议。
 
-用户已有阿里云账号，以下凭据是否可用尚未确认：
+2026-10-14 用户已提供北京地域业务空间与 Key；电脑经可信 TLS/WSS 完成会话配置，见 [预检](../../output/cloud_speech/preflight.json)。密钥只通过隐藏输入进入运行进程，不写入源码或证据。提供的 OpenAI 兼容地址用于文本接口；本产品语音使用上述实时 WSS 地址。以下保留重建环境时的准备步骤：
 
 1. 在 [百炼控制台](https://bailian.console.aliyun.com/)选择华北2（北京），查看或创建归属相应业务空间的 API Key，见[官方 Key 指南](https://help.aliyun.com/zh/model-studio/get-api-key/)。
 2. 在业务空间管理查看同一空间的 Workspace ID，见[官方 ID 指南](https://help.aliyun.com/zh/model-studio/obtain-the-app-id-and-workspace-id)。模型、地域、空间与 Key 必须对应。
@@ -58,6 +58,24 @@
 旧 NONOS 与 ESP-AT 的命令和参数存在差异，查询拒绝不能直接证明 SSL 不可用，见 [官方对照](https://docs.espressif.com/projects/esp-at/en/release-v2.2.0.0_esp32/AT_Command_Set/AT_Command_Set_Comparison.html)及 [SSL/SNI/SNTP 命令](https://docs.espressif.com/projects/esp-at/en/release-v2.2.0.0_esp8266/AT_Command_Set/TCP-IP_AT_Commands.html)。本阶段不作为可信 TLS、WSS 或连续音频放行。
 
 实现复用原 AT 任务的 `action=2`，仅从空闲态发送这五项查询；没有配置无线关联、证书或 Flash。查询任务不会接管 UI，完成后继续演示字幕。新增的 64 字节公开结果与网络状态使用同一 sequence；工具不读取私有凭据。执行前后维持 921600 已验收配置，614400 像素比对零差异，用户确认本版画面和主按钮/A+ 正常。
+
+## C1-1 连续上传与串口调度
+
+2026-10-14 在 OnePlus12 局域网，以 921600 UART 与逐包 CIPSEND 发送 1536 字节已知数据块，60 秒收到 1484 块、约 37984 B/s；顺序和内容正确，串口错误计数为零，但低于 Base64/协议预算 48000 B/s。最长包间隔为 2.531 秒，存在零吞吐区间，尚未进行 30 分钟负载试验，C1 未放行。证据由 [封存测量](../../output/z7_nano/upload/cipsend_60s/latest.json)维护，用户确认同版画面清楚、主按钮与 A+ 正常，见 [实屏验收](../../output/z7_nano/upload/cipsend_60s/visual_acceptance.json)。
+
+绘制矩形与字形时继续服务串口，单个发送缓冲持有至物理停止位完成。公开诊断快照每 200 ms 发布：实测一次 JTAG 三次读耗时 42–49 ms，原 1/20 ms 快照无法稳定读取，见 [读取计时](../../output/z7_nano/upload/cipsend_60s/jtag_read_timing.json)。这些调整通过本机验证及实际帧比对，仍不能替代有效吞吐验证。
+
+随后进行了单连接 TCP 透传对照：51.2 kB/s 目标下仅前 8 块正确，之后损坏，退出 AT 超时；降低目标到 25.6 kB/s 后前 27 块正确，第 27 号块头部正确、载荷从偏移 1268 开始不符，此次退出普通 AT 并关闭 TCP 成功。两次都未完成 60 秒，均失败，不能用部分平均值证明容量。证据分别为 [较高速尝试](../../output/z7_nano/upload/attempts/20261014T131753388793Z/result.json)与 [低速对照](../../output/z7_nano/upload/attempts/20261014T133224462048Z/result.json)。板端错误计数为零不能证明 ESP 内部没有丢字节；根因未确定，透传不作为产品已可用路径。较高速程序的画面/按钮获用户确认，见 [对应验收](../../output/z7_nano/upload/attempts/20261014T131753388793Z/visual_acceptance.json)。
+
+透传测试使用 NCF1 reserved 非零表示测试电脑 IPv4、port 表示目标端口；reserved=0 保持原 LAN 字幕服务。测试结束等待串口空闲、守卫间隔、发送三个加号、至少等待一秒，再确认普通 AT 模式并关闭 TCP；依据为 [ESP8266 官方 TCP/IP 命令](https://docs.espressif.com/projects/esp-at/en/release-v2.2.0.0_esp8266/AT_Command_Set/TCP-IP_AT_Commands.html)。源码审查与隔离用例见 [定向复核](../../output/z7_nano/upload/passthrough_review.json)，其通过范围不替代上述实机失败。此实验不含真实音频、TLS 或云密钥，未进行 30 分钟负载。
+
+2026-10-14 官方接口另列出 Qwen3.5 支持 PCM/Opus，采样率支持 8/16 kHz；当前 Qwen3.8 文档默认输入是 16 kHz PCM，其会话字段不同，不能直接套用旧字段。见 [客户端事件](https://help.aliyun.com/zh/model-studio/live-translator-client-events)。Qwen3.5 + 16 kHz Opus 可作为降低联网流量的候选，但编码器、包封装、板端 CPU 开销及同条件质量/时延均未验证；用户询问区别后要求暂停，尚未选择替代路线，不写入已确认决策。
+
+## C2-PC 受控音频云端对照
+
+2026-10-14 电脑通过实际 WLAN 直连北京地域服务，以实时节奏发送已有的 9.025 秒公开合成英语 PCM。API 返回了完整英语原文、中文译文及完成事件，见 [本次文件结果](../../output/cloud_speech/attempts/20261014T111342583658Z/result.json)；音频来源由 [MODEL_BACKEND](MODEL_BACKEND.md#受控文件证据与噪声修复)维护，客户端由 [run_bailian_file](../../scripts/run_bailian_file.py)实现。
+
+首段译文在发送开始后 2.203 秒到达，定稿在 9.734 秒到达，比最后一块输入晚 0.719 秒。这是单次受控文件对照，未验证真实麦克风、代表性质量或板卡独立云端链路，未输出译音。客户端默认验证证书与主机名、绕过代理并绑定指定 WLAN 地址；完成事件才计入定稿，未完成增量不进入最终结果，异步失败会收回发送任务。五个事件/任务生命周期用例见 [独立复核](../../output/cloud_speech/review.json)。
 
 ## 分阶段放行
 
