@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "scope": "模拟字幕演示；未接入真实音频、语音识别、翻译服务或触摸输入。",
+  "labels": {
+    "brand": "译声",
+    "language": "英语 → 简体中文",
+    "demo": "模拟演示",
+    "caption": "中文字幕",
+    "source": "原文",
+    "session": "本次会话",
+    "time": "用时",
+    "count": "定稿",
+    "history": "最近记录",
+    "input": "音频 / 翻译服务",
+    "touch": "触摸待接入",
+    "listening": "正在聆听",
+    "recognizing": "识别草稿",
+    "translating": "正在翻译",
+    "final": "已定稿",
+    "paused": "已暂停",
+    "ready": "点击开始，体验模拟字幕",
+    "empty": "暂无定稿记录",
+    "pause": "暂停",
+    "resume": "继续",
+    "start": "开始翻译",
+    "clear": "清空记录",
+    "original": "原文",
+    "font": "字号",
+    "small": "小",
+    "normal": "标准",
+    "large": "大",
+    "settings": "设置",
+    "retained": "处理中保留上一句译文",
+    "pending": "仅模拟输入，未接入音频和后端",
+    "more": "长句自动分页",
+    "page": "页",
+    "off": "关",
+    "on": "开",
+    "volume": "输入电平：模拟",
+    "network": "翻译服务：未接入",
+    "draft": "本段原文草稿",
+    "new_session": "新会话",
+    "demo_only": "示例内容，不是真实翻译结果"
+  },
+  "samples": [
+    {
+      "source": "Before we begin, please make sure that everyone can hear the speaker clearly. We will leave a little time for questions after the presentation.",
+      "translated": "开始之前，请确认每个人都能清楚地听到发言。演讲结束后，我们会留一点时间回答大家的问题。"
+    },
+    {
+      "source": "This prototype keeps the last complete sentence visible while the next one is being processed. The text on this screen is a demonstration, not a live translation.",
+      "translated": "这台原型在处理下一句话时，会保留上一句完整译文。屏幕上的内容仅用于演示，并非实时翻译。"
+    },
+    {
+      "source": "Our aim is to make conversations easier to follow. Please speak at a natural pace, pause between ideas, and give the listener a moment to read the subtitles.",
+      "translated": "我们的目标是让交流更容易理解。请以自然的语速说话，在不同观点之间稍作停顿，并给听众一点时间阅读字幕。"
+    },
+    {
+      "source": "For a long explanation, the display keeps a comfortable text size and divides the subtitle into pages. It preserves the original sentence, records the final result, and lets the audience follow the speaker without losing the main idea.",
+      "translated": "当发言内容较长时，界面会保持适合阅读的字号，并把完整译文分成几页呈现，而不是为了塞进屏幕就不断缩小文字。听众可以先把握当前这句话的主要意思，再根据需要查看原文和最近的定稿记录。下一段开始识别或翻译时，上一句已经确认的内容仍然保留，直到新的译文准备好。这样既能减少画面的闪烁，也能给阅读速度不同的人留下理解和思考的时间。这里所有句子都是预先准备的模拟示例。"
+    },
+    {
+      "source": "The meeting starts at 9:30. We have 15 minutes for the introduction, 20 minutes for discussion, and 5 minutes for a short break. Does this schedule work for everyone?",
+      "translated": "会议在 9:30 开始。我们安排了 15 分钟介绍、20 分钟讨论，以及 5 分钟短暂休息。这样的安排大家都方便吗？"
+    },
+    {
+      "source": "Thank you for your attention. If anything was unclear, please ask us to repeat it. Good communication begins with making sure that we understand one another.",
+      "translated": "感谢大家的聆听。如果有任何不清楚的地方，请随时请我们重复。良好的沟通，始于确认彼此真正理解了对方。"
+    }
+  ]
+}

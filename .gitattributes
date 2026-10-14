@@ -1,0 +1,2 @@
+# Verification hashes bind exact file bytes, so preserve existing line endings.
+* -text

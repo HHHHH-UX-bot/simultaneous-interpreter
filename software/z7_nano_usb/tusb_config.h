@@ -1,0 +1,23 @@
+#ifndef Z7_TUSB_CONFIG_H
+#define Z7_TUSB_CONFIG_H
+#include "usb_board.h"
+#define CFG_TUSB_MCU OPT_MCU_NONE
+#define CFG_TUSB_OS OPT_OS_NONE
+#define CFG_TUD_ENABLED 0
+#define CFG_TUH_ENABLED 1
+#define CFG_TUH_MAX_SPEED OPT_MODE_HIGH_SPEED
+#define TUP_USBIP_EHCI
+#define TUP_USBIP_CHIPIDEA_HS
+#define TUP_RHPORT_HIGHSPEED 1
+#define CFG_TUSB_DEBUG 0
+#define CFG_TUSB_DEBUG_BREAKPOINT usb_stack_assert
+#define CFG_TUH_DEVICE_MAX 1
+#define CFG_TUH_ENDPOINT_MAX 8
+#define CFG_TUH_HUB 0
+#define CFG_TUH_HID 4
+#define CFG_TUH_ENUMERATION_BUFSIZE 1024
+#define CFG_TUH_HID_EPIN_BUFSIZE 64
+#define CFG_TUH_HID_EPOUT_BUFSIZE 64
+#define CFG_TUH_TASK_EVENTS_PER_RUN 8
+#define CFG_TUSB_MEM_ALIGN __attribute__((aligned(64)))
+#endif

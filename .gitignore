@@ -1,0 +1,32 @@
+# Local work and generated verification/build/model artifacts.
+/tmp/
+/output/
+**/__pycache__/
+*.pyc
+*.pyo
+*.log
+*.jou
+*.str
+*.dcp
+*.bit
+*.elf
+*.xsa
+*.zip
+*.7z
+
+# Credentials, licenses and private configuration.
+.env
+.env.*
+*.lic
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Installed fonts and editor/OS state.
+*.ttf
+*.ttc
+*.otf
+.DS_Store
+Thumbs.db
+desktop.ini
