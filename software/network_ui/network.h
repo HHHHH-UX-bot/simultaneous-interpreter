@@ -13,6 +13,14 @@ struct network_configuration {
 };
 extern volatile struct network_status network_info;
 extern volatile struct network_configuration network_config;
+#ifdef Z7_NETWORK_CAPABILITIES
+/* Public numeric query results; published under network_info.sequence. */
+struct network_capability_status {
+    uint32_t magic,phase,error,query_index,queried_mask,ok_mask,error_mask,invalid_mask;
+    uint32_t ssl_buffer,auth_count,auth_args[4],response_bytes,firmware_hash;
+};
+extern volatile struct network_capability_status network_capabilities;
+#endif
 void network_init(wifi_read_fn read,wifi_write_fn write);
 void network_tick(struct ui_state *state,uint32_t now);
 int network_owns_ui(void);

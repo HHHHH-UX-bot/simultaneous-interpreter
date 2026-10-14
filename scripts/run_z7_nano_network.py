@@ -14,7 +14,7 @@ def configure():
         "software/subtitle_ui/runtime.c", "software/subtitle_ui/ui_touch.c", "output/subtitle_ui/ui_assets.c")
     display.EXTRA_APP_INPUTS += ("software/network_ui/network.h", "software/network_ui/protocol.h",
         "scripts/run_z7_nano_network.py", "scripts/prepare_z7_nano_network.py")
-    display.EXTRA_APP_FLAGS += ("-DZ7_UART_921600",)
+    display.EXTRA_APP_FLAGS += ("-DZ7_UART_921600", "-DZ7_NETWORK_CAPABILITIES")
 
 
 if __name__ == "__main__":

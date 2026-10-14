@@ -88,6 +88,21 @@ P2b-3 板端测试由专用 UI 入口选择 ELF，再由共享显示驱动配置
 
 放行：板端应用无须电脑经 JTAG 代管 AT；结果消息能驱动实屏变化；至少 30 分钟传输试验覆盖拟议音频数据率及协议开销，未解释的缺口/误码/溢出为零，断线恢复与有界缓冲得到证据。网络吞吐通过不替代真实采样、实际模型或长期整机验收。
 
+## C 云端语音接入
+
+方案与阶段顺序由 [CLOUD_SPEECH](../design/CLOUD_SPEECH.md#分阶段放行)维护。当前 C0 和 C1-0 已在各自范围验收；实际结果由 NOW 路由，持续传输与可信 TLS/WSS 仍待执行。
+
+C1-0 入口为 [固定查询工具](../../scripts/probe_z7_nano_capabilities.py)。在项目根目录选择 machine 环境；前置是匹配的 Z7N3 平台、当前源码验证和 ARM 构建。重新下载依次 stop Host → program → run；之后执行下列已实测命令：
+
+```powershell
+python -B scripts/probe_z7_nano_capabilities.py
+python -B scripts/run_z7_nano_network.py capture
+python -B scripts/run_z7_nano_usb.py run-probe --platform network
+python -B scripts/run_z7_nano_usb_live.py start --platform network
+```
+
+查询只从本次程序的空闲状态触发一次；已有活动关联时不复用该入口。完成后核对当前程序的画面与触摸；复测使用新的匹配启动记录，不能把旧产物作为本次运行。C1-0 查询没有配置无线、证书、Flash 或云端 Key；后续连接操作另按其前置条件实施。
+
 ## P3 USB 触摸
 
 前置：核对屏幕 TOUCH 与开发板 USB 数据口、Host/适配线和 VBUS 电气路径。HDMI 只负责视频；JTAG 口和 UART 口不是可替代的触摸 Host。

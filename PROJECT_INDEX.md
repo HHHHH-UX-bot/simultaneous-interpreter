@@ -16,6 +16,7 @@
 | 理解系统分工、选型、资源和时延预算 | [SYSTEM_PLAN](docs/design/SYSTEM_PLAN.md) | 产品与系统方案 |
 | 接入云端语音翻译、脱离电脑运行 | [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md) | 已选百炼方案、官方接口来源、凭据准备、音频带宽与分阶段接入 |
 | 将新板 UART 切换至 921600 | [高速 UART](docs/design/BOARD_MIGRATION.md#m5-2-921600-串口) | 临时波特率协商、冷启动与暖重载、验证入口和放行边界 |
+| 查询当前 ESP 固件的加密配置 | [C1-0](docs/design/CLOUD_SPEECH.md#c1-0-固定加密配置查询)、[操作](docs/context/RUNBOOK.md#c-云端语音接入) | 固定查询、实际应答与后续 TLS/带宽边界 |
 | 调整屏幕布局、按钮、字幕和异常交互 | [UI_SPEC](docs/design/UI_SPEC.md) | 界面与行为规范 |
 | 修改或重新下载纯 PL 静态 UI | [STATIC_DEMO](docs/design/STATIC_DEMO.md)、[run_static_ui](scripts/run_static_ui.ps1) | 静态像素结构、资产与阶段入口 |
 | 处理屏幕无画面、抖动和上电顺序 | [RUNBOOK 屏幕恢复](docs/context/RUNBOOK.md#hdmi-屏幕启动与异常恢复) | 本设备已验证的恢复流程，实际结论见 NOW |

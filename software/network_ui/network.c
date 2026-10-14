@@ -3,6 +3,15 @@ _Static_assert(sizeof(struct network_status)==64,"Network public ABI");
 _Static_assert(sizeof(struct network_configuration)==128,"Network private configuration ABI");
 __attribute__((section(".network_mailbox"),used)) volatile struct network_status network_info;
 __attribute__((section(".network_config"),used)) volatile struct network_configuration network_config;
+#ifdef Z7_NETWORK_CAPABILITIES
+_Static_assert(sizeof(struct network_capability_status)==64,"Capability public ABI");
+__attribute__((section(".network_capabilities"),used)) volatile struct network_capability_status network_capabilities;
+static uint32_t capability_query;
+static const char *const capability_commands[]={"AT+CIPSSLSIZE?\r\n","AT+CIPSSLCCONF?\r\n",
+    "AT+CIPSSLCSNI?\r\n","AT+CIPSSLCCN?\r\n","AT+CIPSNTPCFG?\r\n"};
+static const char *const capability_tags[]={"+CIPSSLSIZE:","+CIPSSLCCONF:",
+    "+CIPSSLCSNI:","+CIPSSLCCN:","+CIPSNTPCFG:"};
+#endif
 static wifi_read_fn read_reg;static wifi_write_fn write_reg;
 static struct ui_state *model;
 static uint32_t current_time,setup_step,enabled,ipd_left,ipd_client,line_used,frame_used,frame_expected,frame_ready;
@@ -26,6 +35,9 @@ static int contains(const char *s,const char *key) {
 }
 static void wipe(char *p,uint32_t n) {volatile char *v=p;while(n--) *v++=0;fence();}
 static void fault(uint32_t error) {
+#ifdef Z7_NETWORK_CAPABILITIES
+    if(network_capabilities.phase==1) {network_capabilities.phase=6;network_capabilities.error=error;}
+#endif
     network_info.phase=6;network_info.error=error;command_phase=0;ack_pending=0;
     wipe(command,sizeof(command));wipe(reply,sizeof(reply));wipe(join_command,sizeof(join_command));
     if(enabled) (void)ui_control(model,UI_PAUSE);
@@ -70,6 +82,51 @@ static uint32_t parse_ip(const char *s) {
         ip=(ip<<8)|v;
     }return ip;
 }
+#ifdef Z7_NETWORK_CAPABILITIES
+static const char *capability_field(const char *tag) {
+    for(uint32_t i=0;reply[i];++i) if(i==0 || reply[i-1]=='\n') {
+        uint32_t j=0;while(tag[j] && reply[i+j] && tag[j]==reply[i+j]) ++j;
+        if(!tag[j]) return reply+i+j;
+    }
+    return 0;
+}
+static int capability_number(const char **text,uint32_t *value) {
+    uint32_t n=0,v=0;const char *p=*text;
+    while(*p>='0' && *p<='9') {
+        if(++n>5) return 0;
+        v=v*10+(uint32_t)(*p++-'0');
+    }
+    if(!n) return 0;
+    *text=p;*value=v;return 1;
+}
+static void capability_result(int failure) {
+    uint32_t bit=1u<<capability_query;
+    network_capabilities.queried_mask|=bit;network_capabilities.response_bytes+=reply_size;
+    if(failure) network_capabilities.error_mask|=bit;
+    else {
+        const char *p=capability_field(capability_tags[capability_query]);
+        int valid=p && p[0] && p[0]!='\r' && p[0]!='\n';
+        if(valid && capability_query==0) {
+            uint32_t value;
+            valid=capability_number(&p,&value) && value>=1024 && value<=16384 && p[0]=='\r' && p[1]=='\n';
+            if(valid) network_capabilities.ssl_buffer=value;
+        } else if(valid && capability_query==1) {
+            uint32_t values[4],n=0;
+            do {
+                if(n==4 || !capability_number(&p,values+n) || values[n]>255) {valid=0;break;}
+                ++n;if(*p!=',') break;++p;
+            } while(1);
+            valid=valid && p[0]=='\r' && p[1]=='\n';
+            if(valid) {network_capabilities.auth_count=n;for(uint32_t i=0;i<n;++i) network_capabilities.auth_args[i]=values[i];}
+        }
+        if(valid) network_capabilities.ok_mask|=bit;else network_capabilities.invalid_mask|=bit;
+    }
+    command_phase=0;wipe(reply,sizeof(reply));
+    if(++capability_query<5) {
+        network_capabilities.query_index=capability_query;begin_command(capability_commands[capability_query],4000);
+    } else {network_capabilities.phase=2;network_info.phase=0;}
+}
+#endif
 static void configuration(void) {
     uint32_t request=network_config.request_sequence;
     if(request==network_info.config_ack || wifi_info.phase!=2) return;
@@ -81,6 +138,21 @@ static void configuration(void) {
         network_config.ssid_bytes=network_config.password_bytes=0;fence();
         network_info.config_ack=request;network_info.error=35;return;
     }
+#ifdef Z7_NETWORK_CAPABILITIES
+    if(network_config.action==2) {
+        int valid=network_config.magic==0x3146434eu && network_config.ssid_bytes==0 &&
+            network_config.password_bytes==0 && network_config.port==0 && network_config.reserved==0 &&
+            network_info.phase==0 && !enabled;
+        for(uint32_t i=0;i<100;++i) network_config.credentials[i]=0;
+        network_config.ssid_bytes=network_config.password_bytes=0;fence();network_info.config_ack=request;
+        if(!valid || request!=network_config.request_sequence) {fault(11);return;}
+        volatile uint32_t *w=(volatile uint32_t *)&network_capabilities;for(uint32_t i=0;i<16;++i) w[i]=0;
+        network_capabilities.magic=0x43415031u;network_capabilities.phase=1;
+        network_capabilities.firmware_hash=wifi_info.firmware_hash;
+        capability_query=0;network_info.phase=5;network_info.error=0;
+        begin_command(capability_commands[0],4000);return;
+    }
+#endif
     uint32_t sn=network_config.ssid_bytes,pn=network_config.password_bytes;
     int valid=network_config.magic==0x3146434eu && network_config.action==1 && sn>=1 && sn<=32 && pn>=8 && pn<=64 &&
         (network_config.port==0 || network_config.port==8266) && network_config.reserved==0;
@@ -123,6 +195,12 @@ static void commit_frame(void) {
     net_ack(ack,frame,code,model);ack_pending=1;frame_used=frame_ready=0;
 }
 static void line_event(void) {
+#ifdef Z7_NETWORK_CAPABILITIES
+    if(network_capabilities.phase==1) {
+        if(same(line,"ready")) fault(34);
+        return; // Queries do not own a Wi-Fi link or TCP client.
+    }
+#endif
     if(contains(line,"WIFI DISCONNECT") && network_info.phase>=3) {fault(23);return;}
     if(same(line,"ready") && network_info.echo_verified) {fault(34);return;}
     if(line[0]>='0' && line[0]<='4' && line[1]==',') {
@@ -176,6 +254,9 @@ static void command_tick(void) {
     if(!command_phase) return;
     if((int32_t)(current_time-command_deadline)>=0) {fault(27);return;}
     if(command_phase==1) {
+        // The bounded drain may leave old RX bytes queued. Send only after
+        // that backlog is empty, so it cannot certify a new transaction.
+        if(!command_pos && (read_reg(4)&1u)) return;
         for(uint32_t budget=0;budget<64 && command_pos<command_size && (read_reg(4)&2u);++budget)
             write_reg(16,(uint8_t)command[command_pos++]);
         if(command_pos<command_size || (read_reg(4)&4u)) return;
@@ -198,6 +279,9 @@ static void command_tick(void) {
     }
     int failure=contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n");
     if(!contains(reply,"\r\nOK\r\n") && !failure) return;
+#ifdef Z7_NETWORK_CAPABILITIES
+    if(network_capabilities.phase==1) {capability_result(failure);return;}
+#endif
     if(failure && setup_step!=SETUP_STOP_SERVER) {fault(29);return;} // deleting an absent old server may ERROR.
     if(setup_step==SETUP_VERSION) {
         // Bare OK is insufficient. A fresh version-bearing query must respond
@@ -215,6 +299,10 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
     read_reg=r;write_reg=w;
     volatile uint32_t *words=(volatile uint32_t *)&network_info;for(uint32_t i=0;i<16;++i) words[i]=0;
     words=(volatile uint32_t *)&network_config;for(uint32_t i=0;i<32;++i) words[i]=0;
+#ifdef Z7_NETWORK_CAPABILITIES
+    words=(volatile uint32_t *)&network_capabilities;for(uint32_t i=0;i<16;++i) words[i]=0;
+    network_capabilities.magic=0x43415031u;capability_query=0;
+#endif
     network_info.magic=0x3154454eu;network_info.client=0xffffffffu;network_config.magic=0x3146434eu;
     enabled=ipd_left=line_used=frame_used=frame_ready=command_phase=ack_pending=prompt_padding=0;wipe(join_command,sizeof(join_command));
 }
