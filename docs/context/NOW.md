@@ -2,11 +2,11 @@
 
 ## 当前目标与范围
 
-长期目标是形成语音进入板卡、局域网电脑识别与翻译、中文字幕上屏、触摸交互的产品。第一版的已确认范围见 [DECISIONS](DECISIONS.md)，系统建议见 [SYSTEM_PLAN](../design/SYSTEM_PLAN.md)。
+长期目标是形成语音进入板卡、Wi-Fi 直接调用云端语音翻译、中文字幕上屏、触摸交互的独立产品，使用时不依赖电脑。2026-10-14 用户选择阿里百炼一体方案，见 [D13](DECISIONS.md#d13-云端语音翻译与独立终端)和[CLOUD_SPEECH](../design/CLOUD_SPEECH.md)；旧系统方案保留历史范围。
 
 2026-10-13 用户更换为 Z7-Nano 7010，并要求移植现有工程，见 [D9](DECISIONS.md#d9-换为-z7-nano-7010-并继续产品迁移)。当前优先完成 [板级迁移](../design/BOARD_MIGRATION.md)：资料/目标身份 → 新板静态 HDMI → PS/DDR → 动态中文 UI → USB Host/触摸 → 网络与模型结果。旧 RevB 的 PS/DDR、显示、ESP 与 W4-1 验收仅属于旧板；电脑 P5 文件推理及接口证据可保留原范围。
 
-此前 project-context-docs 建档交付已完成。用户随后明确要求按阶段计划继续；旧板 P2b/W 阶段已验收，新板独立重验。临时下载依据用户继续实施及换板指令，不依据文档本身；不涉及 Git、QSPI/SD 改写或 ESP 固件改写。
+此前 project-context-docs 建档交付已完成。用户随后明确要求按阶段计划继续；旧板 P2b/W 阶段已验收，新板独立重验。临时下载与 Git 上传分别依据用户实施指令和 D12，不依据文档本身；未改写 QSPI/SD 或 ESP 固件。
 
 旧板 P2b-3 的模拟中文 UI、控制与长期运行，W4-0/W4-1 的自主 ESP 网络分别通过原范围。2026-10-12 电脑模型与文件接口通过原范围；真实音频和触摸尚未完成。历史入口见下方，不能用旧板记录表示新板已通过。
 
@@ -26,11 +26,13 @@ M4-2 已实测通过：[四角/中心](../../output/z7_nano/usb/touch_corners.js
 
 M4-3 七类真实控件、队列核账及常驻 start/sample/stop/restart/sample 已通过；用户确认持续触摸与 UI 响应正常，见 [实屏控件验收](../../output/z7_nano/usb/touch_controls_acceptance.json)和[常驻生命周期](../../output/z7_nano/usb/live_lifecycle.json)。2026-10-14 用户确认板卡重新上电且接线不变，已恢复同一显示/触摸固件，整帧比对和持续取样通过；本次实屏确认“画面正常，按钮有正确响应”，见 [本次恢复](../../output/z7_nano/usb/latest_restore.json)。此前无拔插时的黑线/渐暗仍未定位，对照由 [USB_TOUCH](../design/USB_TOUCH.md#触摸启动后的暗屏重现待定位)维护。
 
-M5-0 新板 UART/自主 AT 已通过，[封存的阶段证据](../../output/z7_nano/wifi/uart_stage.json)绑定 Z7N3 配置、AT/回显/固件响应、零串口错误、整帧及持续触摸。M5-1 网络应用已下载、关联并验收，[封存的网络阶段](../../output/z7_nano/wifi/network_stage.json)绑定三句已知字幕、精确历史、三种异常拒绝、断线重连、整帧零差异和常驻触摸；用户确认“显示正确，清楚稳定”。当前 RAM 是网络应用，保留该最后一句及三条定稿；不是模型或麦克风输出。新板方法由 [M5](../design/BOARD_MIGRATION.md#m5-新板-uart-与自主-at)维护，当前地址以该阶段及最新关联记录为准。
+M5-0 新板 UART/自主 AT 已通过，[封存的阶段证据](../../output/z7_nano/wifi/uart_stage.json)绑定 Z7N3 配置、AT/回显/固件响应、零串口错误、整帧及持续触摸。M5-1 的 [封存网络阶段](../../output/z7_nano/wifi/network_stage.json)绑定三句已知字幕、精确历史、三种异常拒绝、断线重连、整帧零差异和常驻触摸；用户确认“显示正确，清楚稳定”。该历史程序最后一句及三条定稿不是模型或麦克风输出，不代表当前高速程序的运行状态。方法由 [M5](../design/BOARD_MIGRATION.md#m5-新板-uart-与自主-at)维护。
+
+M5-2/C0 高速串口阶段已按其范围通过，见 [封存阶段](../../output/z7_nano/uart_921600/stage.json)：完整断电后自动协商及屏幕断开时暖重载均通过；模块查询 930232、FPGA 分频 54，帧错误/溢出为零。当前程序的 614400 像素比对零差异，屏幕重新接回后常驻 USB 已恢复，generation 与 CPU0 消费者匹配。用户确认“画面正常，按钮响应正确”。当前 RAM 是高速网络原型，字幕仍为模拟内容，未提交无线关联配置或云端音频。此前一次 DAP AHB 事务错误经完整断电恢复，根因仍未定位，见 RISKS R16。实现由 [高速 UART](../design/BOARD_MIGRATION.md#m5-2-921600-串口)维护。
 
 P5c-0 DeepSeek 独立文本已实测：17 项离线验证和独立复核通过，操作者隐藏输入密钥后，一条公开英语参考文本取得完整中文，耗时 6.297 秒；见 [MODEL_BACKEND](../design/MODEL_BACKEND.md#p5c-0-deepseek-独立文本翻译)。尚未接入 ASR/HTTP 或上屏，缺对应字形，人工译文质量与流式首字时延待验收。用户优先选择由 [D11](DECISIONS.md#d11-中文翻译优先使用-deepseek-api)维护。
 
-用户授权维护 Git 和上传关联 GitHub 账号。已建立本地 main 和对应私有仓库，源码上传范围检查通过；首次提交/推送尚在整理，映射见 [MAP](MAP.md#git-与-github)。
+用户授权维护 Git 和上传关联 GitHub 账号。首次 241 个源码/文档文件已提交并推送私有仓库，远程 main 与本地一致；后续上传核验由 [Git 结果](../../output/github/publish.json)维护，仓库映射见 [MAP](MAP.md#git-与-github)。
 
 电脑 P5a/P5b 的文件推理与 HTTP 接口保持 2026-10-12 原验证范围，见 [MODEL_BACKEND](../design/MODEL_BACKEND.md)。旧 RevB 的分阶段验收、显示诊断及接续过程已归档到 [历史基线](history/revb_baseline_2026-10-12.md)；不是新板当前运行状态。
 
@@ -50,7 +52,7 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 
 ## 下一步
 
-完成源码/文档首次 Git 提交及远程校验，然后将已实测 DeepSeek 接入本地 ASR/电脑服务。补足对应字形后才做模型译文上屏；有界演示字库仍不支持任意中文。保留间歇暗屏未解决状态；持续音频、真实采样及独立上电启动分别验收。
+维护并上传本阶段源码/文档，然后推进 CLOUD_SPEECH C1：先查询所装 AT 固件的加密能力，再测持续传输与可信 TLS/WSS。电脑当前连接手机热点，后续测试网络选择待用户答复；不自行切换电脑网络。用户有阿里云账号，北京地域 Key/Workspace ID 仍待确认。原本地 ASR 接 DeepSeek 草稿已停止；字库、真实采样、间歇暗屏及独立上电启动继续各自验收。
 
 ## 证据入口
 

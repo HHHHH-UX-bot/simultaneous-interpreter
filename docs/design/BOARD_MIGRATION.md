@@ -73,7 +73,7 @@ M3 显示基线使用预设字幕，单独的 M3 验收不覆盖 USB Host 或电
 
 ## M5 新板 UART 与自主 AT
 
-新 [UART 平台](../../rtl/z7_nano_wifi_top.v)沿用 M3 的 HDMI、PS/DDR、VDMA 与复位，在同一 50 MHz 时钟接入已有 [PS UART 包装](../../rtl/ps_wifi_uart.v)。地址 `0x43c20000`、分频 434、8N1；寄存器合同见 [WIFI_LINK](WIFI_LINK.md#axi-lite-寄存器)。新板约束从前述接线记录生成，保留 UART 的慢边沿、8 mA 驱动、接收上拉和异步约束。引脚/时序/DRC 独立核对，不沿用旧板硬件验收。
+新 [UART 平台](../../rtl/z7_nano_wifi_top.v)沿用 M3 的 HDMI、PS/DDR、VDMA 与复位，在同一 50 MHz 时钟接入已有 [PS UART 包装](../../rtl/ps_wifi_uart.v)。地址 `0x43c20000`、复位分频 434、8N1；M5-0/M5-1 的历史验收使用 115200，当前高速设置见 M5-2。寄存器合同见 [WIFI_LINK](WIFI_LINK.md#axi-lite-寄存器)。新板约束从前述接线记录生成，保留 UART 的慢边沿、8 mA 驱动、接收上拉和异步约束。引脚/时序/DRC 独立核对，不沿用旧板硬件验收。
 
 构建和 ARM 程序独立保存在 `output/z7_nano/wifi/`，平台标识为 Z7N3（`0x5a374e33`）；M3 保留 Z7N2。CPU0 复用 [自主 AT 入口](../../software/ps_wifi/main.c)、原 UI 与触摸消费者，只执行 AT、关闭回显及查询固件；不提交无线凭据。保留 CPU0 `0x1e040` 触摸反馈、`0x1e100` 公共 AT 状态与 CPU1 低 OCM 的分工，不更换触摸固件。
 
@@ -105,3 +105,20 @@ python -B scripts/run_z7_nano_usb_live.py sample --platform wifi
 2026-10-14 [M5-1 阶段](../../output/z7_nano/wifi/network_stage.json)实际关联后取得模块地址，电脑经 TCP 8266 发送三句已知字幕；不支持字形、旧 epoch、重复请求分别拒绝，重连保留两条定稿并继续第三条。板端当前文本和全部历史与发送内容精确一致，614400 像素比对零差异。常驻触摸未丢弃点击；用户确认启动后的按钮正确响应，以及最终“显示正确，清楚稳定”。这些是已知文本网络验收，不代表语音、ASR、云翻译或任意中文字库已接通。
 
 本次已执行网络 `program → run → capture → public sample`，随后 `run-probe/start/sample --platform network`、隐藏输入关联、[字幕试验](../../scripts/pilot_z7_nano_network.py)及实屏确认。关联记录绑定本次配置和 ELF；断电后不可复用旧 running/连接文件。当前电脑与模块须处于同一可达局域网。
+
+### M5-2 921600 串口
+
+用户在 2026-10-14 指定改为 921600、8N1，见 [D14](../context/DECISIONS.md#d14-新板串口使用-921600)。沿用同一 Z7N3 位流与引脚，不重新综合；新板网络入口通过 `-DZ7_UART_921600` 选择启动协商。50 MHz 分频 54 的实际速率约 925926，比目标高 0.469%。旧板及独立 AT 入口继续采用原 434 分频。
+
+[AT 任务](../../software/ps_wifi/wifi_at_probe.c)在模块默认 115200 时发送 `AT+UART_CUR=921600,8,1,0,0`，等待发送完成及保护间隔后，确认 UART 空闲/高电平再切分频。暖重载仅在原速率超时后尝试已知高档，不遍历未知速率；重新执行 AT、关闭回显、验证回显、查询固件和 UART 配置后才放行。只用 CUR，不写 UART_DEF、固件或 Flash。[网络入口](../../software/network_ui/main.c)在启动验收前不消费网络，验收后持续处理串口故障并暂停 UI。
+
+公共 AT ABI 仍为 64 字节；在高速 profile 下 word14 是实际分频，word15 是模块查询返回的实际波特率。原 22 字节验证序列增加 UART_CUR 查询后为 36 字节；原 M5-0/M5-1 的证据仍保留其旧程序/速率范围。
+
+2026-10-14 [M5-2/C0 阶段](../../output/z7_nano/uart_921600/stage.json)已封存并通过其范围：模块查询为 930232，FPGA 分频 54（约 925926），两端差约 0.46%，帧错误和溢出均为零；完整断电后自动协商和屏幕断开时暖重载均通过，随后屏幕/常驻触摸恢复。当前程序 614400 像素比对零差异，用户确认“画面正常，按钮响应正确”。模块返回实际分频速率，不能把设置参数当作精确测得的线速。之前一次 DAP 错误恢复不代表根因已修复，见 RISKS R16。[本机验证](../../output/z7_nano/uart_921600/host_validation.json)、[串行时序仿真](../../output/z7_nano/uart_921600/wire_validation.json)与[独立复核](../../output/z7_nano/uart_921600/review.json)各保留原范围；短 AT 验收不代表持续音频、TLS 或云端已经通过。
+
+```powershell
+python -B -X utf8 scripts/validate_z7_nano_uart_baud.py --wire
+python -B -X utf8 scripts/run_z7_nano_network.py build-app
+```
+
+[只读速率观察](../../scripts/inspect_z7_nano_baud.py)须在匹配的网络程序实际启动后运行。重新配置仍按现有停止 Host、确认 USB/VDMA 停机、下载、恢复常驻触摸的顺序；持续音频与 TLS/WSS 另见 [CLOUD_SPEECH](CLOUD_SPEECH.md#分阶段放行)。

@@ -23,11 +23,11 @@
 | `software/subtitle_ui/`、`assets/subtitle_demo.json`、`output/subtitle_ui/` | 板端中文状态/绘制/计时演示、字体输入、构建、实际抓屏和控制证据 | 已建立；职责与专用地址见 DYNAMIC_UI，阶段状态见 NOW |
 | `software/ps_wifi/`、`rtl/ps_wifi*`、`output/ps_wifi/` | PS 自主 AT 软件、新显示/UART 平台及独立证据 | 已建立；地址与所有权由 PS_WIFI 维护；不覆盖旧显示或 Wi-Fi 产物 |
 | `software/network_ui/`、`output/network_ui/` | 自主网络模拟字幕软件、独立应用与阶段证据 | 已建立；具体协议与操作由 NETWORK_UI 维护；物理运行所有者见 `output/ps_runtime/active_app.json` |
-| `software/model_backend/`、`output/model_backend/` | 本地 CPU ASR/MT、依赖锁、模型/音频、文件推理及电脑 HTTP 接口证据 | 已建立；由 MODEL_BACKEND 维护；不包含已验证的板卡音频或触摸能力 |
+| `software/model_backend/`、`output/model_backend/` | 电脑 CPU ASR/MT 与独立云文本翻译的对照试验、依赖锁、文件接口证据 | 已建立；由 MODEL_BACKEND 维护；最终云语音方案由 CLOUD_SPEECH 维护，不是最终电脑运行依赖 |
 | `hardware/z7_nano/`、`output/z7_nano/` | 新板权威配置、独立构建/下载与 PS 验证产物 | 2026-10-13 建立；方法见 BOARD_MIGRATION，当前验收见 NOW |
 | `tmp/` | 必要中间脚本与选定原理图页 | 已建立，不作为长期规则来源 |
 
-最小 PS 源码入口见 [PS_BRINGUP](../design/PS_BRINGUP.md)；本地模型与服务入口见 [MODEL_BACKEND](../design/MODEL_BACKEND.md)。真实音频/触摸源码尚未建立。静态入口为 [static_ui_top](../../rtl/static_ui_top.v)、[static_ui_video](../../rtl/static_ui_video.v) 和 [run_static_ui](../../scripts/run_static_ui.ps1)。
+最小 PS 源码入口见 [PS_BRINGUP](../design/PS_BRINGUP.md)；电脑模型试验见 [MODEL_BACKEND](../design/MODEL_BACKEND.md)，当前云语音计划见 [CLOUD_SPEECH](../design/CLOUD_SPEECH.md)。真实音频尚未接入，已验收的新板 USB 触摸入口由迁移专题路由。静态入口为 [static_ui_top](../../rtl/static_ui_top.v)、[static_ui_video](../../rtl/static_ui_video.v) 和 [run_static_ui](../../scripts/run_static_ui.ps1)。
 
 DDR 显示的配置、地址和运行入口由 [FRAMEBUFFER](../design/FRAMEBUFFER.md) 维护；同级工程的静态时序与引脚继续沿用，未改写资料原件。
 
@@ -51,7 +51,7 @@ DDR 显示的配置、地址和运行入口由 [FRAMEBUFFER](../design/FRAMEBUFF
 | 网口 | 原理图有 PS、PL 两套 RTL8211E 千兆网口电路；方案优先 PS 网口 | 原理图第 7 页文字定位；实物对应接口、链路、驱动与地址未验收 |
 | 启动存储 | 原理图含 W25Q128 QSPI 和 SD 接口 | 第 8 页文字定位；可用 SD 卡、内容、启动开关和启动模式待核实 |
 | 调试连接 | 本轮识别到一个 JTAG 目标，器件 xc7z010；串口此前未连接 | [当前探测证据](../../output/fpga_static/hardware/probe_result.json)；Linux 初次启动建议补串口 |
-| 局域网电脑 | 用户允许优先在局域网电脑上处理 ASR 与翻译 | 电脑算力、GPU、显存和服务部署位置尚未调查 |
+| 开发电脑 | 原局域网模型试验已有记录；最终产品使用时不依赖电脑 | 电脑试验证据见 MODEL_BACKEND；最终云语音方向见 DECISIONS D13 |
 
 ## ESP8266 连接
 

@@ -1,8 +1,8 @@
 # 译声：语音中文字幕终端
 
-目标是从音频模块接收声音，经过 Zynq 采集与必要前处理，由局域网电脑进行语音识别和中文翻译，返回字幕并显示在 HDMI 屏幕上，最终支持 USB 触摸交互。范围与已确认选择见 [DECISIONS](docs/context/DECISIONS.md)。
+目标是音频模块经 Zynq 采集与必要前处理，通过 ESP8266/Wi-Fi 访问云端语音翻译服务，把中文字幕显示在 HDMI 屏幕上，并支持 USB 触摸交互。最终使用时不依赖电脑；当前选择阿里云百炼实时语音翻译一体方案，见 [DECISIONS](docs/context/DECISIONS.md#d13-云端语音翻译与独立终端)和[云端方案](docs/design/CLOUD_SPEECH.md)。
 
-当前包含详细方案、离线交互原型、旧 RevB 基线，以及电脑端英语识别/中文翻译和 HTTP 文件接口。2026-10-13 起移植至 Z7-Nano 7010，新板已完成 PS/DDR、动态中文、七类 USB 触摸控件及常驻运行、ESP8266 自主关联与已知字幕网络验收；方法见 [迁移专题](docs/design/BOARD_MIGRATION.md)，当前证据见 [NOW](docs/context/NOW.md)。下一步优先接入 DeepSeek 中文翻译；真实音频及模型结果上屏仍待接通。
+当前包含详细方案、离线交互原型、旧 RevB 基线，以及电脑端模型试验和 HTTP 文件接口。2026-10-13 起移植至 Z7-Nano 7010，新板已完成 PS/DDR、动态中文、七类 USB 触摸控件及常驻运行、ESP8266 自主关联与已知字幕网络验收；方法见 [迁移专题](docs/design/BOARD_MIGRATION.md)，当前证据见 [NOW](docs/context/NOW.md)。正在推进 921600 串口与云端接入；真实音频、云端语音和模型结果上屏仍待验证。
 
 ## 查看本轮成果
 
@@ -29,4 +29,4 @@
 
 用户已授权按阶段继续实施。当前优先执行 [换板迁移](docs/design/BOARD_MIGRATION.md)；旧板 P2b/W4 和电脑 P5 的证据保留其原范围。现有 JTAG 原型与短包联网不能当作独立产品启动或连续语音传输能力。
 
-DeepSeek 独立英译中已取得一条真实结果，尚待接入 ASR/服务和板端，见 [模型专题](docs/design/MODEL_BACKEND.md#p5c-0-deepseek-独立文本翻译)。源码仓库及本地产物边界见 [Git 映射](docs/context/MAP.md#git-与-github)；文档中的 output/tmp 和同级工程链接是本机材料入口，运行缓存不随源码仓库上传。
+DeepSeek 独立英译中已取得一条真实结果，保留为文本翻译对照，见 [模型专题](docs/design/MODEL_BACKEND.md#p5c-0-deepseek-独立文本翻译)。电脑模型服务是开发试验入口，最终云端链路由 [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md)维护。源码仓库及本地产物边界见 [Git 映射](docs/context/MAP.md#git-与-github)；文档中的 output/tmp 和同级工程链接是本机材料入口，运行缓存不随源码仓库上传。

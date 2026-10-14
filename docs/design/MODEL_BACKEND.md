@@ -1,8 +1,8 @@
 # 英语识别与中文翻译
 
-本地 P5a/P5b 核验日期为 2026-10-12，范围为 CPU 文件推理、有界 HTTP 接口及直接证据。P5a 受控英语文件已完成真实 ASR/MT；P5b 文件接口的 33 项真实检查与 58 项独立回归保持原源码范围。2026-10-14 新增 P5c-0 DeepSeek 独立文本实测，见下节。代表性录音、人工译文质量、性能分布和流式效果尚未验收。语言范围见 [D8](../context/DECISIONS.md#d8-第一版英语转中文)，中文后端选择见 [D11](../context/DECISIONS.md#d11-中文翻译优先使用-deepseek-api)；硬件到货和当前板端状态由 [NOW](../context/NOW.md)维护。
+本地 P5a/P5b 核验日期为 2026-10-12，范围为 CPU 文件推理、有界 HTTP 接口及直接证据。P5a 受控英语文件已完成真实 ASR/MT；P5b 文件接口的 33 项真实检查与 58 项独立回归保持原源码范围。2026-10-14 新增 P5c-0 DeepSeek 独立文本实测，见下节。代表性录音、人工译文质量、性能分布和流式效果尚未验收。语言范围见 [D8](../context/DECISIONS.md#d8-第一版英语转中文)，历史文本选择见 [D11](../context/DECISIONS.md#d11-中文翻译优先使用-deepseek-api)，当前云端语音选择见 [D13](../context/DECISIONS.md#d13-云端语音翻译与独立终端)；硬件到货和当前板端状态由 [NOW](../context/NOW.md)维护。
 
-目标链路为“音频模块 → PL 采集/必要处理 → PS → ESP8266 → 电脑识别与翻译 → 中文结果 → PS/HDMI”。ESP 负责网络传输，模型在电脑运行。当前 [NETWORK_UI](NETWORK_UI.md) 已验收的原型仍由电脑连接 ESP 的临时 TCP 服务；板卡主动访问电脑的新客户端、真实音频上传及模型译文上屏尚未实现，不混用两个方向的证据。
+本文维护已经执行的电脑模型试验与对照入口。2026-10-14 用户改为最终“板卡 Wi-Fi → 云端语音翻译 → 中文字幕”的独立终端，当前方案由 [CLOUD_SPEECH](CLOUD_SPEECH.md)维护。现有 [NETWORK_UI](NETWORK_UI.md) 原型仍由电脑连接 ESP 的临时 TCP 服务；该证据不代表板卡主动调用云端或连续上传音频。
 
 ## P5c-0 DeepSeek 独立文本翻译
 
@@ -18,7 +18,7 @@
 python -B -X utf8 scripts/run_deepseek_translation.py --key-dialog
 ```
 
-本阶段只测英语文本到中文：旧 ASR/HTTP 服务仍是本地版本，未接入此适配器，未把 API 结果发送板卡。该译文还缺两个字形，见 [覆盖检查](../../output/model_backend/deepseek/display_coverage.json)。后续先接本地 ASR/服务、测流式首字和完整返回，再补字及上屏；任意中文覆盖是独立任务。
+本阶段只测英语文本到中文：旧 ASR/HTTP 服务仍是本地版本，未接入此适配器，未把 API 结果发送板卡。该译文还缺两个字形，见 [覆盖检查](../../output/model_backend/deepseek/display_coverage.json)。本地 ASR 接 DeepSeek 的未提交草稿已停止并保留在 tmp；后续按照云端一体方案推进，不把此历史试验作为最终运行依赖。任意中文覆盖仍是独立任务。
 
 ## 当前可用电脑
 
