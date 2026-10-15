@@ -2,6 +2,7 @@
 import argparse,base64,hashlib,json,struct,time,wave
 from datetime import datetime,timezone
 from pathlib import Path
+from websockets.frames import Frame,Opcode
 from network_connect import read_credentials_line
 from run_bailian_file import audio_chunks,session_config,OPUS_MODEL
 from z7_nano_wss_link import EspWss
@@ -11,23 +12,23 @@ FIELDS=("magic","sequence","phase","error","request","ack","frames","transmitted
         "start_ms","sent_ms","busy","network_error","overflow","framing")
 
 def sample(link):return dict(zip(FIELDS,(int(v,16) for v in link.bridge.rpc("sample").split())))
-def make_file(ws,chunks,pages_per_append=4):
+def make_file(chunks,pages_per_append=4):
     records=[];due=0
     for i in range(0,len(chunks),pages_per_append):
         part=chunks[i:i+pages_per_append]
-        ws.send_text(json.dumps({"event_id":f"audio_{i}","type":"input_audio_buffer.append",
-            "audio":base64.b64encode(b"".join(data for data,_ in part)).decode()},separators=(",",":")).encode())
-        for frame in ws.data_to_send():records.append((round(due*1000),frame))
+        message=json.dumps({"event_id":f"audio_{i}","type":"input_audio_buffer.append",
+            "audio":base64.b64encode(b"".join(data for data,_ in part)).decode()},separators=(",",":")).encode()
+        records.append((round(due*1000),Frame(Opcode.TEXT,message).serialize(mask=True)))
         due=part[-1][1]
-    ws.send_text(b'{"event_id":"finish","type":"session.finish"}')
-    for frame in ws.data_to_send():records.append((round(due*1000),frame))
+    records.append((round(due*1000),Frame(Opcode.TEXT,b'{"event_id":"finish","type":"session.finish"}').serialize(mask=True)))
     body=b"".join(struct.pack("<II",when,len(data))+data for when,data in records)
-    if len(body)+12>0x20000 or any(not data or len(data)>2048 for _,data in records):raise ValueError("Pilot file capacity")
+    if len(body)+12>0x80000 or any(not data or len(data)>2048 for _,data in records):raise ValueError("Pilot file capacity")
     return struct.pack("<III",0x31465453,len(records),len(body)+12)+body,records
 
 def main():
     p=argparse.ArgumentParser();p.add_argument("--audio",type=Path,required=True)
     p.add_argument("--pages-per-append",type=int,choices=(4,8),default=4)
+    p.add_argument("--defer-observation",action="store_true",help="Leave JTAG idle until five seconds after audio ends")
     p.add_argument("--credentials-stdin",required=True,action="store_true");a=p.parse_args()
     with wave.open(str(a.audio),"rb") as audio:
         if (audio.getframerate(),audio.getnchannels(),audio.getsampwidth(),audio.getcomptype())!=(16000,1,2,"NONE"):
@@ -48,6 +49,8 @@ def main():
         "program_attempt":program["attempt"],"elf_sha256":app["elf_sha256"],"tls_reference":tls["attempt"],
         "audio_sha256":hashlib.sha256(a.audio.read_bytes()).hexdigest(),"audio_seconds":len(pcm)/32000,
         "pages_per_append":a.pages_per_append,
+        "observation":"after_audio_plus_5s" if a.defer_observation else "during_audio",
+        "timing_scope":"PC observation times; deferred mode cannot measure cloud response latency",
         "input_hashes":display.hashes(["scripts/pilot_z7_nano_cloud_file.py","scripts/z7_nano_wss_link.py",
             "scripts/run_bailian_file.py","scripts/z7_nano_uart_rpc.tcl","scripts/z7_nano_tls_uart.tcl"]),
         "scope":"PS independently schedules audio CIPSEND and receives TCP data; PC sets up WSS and interprets cloud events; not independent full cloud client, real microphone or translated HDMI display"}
@@ -63,20 +66,26 @@ def main():
                     if state["phase"]==0 and state["ack"]==3:break
                 else:raise RuntimeError("pilot_reset_timeout")
             if state["phase"]!=0:raise RuntimeError("pilot_not_idle")
+            stage="preload";data,frames=make_file(chunks,a.pages_per_append)
+            (folder/"stream_file.bin").write_bytes(data);preload_start=time.monotonic()
+            link.bridge.rpc("load",f"{len(data):x}",timeout=300)
+            record.update(file_bytes=len(data),file_sha256=hashlib.sha256(data).hexdigest(),frames=len(frames),
+                          websocket_transmit_bytes=sum(len(data) for _,data in frames),
+                          preload_seconds=round(time.monotonic()-preload_start,3))
+            print("PASS_STREAM_PRELOAD",flush=True)
             stage="tls";link.connect(OPUS_MODEL,key);key=None
             link.wait_event("session.created")
             link.ws.send_text(json.dumps({"event_id":"session_config","type":"session.update","session":session_config(OPUS_MODEL,"opus")}).encode())
             configured=link.wait_event("session.updated")
             if configured["session"]["input_audio_format"]!="opus":raise RuntimeError("codec_not_acknowledged")
             link.flush();link.settle_ipd()
-            stage="preload";data,frames=make_file(link.ws,chunks,a.pages_per_append)
-            (folder/"stream_file.bin").write_bytes(data)
-            link.bridge.rpc("load",f"{len(data):x}",timeout=60)
-            record.update(file_bytes=len(data),file_sha256=hashlib.sha256(data).hexdigest(),frames=len(frames),
-                          websocket_transmit_bytes=sum(len(data) for _,data in frames))
             stage="PS_audio";started=time.monotonic();link.claim_ps();link.bridge.rpc("pilot","1")
+            print("STREAM_AUDIO_RUNNING",flush=True)
             deadline=started+len(pcm)/32000+35
+            observe_after=started+len(pcm)/32000+5 if a.defer_observation else started
             while time.monotonic()<deadline:
+                if time.monotonic()<observe_after:
+                    time.sleep(0.1);continue
                 state=sample(link);samples.append(state)
                 if state["error"] or state["phase"]==6:raise RuntimeError("PS_stream_error")
                 while seen<state["received"]:

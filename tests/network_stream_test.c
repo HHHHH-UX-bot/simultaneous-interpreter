@@ -59,7 +59,7 @@ int main(void) {
     check(stream_pilot.phase==6 && network_info.error==27,"missing SEND OK times out without retry");
     init();stream_pilot.request=1;run(100);
     uint8_t block[1024];memset(block,0x5a,sizeof(block));
-    for(uint32_t i=0;i<129;++i) {text("\r\n+IPD,0,1024:");enqueue(block,sizeof(block));tick();}
+    for(uint32_t i=0;i<STREAM_PILOT_CAPACITY/sizeof(block)+1;++i) {text("\r\n+IPD,0,1024:");enqueue(block,sizeof(block));tick();}
     check(stream_pilot.phase==6 && stream_pilot.error==3 && stream_pilot.received==STREAM_PILOT_CAPACITY,"bounded incoming buffer reports overflow");
     for(uint32_t i=STREAM_PILOT_CAPACITY;i<sizeof(received);++i) check(received[i]==0xcc,"RX canary intact");
     printf("PASS_NETWORK_STREAM checks=%u\n",checks);return 0;

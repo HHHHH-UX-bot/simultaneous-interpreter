@@ -45,7 +45,7 @@ class StreamTests(unittest.TestCase):
             link=EspWss("mock",ROOT,{"status":"pending","events":[]})
         link.ws=c;return link,bridge
     def test_file_is_masked_audio_only_and_exact(self):
-        c,s=pair();chunks=audio_chunks(b"\0"*2240,"opus");blob,records=make_file(c,chunks)
+        c,s=pair();chunks=audio_chunks(b"\0"*2240,"opus");blob,records=make_file(chunks)
         magic,count,size=struct.unpack_from("<III",blob)
         self.assertEqual((magic,count,size),(0x31465453,len(records),len(blob)))
         self.assertNotIn(b"Authorization",blob);self.assertNotIn(b"PUBLIC-TEST",blob)
@@ -60,10 +60,10 @@ class StreamTests(unittest.TestCase):
         self.assertEqual(b"".join(base64.b64decode(e["audio"]) for e in events[:-1]),b"".join(data for data,_ in chunks))
     def test_large_packet_is_rejected(self):
         c,_=pair()
-        with self.assertRaisesRegex(ValueError,"capacity"):make_file(c,[(b"x"*2000,0.02)])
+        with self.assertRaisesRegex(ValueError,"capacity"):make_file([(b"x"*2000,0.02)])
     def test_eight_page_group_preserves_full_audio_and_finish(self):
         chunks=audio_chunks(b"\0"*32000,"opus");c,s=pair()
-        blob,records=make_file(c,chunks,8);events=[]
+        blob,records=make_file(chunks,8);events=[]
         for _,wire in records:
             self.assertLessEqual(len(wire),2048);s.receive_data(wire)
             events.extend(json.loads(e.data) for e in s.events_received() if isinstance(e,Frame))

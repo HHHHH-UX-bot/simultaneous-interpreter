@@ -119,19 +119,37 @@ CA 更新已完成：[完整 8192 字节备份](../../output/z7_nano/tls/attempt
 
 实现入口为 [stream_pilot.c](../../software/network_ui/stream_pilot.c)、[文件客户端](../../scripts/pilot_z7_nano_cloud_file.py)和 [WSS 控制](../../scripts/z7_nano_wss_link.py)。复用已有 UART/AT 状态机，不新增堆分配、传输重试或任务框架。默认每四个 Ogg 页组成一次 append，约 80 ms 一包；此样本发送负载约 6.9 kB/s，不能将原来每页一次 append 的电脑对照字节率直接套用。
 
-本阶段专用内存布局如下；其他 UI、字体与快照地址继续由 [DYNAMIC_UI](DYNAMIC_UI.md#字符状态与内存边界)维护：
+当前一分钟对照程序将发送/接收区各扩至 512 KiB；已通过的 9 秒短测原布局随 [短测阶段封存](../../output/z7_nano/stream/stages/short_20261015/stage.json)保留，不能用新构建覆盖历史证据。当前布局如下；其他 UI、字体与快照地址继续由 [DYNAMIC_UI](DYNAMIC_UI.md#字符状态与内存边界)维护：
 
 | 区域 | 地址与大小 | 用途 |
 |---|---|---|
 | stream 公开状态 | OCM `0x0001E280`，64 B | sequence、请求/确认、发送/接收计账及错误 |
-| 预装发送文件 | DDR `0x01C00000`，128 KiB | STF1 头和有界 due_ms/size/掩码帧；不含 Key |
-| 接收留存 | DDR `0x01C20000`，128 KiB | PS 按长度剔除 IPD 后保存 TCP 字节，供电脑批量取回 |
+| 预装发送文件 | DDR `0x01C00000`，512 KiB | STF1 头和有界 due_ms/size/掩码帧；不含 Key |
+| 接收留存 | DDR `0x01C80000`，512 KiB | PS 按长度剔除 IPD 后保存 TCP 字节，供电脑批量取回；两区均不越过 `0x01D00000` |
 
 文件只在开始前校验一遍；发送帧至多 2048 B，接收达到容量即报错，不静默覆盖。request1 启动、request2 安全释放、request3 在已释放后复位，允许短测复用当前程序。未确认的 CIPSEND/PS 所有权写入公开状态标记，后续正常 AT 入口拒绝盲发命令；只有获得明确恢复证据才能解除，不靠重载 CPU 假定 ESP 也已复位。
 
-[本机验证](../../output/z7_nano/stream/host_validation.json)154 项及 [C 复核](../../output/z7_nano/stream/review.json)、[主机交接复核](../../output/z7_nano/stream/frontend_review.json)通过各自范围。本版 614400 像素比对零差异，常驻触摸恢复，用户在音频测试前确认画面及主按钮/A+ 正常，见 [实屏验收](../../output/z7_nano/stream/user_acceptance.json)；这不是音频负载期间的触摸时延测量。
+[短测本机验证](../../output/z7_nano/stream/stages/short_20261015/C_validation.json)154 项及 [C 复核](../../output/z7_nano/stream/review.json)、[主机交接复核](../../output/z7_nano/stream/frontend_review.json)通过各自范围。本版 614400 像素比对零差异，常驻触摸恢复，用户在音频测试前确认画面及主按钮/A+ 正常，见 [实屏验收](../../output/z7_nano/stream/user_acceptance.json)；这不是音频负载期间的触摸时延测量。
 
-80/160 ms 的本次对照没有消除约 1.36 秒的排队，下一步记录持续发送的队列峰值/最长停顿，区分短时抖动与持续积压；先处理上述固定预装容量和接收留存边界，不能直接把 60 秒音频交给当前 128 KiB 文件区。再做 1 分钟、30 分钟持续证据，并把 WSS 控制/云事件消费移入 ARM、补真实译文字形。持续负载、完整客户端和实际上屏分别验收。
+### 一分钟持续对照
+
+2026-10-15 [第一轮一分钟](../../output/z7_nano/stream/attempts/20261015T103034229412Z/result.json)未通过。公开参考英语循环/裁剪为 60 秒，仅用于连续负载；默认四页分组的 STF1 文件为 419414 B、752 帧，预装完整回读耗时 200.594 s，预装已移至 TLS 建连前以避免空闲会话超时。PS 在第 635 帧、累计发送 349539 B 时报告 UART RX 溢出：首个错误样本 overflow336、framing0、network_error32；接收留存 130845 B，未达到 512 KiB。最大计划落后 2590 ms；已收到多句转写/译文，但没有 session.finished，不能计为持续上传成功。源文件、构建、失败结果及限定复核已 [按本轮封存](../../output/z7_nano/stream/stages/minute_polling_20261015/stage.json)。
+
+用户在该轮上传期间确认“画面正常，按钮响应正确”，见 [一分钟实屏反馈](../../output/z7_nano/stream/minute_user_acceptance.json)，它不替代失败的云端链路验收。板卡随后重新上电，原临时配置丢失；恢复中在未配置 PL 上读取 MMIO 触发调试超时，已停止该访问，并经用户完整断电、重新配置和新鲜 AT/GMR/关闭连接/MUX0 读回恢复，见 [恢复证据](../../output/z7_nano/stream/cold_restart_recovery.json)。后续先确认 live FPGA 配置，再读取 PL 外设。
+
+[延后观测对照](../../output/z7_nano/stream/attempts/20261015T132109928210Z/result.json)通过：使用同一 ARM/PL、同一 60 秒音频及默认分组，仅启用 `--defer-observation`，发送开始后到音频结束 5 秒内不做 JTAG 轮询/取回，随后批量取回 PS 留存。752 帧、413386 B 全部 SEND OK，PS 用时 60011 ms，接收 163401 B，最大落后 453 ms，溢出/帧错误/网络错误为零；完整转写、中文定稿及 session.finished、释放/TCP 关闭/MUX0 均确认。用户在上传期间确认画面和按钮正常，见 [实屏反馈](../../output/z7_nano/stream/deferred_user_acceptance.json)；结束后的常驻 Host 取样仍通过。阶段已 [封存](../../output/z7_nano/stream/minute_stage.json)。
+
+[两轮比较](../../output/z7_nano/stream/minute_comparison.json)支持 JTAG 观测扰动这一候选，但两轮之间曾完整断电，且各只有一次，不能据此宣布唯一根因或长期修复。延后模式的 104.922 秒首段/完成时间是电脑批量取回时间，不是云响应时延；预装回读耗时 203.828 秒也不属于实时发送。现有发送优先分支和 UI 翻页等待仍是待验证候选，不通过扩大 FIFO 或放宽错误检查隐去故障。固定预装文件只用于受控一分钟，后续 30 分钟应在 ARM 边消费事件后验证，不简单扩大 RAM 留存。
+
+## C1-5 C 端云事件解码
+
+已新增 [cloud_events.c](../../software/network_ui/cloud_events.c)和 [接口](../../software/network_ui/cloud_events.h)：对一条完成重组的 JSON 文本，提取英语定稿、中文文本、response 完成状态、会话结束与错误码；其余事件忽略。输入上限 4096 B、128 token、文本 255 个 Unicode scalar，保留 item_id/response_id，处理 UTF-8 与 JSON Unicode 转义，无堆分配。JSON 分词沿用上游 [jsmn v1.1.0](https://github.com/zserge/jsmn/tree/v1.1.0)，固定提交与未改动源码哈希见 [来源](../../third_party/jsmn/source.json)，保留 [MIT 许可](../../third_party/jsmn/LICENSE)。它是可信 API 消息的定向提取器，不承诺完整 JSON 语法校验。
+
+[验证](../../output/z7_nano/cloud_events/validation.json)覆盖 25 项定向边界及 1929 条与 Python JSON 结果的格式对照，包含已完成一分钟会话提取的 627 条公开事件和 [固定样例](../../tests/fixtures/cloud_events_reference.jsonl)的键序/Unicode 变体。提取仅保留需要的字段，不保存原始串口、鉴权或私人音频；来源见 [样例清单](../../output/z7_nano/cloud_events/fixture.json)。仓库保留 16 条固定样例，可独立复现 48 种格式对照；完整会话样例保存在本机 output，不随源码上传。当前仅完成本机验证和 ARM 对象交叉编译，尚未链接、下载或接入实时 WebSocket/UI。
+
+[独立复核](../../output/z7_nano/cloud_events/review.json)发现并修复了等价 JSON 转义的字段比较问题；字段名、type/status 统一复用 Unicode 解码比较，相关重复字段拒绝。独立 37 个聚焦回归通过，没有未解决的 Critical/Important。
+
+ARM 对象代码 4573 B，`cloud_event_parse` 自身静态栈帧 2608 B，未含完整调用链和调用方事件对象；当前 OCM 剩余约 3448 B，不能直接纳入原布局。接续先规划有边界的 DDR 代码/运行区并核对调用链栈，再接 WebSocket 重组和定稿 ID/epoch 映射、补实际译文字形并验证 9 秒真实云译上屏；之后迁移 TLS/WSS 建连与凭据配置，做无电脑代管的持续测试。真实麦克风、30 分钟运行和独立上电分别验收，不将本模块的对象编译计作板上执行。
 
 ## C2-PC 受控音频云端对照
 

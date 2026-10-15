@@ -1,0 +1,16 @@
+{"type":"input_audio_buffer.speech_started"}
+{"type":"conversation.item.created"}
+{"type":"conversation.item.input_audio_transcription.text"}
+{"type":"response.created"}
+{"type":"response.output_item.added"}
+{"type":"response.content_part.added"}
+{"type":"response.text.text"}
+{"type":"input_audio_buffer.speech_stopped"}
+{"type":"conversation.item.input_audio_transcription.completed","item_id":"item_ZDnHe9pINQDKJCrZuktUg","transcript":"Before we begin, please make sure that everyone can hear the speaker clearly."}
+{"type":"response.text.done","response_id":"resp_XGLdSpynzJIaYBZaTB2Ty","item_id":"item_Lm8ajNzNI8UTPqSUr7e8f","text":"在我们开始之前，请确保每个人都能听清演讲者的声音。"}
+{"type":"response.content_part.done"}
+{"type":"response.output_item.done"}
+{"type":"response.done","response":{"id":"resp_XGLdSpynzJIaYBZaTB2Ty","status":"completed"}}
+{"type":"session.finished"}
+{"type":"error","error":{"code":"invalid_parameter"}}
+{"type":"conversation.item.input_audio_transcription.failed","error":{"code":"ASR_FAILED"}}

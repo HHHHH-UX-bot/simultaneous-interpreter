@@ -1,7 +1,9 @@
 #ifndef NETWORK_STREAM_PILOT_H
 #define NETWORK_STREAM_PILOT_H
 #include <stdint.h>
-#define STREAM_PILOT_CAPACITY 0x20000u
+#define STREAM_PILOT_CAPACITY 0x80000u
+#define STREAM_PILOT_TX_ADDRESS 0x01c00000u
+#define STREAM_PILOT_RX_ADDRESS (STREAM_PILOT_TX_ADDRESS+STREAM_PILOT_CAPACITY)
 struct stream_pilot_status {
     uint32_t magic,sequence,phase,error,request,ack,frames,transmitted;
     uint32_t received,max_lag_ms,start_ms,sent_ms,busy,network_error,overflow,framing;

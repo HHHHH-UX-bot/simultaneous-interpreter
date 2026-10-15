@@ -21,6 +21,7 @@
 | 检查 CYEA、板端 TLS 与客户端 CA | [C1-2](docs/design/CLOUD_SPEECH.md#c1-2-cyea-与板端-tls-预检)、[操作](docs/context/RUNBOOK.md#c-云端语音接入) | 无 Key 预检、证书来源、备份/更新及安全握手边界 |
 | 验证 ESP8266 到百炼的 WSS 会话 | [C1-3](docs/design/CLOUD_SPEECH.md#c1-3-esp8266-云端-wss-会话)、[工具](scripts/probe_z7_nano_wss.py) | 经 ESP 真实鉴权/配置，无音频，尚非 ARM 自主客户端 |
 | 验证 ARM 调度的 ESP 加密音频收发 | [C1-4](docs/design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)、[文件客户端](scripts/pilot_z7_nano_cloud_file.py) | 预编码文件、PS CIPSEND/IPD、公开内存与安全交接；WSS 控制/解析仍在电脑 |
+| 开发 ARM 云事件消费与真实字幕 | [C1-5](docs/design/CLOUD_SPEECH.md#c1-5-c-端云事件解码)、[C 解码](software/network_ui/cloud_events.c)、[验证](scripts/validate_cloud_events.py) | 本机/ARM 对象证据、DDR/栈与后续 WebSocket/UI 接入；尚未在板运行 |
 | 测试百炼实时语音翻译接口或 PCM/Opus 负载 | [C2-PC](docs/design/CLOUD_SPEECH.md#c2-pc-受控音频云端对照)、[客户端](scripts/run_bailian_file.py) | 同样本三组对照、Ogg 封装、定稿和实际帧字节，尚非 ARM 自主云端链路 |
 | 测量新板连续上传与透传 | [C1-1](docs/design/CLOUD_SPEECH.md#c1-1-连续上传与串口调度)、[逐包测量](scripts/measure_z7_nano_upload.py)、[透传测量](scripts/measure_z7_nano_passthrough.py) | 已知数据块核账、时长、有效带宽与退出清理；不替代音频/TLS 验收 |
 | 调整屏幕布局、按钮、字幕和异常交互 | [UI_SPEC](docs/design/UI_SPEC.md) | 界面与行为规范 |

@@ -27,7 +27,7 @@ while {[gets stdin line]>=0} {
                 if {[mrd -force -value 0x1e288]!=0 || [mrd -force -value 0x1e290] ni {0 3}} {error "Pilot is active"}
                 scan $argument %x size
                 set input [file join [pwd] stream_file.bin]
-                if {$size<12 || $size>0x20000 || [file size $input]!=$size} {error "File bound"}
+                if {$size<12 || $size>0x80000 || [file size $input]!=$size} {error "File bound"}
                 set f [open $input rb];set expected [read $f];close $f
                 mwr -force -bypass-cache-sync -size b -bin -file $input 0x1c00000 $size
                 set actual [mrd -force -size b -bin 0x1c00000 $size]
@@ -45,10 +45,10 @@ while {[gets stdin line]>=0} {
             }
             tcp {
                 scan $argument %x end
-                if {$end<$tcp_read || $end>0x20000 || $end>[mrd -force -value 0x1e2a0]} {error "RX capture bound"}
+                if {$end<$tcp_read || $end>0x80000 || $end>[mrd -force -value 0x1e2a0]} {error "RX capture bound"}
                 set size [expr {min(8192,$end-$tcp_read)}]
                 if {$size>0} {
-                    set result [binary encode hex [mrd -force -size b -bin [expr {0x1c20000+$tcp_read}] $size]]
+                    set result [binary encode hex [mrd -force -size b -bin [expr {0x1c80000+$tcp_read}] $size]]
                     incr tcp_read $size
                 }
             }
