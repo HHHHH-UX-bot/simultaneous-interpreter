@@ -90,9 +90,13 @@ P2b-3 板端测试由专用 UI 入口选择 ELF，再由共享显示驱动配置
 
 ## C 云端语音接入
 
-方案与阶段顺序由 [CLOUD_SPEECH](../design/CLOUD_SPEECH.md#分阶段放行)维护。当前 C0 和 C1-0 已在各自范围验收；C1-1 有短时有效吞吐结果但未放行，可信 TLS/WSS 仍待执行；实际结果由 NOW 路由。
+方案与阶段顺序由 [CLOUD_SPEECH](../design/CLOUD_SPEECH.md#分阶段放行)维护。C0/C1-0 已在各自范围验收；C1-1 尚未放行；当前可信连接进展由 [C1-2](../design/CLOUD_SPEECH.md#c1-2-cyea-与板端-tls-预检)维护。
 
-2026-10-15 后续建议按 [复盘后的验证顺序](../design/CLOUD_SPEECH.md#2026-10-15-复盘后的验证顺序建议)选择下一项：先排除编码接口和可信连接的不可行性，按选定编码的实际消息负载测链路，再做预存音频的板端云译上屏。此建议未恢复实验；原 C0–C5 编号与历史证据保留，不能把旧板命令、PCM 预算或本机通过套用为新候选的放行。
+2026-10-15 已按用户继续指令先做可信连接预检；总体按 [复盘后的验证顺序](../design/CLOUD_SPEECH.md#2026-10-15-复盘后的验证顺序建议)推进。原 C0–C5 编号与历史证据保留，不能把旧板命令、PCM 预算或本机通过套用为新候选的放行。
+
+C1-2 工具要求本机硬件服务 `127.0.0.1:3121` 可用、相同 Z7N3/ARM 程序、PS 网络尚未配置（request/ack 都为零）。[清单工具](../../scripts/probe_z7_nano_tls_inventory.py)查询公开配置；`--transport-check` 是不带 Key 的 auth=0 传输诊断，必须关闭已建立连接并恢复/读回 auth=2，不代表安全连接成功。[预检工具](../../scripts/probe_z7_nano_tls.py)使用 `--credentials-stdin` 的隐藏输入提交 Wi-Fi，先确认回显关闭和 SYSSTORE0，检查时间，再执行 TLS 正例/错身份拒绝/正例；不能把密码写入命令参数或日志。
+
+[CA 工具](../../scripts/provision_z7_nano_ca.py)的 `backup` 只读取并保存完整 8192 字节的公开客户端 CA；`install` 先重新核对 live CA 等于已验证同板备份，才擦除/写入固定 `client_ca`，候选限定为已核对的 GlobalSign R3。`restore` 显式恢复该同板备份，会覆盖当前 CA。该工具会写 CA 数据，不能用文档命令代替当次实施授权。二进制写入中断时模块可能仍在等待数据；先检查阶段，不盲发 AT 或反复重试。工具完成和回读通过后，另行执行无 Key 安全预检；未经安全连接放行不发送云 Key。
 
 C1-0 入口为 [固定查询工具](../../scripts/probe_z7_nano_capabilities.py)。在项目根目录选择 machine 环境；前置是匹配的 Z7N3 平台、当前源码验证和 ARM 构建。重新下载依次 stop Host → program → run；之后执行下列已实测命令：
 

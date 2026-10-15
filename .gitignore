@@ -19,6 +19,7 @@
 .env.*
 *.lic
 *.pem
+!hardware/esp8266/globalsign_r3.pem
 *.key
 *.pfx
 *.p12

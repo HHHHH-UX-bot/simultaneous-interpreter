@@ -71,6 +71,22 @@
 
 2026-10-14 官方接口另列出 Qwen3.5 支持 PCM/Opus，采样率支持 8/16 kHz；当前 Qwen3.8 文档默认输入是 16 kHz PCM，其会话字段不同，不能直接套用旧字段。见 [客户端事件](https://help.aliyun.com/zh/model-studio/live-translator-client-events)。Qwen3.5 + 16 kHz Opus 可作为降低联网流量的候选，但编码器、包封装、板端 CPU 开销及同条件质量/时延均未验证；用户询问区别后要求暂停，尚未选择替代路线，不写入已确认决策。
 
+## C1-2 CYEA 与板端 TLS 预检
+
+2026-10-15 恢复实施，电脑已在 CYEA，原高速显示/触摸固件恢复且用户确认正常。以下是电脑通过 JTAG 驱动空闲 UART 的可行性预检，尚未移入 ARM 自主云客户端；不发送云端 Key、HTTP 鉴权或音频。
+
+[首次公开清单](../../output/z7_nano/tls/attempts/20261015T075839301938Z/inventory.json)确认当前 AT 固件与 8 KiB `client_ca` 分区。[初次预检](../../output/z7_nano/tls/attempts/20261015T080737084418Z/preflight.json)中，模块加入 CYEA、取得 `192.168.31.239`、解析百炼语音域名并同步到当前 UTC；`SYSSTORE=0` 已读回后才提交无线凭据，认证模式 2、SNI 与 CN 设置均应答成功，但受信 TLS 连接返回 ERROR。
+
+该分区实际包含两条 `ESP Root CA S1` 测试证书。电脑经实际 WLAN 对当前语音端点完成系统信任与域名验证，链为 GlobalSign R3，见 [电脑证书链](../../output/z7_nano/tls/pc_chain.json)。[无 Key 传输对照](../../output/z7_nano/tls/transport.json)在 auth=0 时连接成功，明确关闭后已恢复并读回 auth=2，串口错误为零；它只证明 TLS 传输可行，不是受信连接放行。
+
+已从 [GlobalSign 官方证书目录](https://support.globalsign.com/ca-certificates/root-certificates/globalsign-root-certificates)取得 R3，DER 与本次电脑验证链的根完全一致；可复用的[公开证书](../../hardware/esp8266/globalsign_r3.pem)和[来源](../../hardware/esp8266/source.json)纳入源码。[候选产物](../../output/z7_nano/tls/ca_candidate/candidate.json)按 [ESP-AT AtPKI 格式](https://raw.githubusercontent.com/espressif/esp-at/release/v2.2.0.0_esp8266/tools/AtPKI.py)生成单 CA。
+
+CA 更新已完成：[完整 8192 字节备份](../../output/z7_nano/tls/attempts/20261015T081859598577Z/ca_operation.json)及[严格对象检查](../../output/z7_nano/tls/ca_backup_strict.json)通过；[安装记录](../../output/z7_nano/tls/attempts/20261015T082245676385Z/ca_operation.json)确认现场内容与备份相同后，仅擦除 `client_ca` 并写入 1244 字节，回读逐字节一致、串口错误为零。不更新 ESP 固件或其他证书/私钥分区。本次执行的工具从候选产物取证书；当前版本改从上述源码资源取同一张证书，输出图像 SHA256 相同。
+
+[安装后安全预检](../../output/z7_nano/tls/attempts/20261015T082744827634Z/preflight.json)实际取得正确域名成功 → 错域名 ERROR → 恢复正确域名再次成功，两次已建立连接均明确关闭，认证保持模式 2，UART 错误为零。已通过本次硬件、网络及端点的无 Key 可信 TLS 范围，尚不等于 WSS 鉴权、ARM 自主云客户端或音频传输通过。
+
+工具为 [公开清单/传输对照](../../scripts/probe_z7_nano_tls_inventory.py)、[无 Key 预检](../../scripts/probe_z7_nano_tls.py)和 [CA 备份/更新](../../scripts/provision_z7_nano_ca.py)。仅接管 fresh 应用：网络 request/ack 均为零、PS 网络空闲、UART 速率与平台匹配，且全程持硬件锁。原始 UART 回复留在进程 RAM；记录只保留公开字段。SNI/CN/SNTP 是否持久化未验证，不把 SYSSTORE=0 推广为所有设置绝不写 Flash。
+
 ## C2-PC 受控音频云端对照
 
 2026-10-14 电脑通过实际 WLAN 直连北京地域服务，以实时节奏发送已有的 9.025 秒公开合成英语 PCM。API 返回了完整英语原文、中文译文及完成事件，见 [本次文件结果](../../output/cloud_speech/attempts/20261014T111342583658Z/result.json)；音频来源由 [MODEL_BACKEND](MODEL_BACKEND.md#受控文件证据与噪声修复)维护，客户端由 [run_bailian_file](../../scripts/run_bailian_file.py)实现。
@@ -92,7 +108,7 @@
 
 ## 2026-10-15 复盘后的验证顺序（建议）
 
-本次仅修订计划，未执行下表的新实验，也未选定 Qwen3.5/Opus 或更换网络模块。现有硬件结果仍属于上述 2026-10-14 尝试，当前上电与接线状态未重新确认。
+本节为复盘形成的建议顺序。用户随后于 2026-10-15 明确恢复实施并指定 CYEA，已先执行独立的板端可信连接预检，结果见 [C1-2](#c1-2-cyea-与板端-tls-预检)；仍未选定 Qwen3.5/Opus 或更换网络模块。
 
 首要缺口是板端可靠传输与可信 TLS/WSS。普通 CIPSEND 有数据正确的证据，透传有载荷损坏的证据；优先复用普通 AT 发送机制实现所需客户端，不把减小音频流量视为透传损坏已修复。原 48000 B/s 是 16 kHz PCM/Base64 路线的预算，不是 Opus 路线的固定门槛。
 
@@ -109,4 +125,4 @@ Opus 的候选起点为 16 kHz 单声道、24 kbit/s：音频本体约 3000 B/s�
 
 板端 TLS 需另行核实当前固件与证书配置：官方 ESP-AT 对 `auth_mode=0` 定义为不认证、`2` 为加载 CA 验证服务端；官方命令存在不等于当前模块已具备合适的 CA 或身份校验能力，见 [ESP8266 TLS 命令](https://docs.espressif.com/projects/esp-at/en/release-v2.2.0.0_esp8266/AT_Command_Set/TCP-IP_AT_Commands.html#at-cipsslcconf-query-set-ssl-clients)。若固件/证书条件不满足，先形成保留模块并修固件、或替换网络模块的成本与实现范围比较；不通过关闭验证或直接投入 PS 自制 TLS 栈绕过评估。
 
-每个瓶颈先安排最多两轮有明确假设的短对照；仍无进展时汇总证据并重选路线，不持续轮换发送间隔、重复下载和要求用户点屏。仅电脑实验无需板端重载；PL/PS/显示未变化时沿用其原证据范围，集成版仍按实际改动补对应验证。失败的透传保留诊断入口，当前不为其安排长测。此顺序为建议，用户尚未确认替代模型/编码；恢复实施仍需用户的新指令。
+每个瓶颈先安排最多两轮有明确假设的短对照；仍无进展时汇总证据并重选路线，不持续轮换发送间隔、重复下载和要求用户点屏。仅电脑实验无需板端重载；PL/PS/显示未变化时沿用其原证据范围，集成版仍按实际改动补对应验证。失败的透传保留诊断入口，当前不为其安排长测。替代模型/编码仍是建议；已授权实施按阶段验证后自动继续。

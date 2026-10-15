@@ -1,0 +1,9 @@
+{
+  "checked_date": "2026-10-15",
+  "catalog": "https://support.globalsign.com/ca-certificates/root-certificates/globalsign-root-certificates",
+  "scope": "Public trust anchor only; no API credentials",
+  "source": "https://secure.globalsign.net/cacert/root-r3.crt",
+  "format": "Canonical PEM",
+  "der_sha256": "cbb522d7b7f127ad6a0113865bdf1cd4102e7d0759af635a7cf4720dc963c53b",
+  "verification": "Exact DER equality to current system-trusted, hostname-verified cloud endpoint root"
+}

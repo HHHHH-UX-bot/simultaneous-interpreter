@@ -18,6 +18,7 @@
 | 复盘产品瓶颈、选择后续验证顺序 | [2026-10-15 计划](docs/design/CLOUD_SPEECH.md#2026-10-15-复盘后的验证顺序建议)、[当前系统主线](docs/design/SYSTEM_PLAN.md#当前产品主线与实施取舍) | 建议、依赖、停止条件与预存音频闭环；不是恢复实验或已确认换型 |
 | 将新板 UART 切换至 921600 | [高速 UART](docs/design/BOARD_MIGRATION.md#m5-2-921600-串口) | 临时波特率协商、冷启动与暖重载、验证入口和放行边界 |
 | 查询当前 ESP 固件的加密配置 | [C1-0](docs/design/CLOUD_SPEECH.md#c1-0-固定加密配置查询)、[操作](docs/context/RUNBOOK.md#c-云端语音接入) | 固定查询、实际应答与后续 TLS/带宽边界 |
+| 检查 CYEA、板端 TLS 与客户端 CA | [C1-2](docs/design/CLOUD_SPEECH.md#c1-2-cyea-与板端-tls-预检)、[操作](docs/context/RUNBOOK.md#c-云端语音接入) | 无 Key 预检、证书来源、备份/更新及安全握手边界 |
 | 测试百炼实时语音翻译接口 | [C2-PC](docs/design/CLOUD_SPEECH.md#c2-pc-受控音频云端对照)、[客户端](scripts/run_bailian_file.py) | 电脑受控英语文件、完成事件与单次计时，尚非板端云端链路 |
 | 测量新板连续上传与透传 | [C1-1](docs/design/CLOUD_SPEECH.md#c1-1-连续上传与串口调度)、[逐包测量](scripts/measure_z7_nano_upload.py)、[透传测量](scripts/measure_z7_nano_passthrough.py) | 已知数据块核账、时长、有效带宽与退出清理；不替代音频/TLS 验收 |
 | 调整屏幕布局、按钮、字幕和异常交互 | [UI_SPEC](docs/design/UI_SPEC.md) | 界面与行为规范 |

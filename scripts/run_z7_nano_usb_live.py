@@ -41,7 +41,9 @@ def main():
     if program["status"]!="passed" or active["status"]!="ready" or active["program_attempt"]!=program["attempt"]:
         raise RuntimeError("Current display program required")
     if args.action=="start":
-        if previous and previous["status"] in ("starting","running","unconfirmed","start_unconfirmed"):
+        if previous and previous["status"] in ("starting","running","unconfirmed","start_unconfirmed") and (
+            previous.get("display_program_attempt")==program["attempt"] or
+            previous.get("cable_serial")!=program["cable_serial"]):
             raise RuntimeError("Sample or stop the managed Host before restarting")
         app=display.checked_app()
         build=json.loads((OUT/"host_build.json").read_text())

@@ -100,6 +100,8 @@ JTAG 信息发现存在异步时序：抓屏在 CPU 暂停前曾因缺少 cable 
 
 [常驻入口](../../scripts/run_z7_nano_usb_live.py)的 start 只加载 CPU1，sample 正常路径只取样，stop 确认 CPU1 停止及 USB DMA Halt，CPU0 显示继续。每次启动发布新的 generation；取样/停止要求与当前程序、线缆和 generation 匹配，不接管未知实例。[工具复核](../../output/board_migration/review_usb_live.json)的 33 项隔离检查通过。
 
+2026-10-15 补充：同一线缆完成新的受保护 PL 配置后，旧 program 绑定的活动记录可进入重新验证；仍须满足当前构建/应用/PHY 身份、CPU1 实际 Stopped 和 USB DMA Halt，不能只凭 program 编号变化就覆写运行核。同一次 program、不同或未知线缆的活动/未确认记录继续拒绝重复启动。五项隔离测试与实际恢复见 [本次复核](../../output/z7_nano/usb/restart_review.json)及 [实屏确认](../../output/z7_nano/usb/restore_20261015.json)。
+
 2026-10-13 的 [生命周期记录](../../output/z7_nano/usb/live_lifecycle.json)按 start → sample → stop → restart → sample 实测通过。两次 generation 不同，停止时确认 DMA Halt，重启后继续接收与消费触摸。最后取样为 344 条报告、16 次点击、零丢弃；用户确认“画面正常，按钮仍有正确响应”。此证据不等于热插拔、长期整机或独立启动验收。
 
 2026-10-14 用户确认重新上电、全部接线不变；[只读探测与上电事实](../../output/z7_nano/usb/power_cycle_20261014.json)表明上一临时会话已结束。已重新配置同一 PL 位流、启动同一 CPU0/CPU1 固件，614400 像素零差异、显示与 Host 进度继续、显示错误为零，见[本次恢复](../../output/z7_nano/usb/latest_restore.json)。用户重新点击主按钮和 A+ 后确认“画面正常，按钮有正确响应”。旧会话记录保留原日期及范围；本次使用 JTAG，断电后仍需重新加载，未改写 QSPI/SD。
