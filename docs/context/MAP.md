@@ -93,6 +93,6 @@ Linux 资料只做文件名定位：`02教程文档/LINUX篇/` 含 Ubuntu 虚拟
 
 ## Git 与 GitHub
 
-2026-10-14 已确认关联账号与本机现有 Git 登录均为 `HHHHH-UX-bot`，已创建私有仓库 [simultaneous-interpreter](https://github.com/HHHHH-UX-bot/simultaneous-interpreter)。本项目独立 Git 根目录、分支 `main`，远程目标为该仓库；当前提交/推送状态由 NOW 维护，流程见 [RUNBOOK](RUNBOOK.md#git-维护)。
+2026-10-14 已确认关联账号与本机现有 Git 登录均为 `HHHHH-UX-bot`，创建仓库 [simultaneous-interpreter](https://github.com/HHHHH-UX-bot/simultaneous-interpreter)时为私有。2026-10-15 GitHub API 核验时仓库为公开，本轮未修改可见性；变化时间与原因未核实。本项目独立 Git 根目录、分支 `main`，远程目标为该仓库；当前提交/远端核验见 [Git 结果](../../output/github/publish.json)，流程见 [RUNBOOK](RUNBOOK.md#git-维护)。
 
 [忽略规则](../../.gitignore)将 tmp/output、运行模型/构建产物、密钥/许可证及安装字体留在本地。文档中的这些路径及同级旧 HDMI 工程是本机证据/资料入口，Git 仓库不携带所有运行缓存。[字节规则](../../.gitattributes)保留现有行尾，避免改变绑定源码字节的验证哈希。TinyUSB 许可随裁剪源码保留；本项目未另行声明全部材料可开源再分发。
