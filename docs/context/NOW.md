@@ -38,7 +38,7 @@ C2-PC 已完成同一公开音频的 Qwen3.8 PCM、Qwen3.5 PCM、Qwen3.5 Ogg/Opu
 
 2026-10-15 用户指定 CYEA 并恢复实施。板卡临时配置已丢失，已重新加载原位流和相同 ARM 固件，整帧比较通过，常驻触摸重新启动；用户确认画面正常、主按钮和 A+ 正确响应，见 [本次恢复](../../output/z7_nano/usb/restore_20261015.json)。已修复同板新配置被旧 Host 记录阻挡的接续问题，保留实际 CPU1 停止与 DMA Halt 检查，见 [限定复核](../../output/z7_nano/usb/restart_review.json)。
 
-C1-2 已完成 CYEA 关联、DNS、时间同步、原 CA 备份及 GlobalSign R3 安装/回读，无 Key 可信 TLS 对照通过。[C1-3](../design/CLOUD_SPEECH.md#c1-3-esp8266-云端-wss-会话)进一步实测通过 ESP8266 到百炼的 WSS 鉴权/中文纯文本会话配置。随后 JTAG 逐字节音频诊断因发送严重落后而未通过，模块已恢复 AT、连接关闭、MUX0/auth2 和零 UART 错误；不再重复该音频路径。尚非 ARM 自主客户端或真实译文上屏。
+C1-2 已完成 CYEA 关联、DNS、时间同步、原 CA 备份及 GlobalSign R3 安装/回读，无 Key 可信 TLS 对照通过。[C1-3](../design/CLOUD_SPEECH.md#c1-3-esp8266-云端-wss-会话)进一步实测通过 ESP8266 到百炼的 WSS 鉴权/中文纯文本会话配置。随后 JTAG 逐字节音频诊断因发送严重落后而未通过，模块已恢复 AT、连接关闭、MUX0/auth2 和零 UART 错误；不再重复该音频路径。后续 [C1-4](../design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)已通过 ARM 自主调度的 9.025 秒 Ogg/Opus 加密文件收发，得到完整转写与中文定稿，收尾释放/关闭均确认、UART 错误为零。首轮镜像发布交接问题已定位修复，同版重复执行通过。WSS 控制和云事件解析仍在电脑，屏幕仍为演示字幕。当前程序和实屏验收见 [本版](../../output/z7_nano/stream/user_acceptance.json)。
 
 P5c-0 DeepSeek 独立文本已实测：17 项离线验证和独立复核通过，操作者隐藏输入密钥后，一条公开英语参考文本取得完整中文，耗时 6.297 秒；见 [MODEL_BACKEND](../design/MODEL_BACKEND.md#p5c-0-deepseek-独立文本翻译)。尚未接入 ASR/HTTP 或上屏，缺对应字形，人工译文质量与流式首字时延待验收。用户优先选择由 [D11](DECISIONS.md#d11-中文翻译优先使用-deepseek-api)维护。
 
@@ -62,7 +62,7 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 
 ## 下一步
 
-按 [验证顺序](../design/CLOUD_SPEECH.md#2026-10-15-复盘后的验证顺序建议)，直接用 PS 自主 CIPSEND 调度发送已编码的 Ogg/Opus 文件，验证加密负载与收发，再做真实云译上屏；不用 JTAG 逐字节充当音频发送器。实时编码器、麦克风及代表性质量后置；Opus/替代模型仍是原型候选。系统主线见 [SYSTEM_PLAN](../design/SYSTEM_PLAN.md#当前产品主线与实施取舍)，精简实现要求见 [AGENTS](../../AGENTS.md#实现与换板约定)。
+按 [验证顺序](../design/CLOUD_SPEECH.md#2026-10-15-复盘后的验证顺序建议)，已取得 PS 调度的加密音频短测，80/160 ms 两档得到相同定稿，归并未消除最大排队；不继续盲调间隔。接着按 [C1-4 容量与观察边界](../design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)补持续收发证据，把 WSS 建连、事件消费和真实字幕更新移入 ARM，再做真实云译上屏。当前程序可复用做短对照；更长文件先解决缓冲边界，不为电脑脚本改动重烧 PL/PS。实时编码器、麦克风及代表性质量后置；Opus/替代模型仍是原型候选。系统主线见 [SYSTEM_PLAN](../design/SYSTEM_PLAN.md#当前产品主线与实施取舍)，精简实现要求见 [AGENTS](../../AGENTS.md#实现与换板约定)。
 
 2026-10-14 的额度暂停点保留为 [历史接续记录](../../output/z7_nano/upload/pause.json)，现已被本次继续指令解除。Git 维护授权继续有效；本轮源码、限定测试与进度在核对后同步，远端核验由 [Git 结果](../../output/github/publish.json)维护。
 

@@ -25,6 +25,7 @@ enum setup_state { SETUP_ECHO,SETUP_VERSION,SETUP_STOP_SERVER,SETUP_VOLATILE,
 static uint8_t frame[NET_FRAME_BYTES],ack[2048];
 static uint32_t send_size;
 static uint32_t peer,peer_port,raw_state,raw_deadline;
+static void (*stream_receive)(uint8_t);
 static void fence(void) {
 #if defined(__arm__)
     __asm__ volatile("dsb sy" ::: "memory");
@@ -92,6 +93,18 @@ int network_send(const uint8_t *data,uint32_t size) {
     if(raw_state==1) {command_phase=3;command_pos=0;command_deadline=current_time+4000;}
     else send_ack_command();
     return 1;
+}
+int network_stream_attach(void (*receive)(uint8_t)) {
+    if(!receive || network_info.phase || network_config.request_sequence!=network_info.config_ack ||
+       command_phase || ack_pending || raw_state || stream_receive) return 0;
+    stream_receive=receive;network_info.phase=4;network_info.client=0;
+    return 1;
+}
+int network_stream_busy(void) {return command_phase || ack_pending;}
+int network_stream_detach(void) {
+    if(!stream_receive || network_stream_busy() || network_info.phase!=4 || ipd_left || line_used || (read_reg(4)&1u)) return 0;
+    stream_receive=0;network_info.phase=0;network_info.client=0xffffffffu;
+    ipd_left=line_used=prompt_padding=0;return 1;
 }
 void network_stop(void) {
     if(raw_state!=1) return;
@@ -255,7 +268,7 @@ static void line_event(void) {
     }
 #endif
     if(contains(line,"WIFI DISCONNECT") && network_info.phase>=3) {fault(23);return;}
-    if(same(line,"ready") && network_info.echo_verified) {fault(34);return;}
+    if(same(line,"ready") && (network_info.echo_verified || stream_receive)) {fault(34);return;}
     if(line[0]>='0' && line[0]<='4' && line[1]==',') {
         uint32_t client=(uint32_t)(line[0]-'0');
         if(same(line+2,"CONNECT") && network_info.phase>=3 && network_info.phase<6 && network_info.client==0xffffffffu) {
@@ -280,7 +293,9 @@ static void receive(uint8_t byte) {
     ++network_info.received_bytes;
     if(ipd_left) {
         --ipd_left;
-        if(network_info.phase==4 && ipd_client==network_info.client) frame_byte(byte);
+        if(network_info.phase==4 && ipd_client==network_info.client) {
+            if(stream_receive) stream_receive(byte);else frame_byte(byte);
+        }
         return;
     }
     // ESP's CIPSEND prompt may include one trailing space. It is prompt
@@ -393,7 +408,7 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
 #endif
     network_info.magic=0x3154454eu;network_info.client=0xffffffffu;network_config.magic=0x3146434eu;
     enabled=ipd_left=line_used=frame_used=frame_ready=command_phase=ack_pending=prompt_padding=0;wipe(join_command,sizeof(join_command));
-    send_size=32;peer=peer_port=raw_state=raw_deadline=0;
+    send_size=32;peer=peer_port=raw_state=raw_deadline=0;stream_receive=0;
     report_ms=(uint32_t)-200;publish_report(0);
 }
 int network_owns_ui(void) {return enabled!=0;}

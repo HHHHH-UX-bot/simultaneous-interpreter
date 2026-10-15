@@ -11,6 +11,9 @@ def main():
     caps = json.loads((ROOT/"output/z7_nano/capabilities/host_validation.json").read_text(encoding="utf-8"))
     if caps["status"] != "passed" or any(sha(ROOT/p) != h for p,h in caps["source_hashes"].items()):
         raise RuntimeError("Current capability query validation required")
+    stream = json.loads((ROOT/"output/z7_nano/stream/host_validation.json").read_text(encoding="utf-8"))
+    if stream["status"] != "passed" or any(sha(ROOT/p) != h for p,h in stream["input_hashes"].items()):
+        raise RuntimeError("Current stream sender validation required")
     folder = OUT/"wifi"
     linker = (folder/"ui_at.ld").read_text(encoding="utf-8")
     anchor = "    .ui_assets :"
@@ -24,6 +27,8 @@ def main():
                  '    ASSERT(SIZEOF(.network_capabilities) == 0x40, "Capability public ABI changed")\n')
     sections += ('    .network_upload_control 0x0001E240 (NOLOAD) : { KEEP(*(.network_upload_control)) } > OCM\n'
                  '    ASSERT(SIZEOF(.network_upload_control) == 4, "Upload control ABI changed")\n')
+    sections += ('    .stream_pilot 0x0001E280 (NOLOAD) : { KEEP(*(.stream_pilot)) } > OCM\n'
+                 '    ASSERT(SIZEOF(.stream_pilot) == 0x40, "Stream pilot ABI changed")\n')
     (folder/"ui_network.ld").write_text(linker.replace(anchor, sections+anchor), encoding="utf-8")
     print("PASS_Z7_NANO_NETWORK_PREPARE")
 

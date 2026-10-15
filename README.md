@@ -2,7 +2,7 @@
 
 目标是音频模块经 Zynq 采集与必要前处理，通过 ESP8266/Wi-Fi 访问云端语音翻译服务，把中文字幕显示在 HDMI 屏幕上，并支持 USB 触摸交互。最终使用时不依赖电脑；当前选择阿里云百炼实时语音翻译一体方案，见 [DECISIONS](docs/context/DECISIONS.md#d13-云端语音翻译与独立终端)和[云端方案](docs/design/CLOUD_SPEECH.md)。
 
-当前包含详细方案、离线交互原型、旧 RevB 基线，以及电脑端模型试验和 HTTP 文件接口。2026-10-13 起移植至 Z7-Nano 7010，新板已完成 PS/DDR、动态中文、七类 USB 触摸控件及常驻运行、ESP8266 自主关联与已知字幕网络验收；方法见 [迁移专题](docs/design/BOARD_MIGRATION.md)，当前证据见 [NOW](docs/context/NOW.md)。正在推进 921600 串口与云端接入；真实音频、云端语音和模型结果上屏仍待验证。
+当前包含详细方案、离线交互原型、旧 RevB 基线，以及电脑端模型试验和 HTTP 文件接口。2026-10-13 起移植至 Z7-Nano 7010，新板已完成 PS/DDR、动态中文、七类 USB 触摸控件及常驻运行、ESP8266 自主关联与已知字幕网络验收；方法见 [迁移专题](docs/design/BOARD_MIGRATION.md)，当前证据见 [NOW](docs/context/NOW.md)。921600 串口及 ESP 可信 TLS/WSS 已分项验证，PS 已发送预编码短音频并取得真实云译；完整 ARM 云客户端、真实采音及译文上屏仍待完成。
 
 ## 查看本轮成果
 
@@ -16,6 +16,7 @@
 8. 新板支持预设中文文案、分页、三档字号、定稿历史、JTAG 测试控制及真实 USB 按钮；显示见 [DYNAMIC_UI](docs/design/DYNAMIC_UI.md)，触摸与常驻入口见 [USB_TOUCH](docs/design/USB_TOUCH.md)。部分界面文字仍是原演示占位；JTAG 加载断电后需重新下载。
 9. 旧 RevB 网络应用能自主关联 ESP8266，并接收电脑通过 TCP 发送的有界模拟字幕和控制；运行入口与边界见 [NETWORK_UI](docs/design/NETWORK_UI.md)。该旧板验收不替代新板网络验证；电脑须处于可访问模块的局域网。
 10. 电脑端已用合成英语音频完成真实识别与中文翻译；模型、文件证据、HTTP 接口和运行方法见 [MODEL_BACKEND](docs/design/MODEL_BACKEND.md)。现有板端演示尚未消费模型译文，单文件结果不代表麦克风或整机效果。
+11. PS 自主调度的加密音频文件短测见 [C1-4](docs/design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)，运行前按 [云接入操作](docs/context/RUNBOOK.md#c-云端语音接入)核对；WSS 控制和返回解析仍在电脑。
 
 界面按目标屏幕的逻辑像素设计，窄窗口会等比例缩放。浏览器鼠标/键盘和板端真实 USB 触摸分别取证，当前板级能力由 NOW 路由。
 

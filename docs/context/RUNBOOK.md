@@ -100,6 +100,14 @@ C1-2 工具要求本机硬件服务 `127.0.0.1:3121` 可用、相同 Z7N3/ARM �
 
 C1-3 [WSS 会话工具](../../scripts/probe_z7_nano_wss.py)使用相同的 fresh 应用和本次安全 TLS 记录，模块须已加入当前 Wi-Fi。运行 `--credentials-stdin`，经终端隐藏输入提供只含 `key` 的运行 JSON；工具在当前 auth2/SNI/CN 与 SSL 建连成功后才发送鉴权。预期 HTTP 101、session.created、session.updated、零 UART 错误、TCP 关闭与 MUX 恢复；仍无音频。CIPSEND 未确认完成时不补发 AT，状态不明先定位。电脑仅驱动串口，此操作不证明 ARM 自主云连接。
 
+C1-4 [文件短测工具](../../scripts/pilot_z7_nano_cloud_file.py)运行 `--audio output/model_backend/fixtures/english_reference.wav --credentials-stdin`，隐藏输入只含 key 的 JSON。前置为当前匹配的 stream ARM 程序、已关联 Wi-Fi、同模块可信 TLS 参考、正确 CA 和常驻触摸；每次重新查询 auth2、设置 SNI/CN 并实际建立可信 TLS，不复用旧连接冒充本次成功。工具不安装依赖，音频由已有 PyAV/libopus 编码。
+
+默认四个 Ogg 页一次 append；添加 `--pages-per-append 8` 为同样本的八页对照，两档已分别通过短测。该参数只改变预装帧，无需重新编译/下载 ARM；不得据短测直接选定持续音频参数，结果由 [分组对照](../../output/z7_nano/stream/packetization_comparison.json)维护。
+
+音频掩码帧一次装入固定 DDR 并完整回读，发送和接收由 PS 完成，电脑只批量取回事件；不通过逐字节 JTAG 发送音频。完成必须同时满足 PS 全帧 SEND OK、字节计账、非空原文/译文和 session.finished，随后确认 PS 释放、关闭 TCP、恢复 MUX0。下一次短测自动从已释放态 reset3，不需重烧。当前文件区只有 128 KiB，实际可用时长取决于封装；CLI 的 60 秒上限不代表所有 60 秒文件都装得下。
+
+若出现 `output/z7_nano/tls/uart_uncertain.json`，代表 CIPSEND 或 PS 所有权未确认。先按当前尝试和公开状态定位，不能直接删标记、盲发 AT 或用 CPU 重载代替 ESP 恢复；原始凭据/串口数据不落盘。公开 GMR、当前所有权及清理结果构成恢复证据，文档步骤不授权绕过门禁。短测方法和分配地址由 [C1-4](../design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)维护；它不是长时容量、真实采音或独立产品验收。
+
 C1-0 入口为 [固定查询工具](../../scripts/probe_z7_nano_capabilities.py)。在项目根目录选择 machine 环境；前置是匹配的 Z7N3 平台、当前源码验证和 ARM 构建。重新下载依次 stop Host → program → run；之后执行下列已实测命令：
 
 ```powershell

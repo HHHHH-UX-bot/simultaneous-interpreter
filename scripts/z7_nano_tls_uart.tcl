@@ -1,15 +1,33 @@
 # Fixed public queries while the PS network task is idle. No credentials or Flash writes.
 set serial [lindex $argv 0]
+proc pilot_sample {} {
+    set deadline [expr {[clock milliseconds]+3000}]
+    while {[clock milliseconds]<$deadline} {
+        set before [mrd -force -value 0x1e284]
+        set words [mrd -force -value 0x1e280 16]
+        set after [mrd -force -value 0x1e284]
+        if {$before==$after && ($after&1)==0 && [lindex $words 1]==$after &&
+            ([lindex $words 2]!=3 || [mrd -force -value 0x1e148]==0)} {return $words}
+    }
+    error "No coherent stream pilot report"
+}
+if {[file exists [file join [file dirname [info script]] .. output z7_nano tls uart_uncertain.json]]} {
+    error "UART state unconfirmed; public recovery required before normal AT"
+}
 connect -url TCP:127.0.0.1:3121
 after 1000
 set cpus [targets -target-properties -filter {name =~ "*Cortex-A9*#0"}]
 if {[llength $cpus]!=1 || [dict get [lindex $cpus 0] jtag_cable_serial] ne $serial} {error "Unexpected CPU0"}
 targets -set -filter {name =~ "*Cortex-A9*#0"}
-if {[state] ne "Running" || [mrd -force -value 0x1e140]!=0x3154454e ||
+if {[state] ne "Running"} {error "Running CPU0 required"}
+set pilot_state [pilot_sample]
+if {[mrd -force -value 0x1e140]!=0x3154454e ||
     [mrd -force -value 0x1e148]!=0 || [mrd -force -value 0x1e150]!=0 ||
     [mrd -force -value 0x1e184]!=0 || [mrd -force -value 0x1e108]!=2 ||
     [mrd -force -value 0x1e240]!=0 || [mrd -force -value 0x43c20000]!=0x57494631 ||
-    [mrd -force -value 0x43c20008]!=54} {error "Idle accepted UART required"}
+    [mrd -force -value 0x43c20008]!=54 || [lindex $pilot_state 0]!=0x31505453 ||
+    [lindex $pilot_state 2] ni {0 3} ||
+    [lindex $pilot_state 4]!=[lindex $pilot_state 5]} {error "Idle accepted UART required"}
 proc take_rx {} {
     set data "";set n [mrd -force -value 0x43c20018]
     if {$n>2048} {error "RX level exceeds FIFO"}

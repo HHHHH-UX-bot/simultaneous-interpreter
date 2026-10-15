@@ -9,10 +9,10 @@ def configure():
     display.PREPARES += ("prepare_z7_nano_network.py",)
     display.LINKER = display.OUT/"ui_network.ld"
     display.APP = ("software/ps_bringup/start.S", "software/network_ui/main.c",
-        "software/network_ui/network.c", "software/network_ui/protocol.c", "software/ps_wifi/wifi_at_probe.c",
+        "software/network_ui/network.c", "software/network_ui/stream_pilot.c", "software/network_ui/protocol.c", "software/ps_wifi/wifi_at_probe.c",
         "software/subtitle_ui/ui_model.c", "software/subtitle_ui/ui_render.c", "software/subtitle_ui/ui_demo.c",
         "software/subtitle_ui/runtime.c", "software/subtitle_ui/ui_touch.c", "output/subtitle_ui/ui_assets.c")
-    display.EXTRA_APP_INPUTS += ("software/network_ui/network.h", "software/network_ui/protocol.h",
+    display.EXTRA_APP_INPUTS += ("software/network_ui/network.h", "software/network_ui/stream_pilot.h", "software/network_ui/protocol.h",
         "scripts/run_z7_nano_network.py", "scripts/prepare_z7_nano_network.py")
     display.EXTRA_APP_FLAGS += ("-DZ7_UART_921600", "-DZ7_NETWORK_CAPABILITIES")
 

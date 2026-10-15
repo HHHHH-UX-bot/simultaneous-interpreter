@@ -24,6 +24,7 @@
 | `software/ps_wifi/`、`rtl/ps_wifi*`、`output/ps_wifi/` | PS 自主 AT 软件、新显示/UART 平台及独立证据 | 已建立；地址与所有权由 PS_WIFI 维护；不覆盖旧显示或 Wi-Fi 产物 |
 | `software/network_ui/`、`output/network_ui/` | 自主网络模拟字幕软件、独立应用与阶段证据 | 已建立；具体协议与操作由 NETWORK_UI 维护；物理运行所有者见 `output/ps_runtime/active_app.json` |
 | `software/model_backend/`、`output/model_backend/` | 电脑 CPU ASR/MT 与独立云文本翻译的对照试验、依赖锁、文件接口证据 | 已建立；由 MODEL_BACKEND 维护；最终云语音方案由 CLOUD_SPEECH 维护，不是最终电脑运行依赖 |
+| `software/network_ui/stream_pilot.*`、`scripts/pilot_z7_nano_cloud_file.py`、`output/z7_nano/stream/` | ARM 定时加密音频文件短测、公开状态与取证 | 内存地址、范围与方法见 [C1-4](../design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)；不属于已完成自主云客户端 |
 | `hardware/z7_nano/`、`output/z7_nano/` | 新板权威配置、独立构建/下载与 PS 验证产物 | 2026-10-13 建立；方法见 BOARD_MIGRATION，当前验收见 NOW |
 | `tmp/` | 必要中间脚本与选定原理图页 | 已建立，不作为长期规则来源 |
 
