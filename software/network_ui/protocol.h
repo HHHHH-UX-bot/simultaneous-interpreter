@@ -12,6 +12,7 @@
 enum net_code {NET_OK,NET_HEADER,NET_LENGTH,NET_UTF8,NET_GLYPH,NET_EPOCH,NET_MODEL,NET_SEQUENCE,NET_BUSY};
 uint32_t net_word(const uint8_t *p);
 void net_put(uint8_t *p,uint32_t value);
+int net_glyph_available(uint32_t codepoint);
 uint32_t net_apply(struct ui_state *state,const uint8_t *frame,uint32_t bytes,uint32_t *last_request);
 void net_ack(uint8_t *ack,const uint8_t *frame,uint32_t code,const struct ui_state *state);
 #endif

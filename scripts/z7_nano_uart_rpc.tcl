@@ -5,19 +5,52 @@ fconfigure stdin -buffering line
 fconfigure stdout -buffering line
 puts "@@WIFI 0 OK ready"
 set tcp_read 0
+proc cloud_sample {} {
+    set deadline [expr {[clock milliseconds]+3000}]
+    while {[clock milliseconds]<$deadline} {
+        set before [mrd -force -value 0x1e2c4]
+        set words [mrd -force -value 0x1e2c0 16]
+        set after [mrd -force -value 0x1e2c4]
+        if {$before==$after && ($after&1)==0 && [lindex $words 1]==$after &&
+            [lindex $words 0]==0x31564c43} {return $words}
+    }
+    error "No coherent cloud report"
+}
 while {[gets stdin line]>=0} {
-    if {![regexp {^([0-9]+) (read|tx|drain|load|pilot|sample|tcp|quit)(?: ([0-9a-fA-F]+))?$} $line -> id op argument]} {error "Invalid private RPC"}
+    if {![regexp {^([0-9]+) (read|tx|drain|load|pilot|sample|tcp|cloud|cloud_sample|cloud_text|cloud_stop|quit)(?: ([0-9a-fA-F]+))?$} $line -> id op argument]} {error "Invalid private RPC"}
     if {$op eq "quit"} {puts "@@WIFI $id OK closed";break}
     if {[catch {
         if {[state] ne "Running" || [mrd -force -value 0x1e184]!=0 ||
             [mrd -force -value 0x1e280]!=0x31505453} {error "Application owner changed"}
-        if {$op in {read tx drain load}} {
+        if {$op in {read tx drain load cloud cloud_stop}} {
             set owner [pilot_sample]
             if {[mrd -force -value 0x1e148]!=0 || [lindex $owner 2] ni {0 3} ||
                 [lindex $owner 4]!=[lindex $owner 5]} {error "UART owner changed"}
         }
         set result ""
         switch $op {
+            cloud - cloud_stop {
+                cloud_sample
+                if {$op eq "cloud"} {
+                    if {[string length $argument]!=256} {error "Control mask pool bound"}
+                    set offset 0
+                    foreach byte [regexp -all -inline {..} $argument] {
+                        scan $byte %x value;mwr -force -size b [expr {0x1b0ff00+$offset}] $value;incr offset
+                    }
+                    mwr -force 0x1e2c8 1
+                } else {mwr -force 0x1e2c8 2}
+            }
+            cloud_sample {
+                set words [cloud_sample]
+                foreach value $words {lappend formatted [format %x $value]}
+                set result [join $formatted " "];unset formatted
+            }
+            cloud_text {
+                set before [mrd -force -value 0x1b0e000]
+                set result [binary encode hex [mrd -force -size b -bin 0x1b0e000 2052]]
+                set after [mrd -force -value 0x1b0e000]
+                if {$before!=$after || ($after&1)} {error "Cloud caption changed during read"}
+            }
             sample {
                 set words [pilot_sample]
                 foreach value $words {lappend formatted [format %x $value]}
@@ -44,6 +77,7 @@ while {[gets stdin line]>=0} {
                 mwr -force 0x1e290 $request;set result $argument
             }
             tcp {
+                if {[mrd -force -value 0x1e2c0]==0x31564c43 && [mrd -force -value 0x1e2d0]!=0} {error "Cloud consumer owns RX"}
                 scan $argument %x end
                 if {$end<$tcp_read || $end>0x80000 || $end>[mrd -force -value 0x1e2a0]} {error "RX capture bound"}
                 set size [expr {min(8192,$end-$tcp_read)}]

@@ -12,5 +12,7 @@ extern volatile struct stream_pilot_status stream_pilot;
 /* TX: magic,count,total_bytes, then {due_ms,size,payload} records.
    RX: exact incoming TCP bytes, append-only. Both areas have CAPACITY bytes. */
 void stream_pilot_init(const uint8_t *tx,uint8_t *rx);
+/* A consumer replaces whole-session capture; counters still count every byte. */
+void stream_pilot_set_receiver(void (*receive)(uint8_t));
 void stream_pilot_tick(uint32_t now);
 #endif

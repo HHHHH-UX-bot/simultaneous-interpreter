@@ -14,6 +14,10 @@ def main():
     stream = json.loads((ROOT/"output/z7_nano/stream/host_validation.json").read_text(encoding="utf-8"))
     if stream["status"] != "passed" or any(sha(ROOT/p) != h for p,h in stream["input_hashes"].items()):
         raise RuntimeError("Current stream sender validation required")
+    for name in ("cloud_events/validation.json", "cloud_live/host_validation.json"):
+        record=json.loads((OUT/name).read_text(encoding="utf-8"))
+        if record["status"]!="passed" or any(sha(ROOT/p)!=h for p,h in record["input_hashes"].items()):
+            raise RuntimeError("Current cloud consumer validation required: "+name)
     folder = OUT/"wifi"
     linker = (folder/"ui_at.ld").read_text(encoding="utf-8")
     anchor = "    .ui_assets :"
@@ -29,7 +33,24 @@ def main():
                  '    ASSERT(SIZEOF(.network_upload_control) == 4, "Upload control ABI changed")\n')
     sections += ('    .stream_pilot 0x0001E280 (NOLOAD) : { KEEP(*(.stream_pilot)) } > OCM\n'
                  '    ASSERT(SIZEOF(.stream_pilot) == 0x40, "Stream pilot ABI changed")\n')
-    (folder/"ui_network.ld").write_text(linker.replace(anchor, sections+anchor), encoding="utf-8")
+    sections += ('    .cloud_mailbox 0x0001E2C0 (NOLOAD) : { KEEP(*(.cloud_mailbox)) } > OCM\n'
+                 '    ASSERT(SIZEOF(.cloud_mailbox) == 0x40, "Cloud public ABI changed")\n')
+    linker=linker.replace('    .text :',
+        '    .cloud_text 0x01980000 : { *(.text.cloud_* .text.jsmn_* .text.wslay_* .rodata.cloud_*) } > FONT_DDR\n'
+        '    ASSERT(SIZEOF(.cloud_text) <= 0x80000, "Cloud code exceeds DDR reserve")\n'
+        '    .text :')
+    linker=linker.replace(anchor,sections+'    .ui_assets 0x01800000 :')
+    linker=linker.replace('ASSERT(SIZEOF(.ui_assets) <= 0x200000', 'ASSERT(SIZEOF(.ui_assets) <= 0x180000')
+    linker=linker.replace('    __stack_top =',
+        '    ASSERT(__ui_runtime_end <= 0x01B08000, "Snapshots overlap cloud runtime")\n'
+        '    .cloud_runtime 0x01B08000 (NOLOAD) : { *(.cloud_runtime) } > SNAPSHOT_DDR\n'
+        '    ASSERT(SIZEOF(.cloud_runtime) <= 0x6000, "Cloud runtime exceeds DDR reserve")\n'
+        '    .cloud_final 0x01B0E000 (NOLOAD) : { KEEP(*(.cloud_final)) } > SNAPSHOT_DDR\n'
+        '    ASSERT(SIZEOF(.cloud_final) == 2052, "Cloud caption ABI changed")\n'
+        '    .cloud_masks 0x01B0FF00 (NOLOAD) : { KEEP(*(.cloud_masks)) } > SNAPSHOT_DDR\n'
+        '    ASSERT(SIZEOF(.cloud_masks) == 128, "Cloud control mask pool changed")\n'
+        '    __stack_top =')
+    (folder/"ui_network.ld").write_text(linker, encoding="utf-8")
     print("PASS_Z7_NANO_NETWORK_PREPARE")
 
 

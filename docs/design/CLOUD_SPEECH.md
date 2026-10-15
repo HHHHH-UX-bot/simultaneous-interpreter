@@ -145,11 +145,39 @@ CA 更新已完成：[完整 8192 字节备份](../../output/z7_nano/tls/attempt
 
 已新增 [cloud_events.c](../../software/network_ui/cloud_events.c)和 [接口](../../software/network_ui/cloud_events.h)：对一条完成重组的 JSON 文本，提取英语定稿、中文文本、response 完成状态、会话结束与错误码；其余事件忽略。输入上限 4096 B、128 token、文本 255 个 Unicode scalar，保留 item_id/response_id，处理 UTF-8 与 JSON Unicode 转义，无堆分配。JSON 分词沿用上游 [jsmn v1.1.0](https://github.com/zserge/jsmn/tree/v1.1.0)，固定提交与未改动源码哈希见 [来源](../../third_party/jsmn/source.json)，保留 [MIT 许可](../../third_party/jsmn/LICENSE)。它是可信 API 消息的定向提取器，不承诺完整 JSON 语法校验。
 
-[验证](../../output/z7_nano/cloud_events/validation.json)覆盖 25 项定向边界及 1929 条与 Python JSON 结果的格式对照，包含已完成一分钟会话提取的 627 条公开事件和 [固定样例](../../tests/fixtures/cloud_events_reference.jsonl)的键序/Unicode 变体。提取仅保留需要的字段，不保存原始串口、鉴权或私人音频；来源见 [样例清单](../../output/z7_nano/cloud_events/fixture.json)。仓库保留 16 条固定样例，可独立复现 48 种格式对照；完整会话样例保存在本机 output，不随源码上传。当前仅完成本机验证和 ARM 对象交叉编译，尚未链接、下载或接入实时 WebSocket/UI。
+[验证](../../output/z7_nano/cloud_events/validation.json)覆盖 25 项定向边界及 1929 条与 Python JSON 结果的格式对照，包含已完成一分钟会话提取的 627 条公开事件和 [固定样例](../../tests/fixtures/cloud_events_reference.jsonl)的键序/Unicode 变体。C1-6 扩展了 `conversation.item.created` 的 `previous_item_id` 提取，重新从同一次已完成的公开会话读取关联字段；[新样例清单](../../output/z7_nano/cloud_events/linked_fixture.json)仅保留允许的字段，没有新调用 API、保存原始串口或私人音频。仓库保留 16 条固定样例，可独立复现 48 种格式对照；完整会话样例保存在本机 output，不随源码上传。当前对象代码 4893 B；完整集成编译与待板测状态见 C1-6。
 
-[独立复核](../../output/z7_nano/cloud_events/review.json)发现并修复了等价 JSON 转义的字段比较问题；字段名、type/status 统一复用 Unicode 解码比较，相关重复字段拒绝。独立 37 个聚焦回归通过，没有未解决的 Critical/Important。
+[最初独立复核](../../output/z7_nano/cloud_events/review.json)发现并修复了等价 JSON 转义的字段比较问题；字段名、type/status 统一复用 Unicode 解码比较，相关重复字段拒绝。该版 37 个聚焦回归和 4573 B 对象已由 [C1-5 阶段](../../output/z7_nano/cloud_events/stage.json)保留；本次集成的复核另见 C1-6，不把旧哈希当成当前通过。
 
-ARM 对象代码 4573 B，`cloud_event_parse` 自身静态栈帧 2608 B，未含完整调用链和调用方事件对象；当前 OCM 剩余约 3448 B，不能直接纳入原布局。接续先规划有边界的 DDR 代码/运行区并核对调用链栈，再接 WebSocket 重组和定稿 ID/epoch 映射、补实际译文字形并验证 9 秒真实云译上屏；之后迁移 TLS/WSS 建连与凭据配置，做无电脑代管的持续测试。真实麦克风、30 分钟运行和独立上电分别验收，不将本模块的对象编译计作板上执行。
+`cloud_event_parse` 自身静态栈帧仍为 2608 B。旧 OCM 布局无法直接容纳集成；C1-6 已分离 DDR 代码与有界运行区，并完成新 ELF 的静态布局检查。对象编译和链接均不计作板上执行。
+
+## C1-6 ARM 云事件到字幕离线阶段
+
+2026-10-15 完成当前阶段的实现、离线验证和 ARM 编译。用户随后明确断开 USB、人不在场，本轮只收尾当前阶段并提交 GitHub，**新 ELF 未下载，板测与实屏尚未执行**。阶段结果及固定产物哈希见 [离线阶段](../../output/z7_nano/cloud_live/offline_stage.json)；不替代 C1-4 已验收的旧运行程序。
+
+[cloud_frame.c](../../software/network_ui/cloud_frame.c)以单个固定上下文适配上游 [wslay 1.1.1](https://github.com/tatsuhiro-t/wslay/tree/release-1.1.1)帧处理，固定提交、逐文件哈希及许可见 [来源](../../third_party/wslay/source.json)和 [COPYING](../../third_party/wslay/COPYING)，上游文件未改动。[cloud_wire.c](../../software/network_ui/cloud_wire.c)重组最大 4096 B 文本，支持分片间插入控制帧；同批未回复 PING 合并为最新 PONG，CLOSE 优先。控制回复使用电脑经私有管道一次提供的 32 枚新随机掩码；没有堆分配、无限队列或整段会话 RX 留存。
+
+[cloud_live.c](../../software/network_ui/cloud_live.c)通过服务端 `previous_item_id` 把译文 item 关联原文 item，保留 item/response ID；该含义由 [百炼服务端事件](https://help.aliyun.com/zh/model-studio/live-translator-server-events)与本次真实返回共同核实。原文与译文最终事件可以先后不同，只有对应 `response.done` 为 completed 才提交现有 UI 模型。最多四组待配对和最近四组完成 ID；不承诺无限去重或任意事件重排，同一 response 按 `text.done → response.done` 顺序消费。暂停或 epoch 变化丢弃待结果，不回填到恢复/清空后的会话。
+
+提交前复用现有网络协议的字形查询，未知字符报告 `0x01000000 OR codepoint`，不改 UI、不把显示任务带入 fail(32)。本轮只为实际参考译文补“将、提、者”，字体从 337 增至 340 字，实际资产 782290 B；不是完整中文支持。显式 stop 清旧错误并撤下 consumer，下次文件任务总先 stop，避免旧错误阻挡重启或把旧 capture 路径的数据截走。成功文件任务仍保留最后字幕；主按钮目前是本地暂停/继续，不等于启动新云连接。
+
+复用已验收 Z7N3 位流，不改 PL 或共用显示构建器。新链接器在原允许 DDR 范围中分区：
+
+| 分区 | 地址与容量 | 当前 ELF |
+|---|---|---|
+| 字形/文本 | `0x01800000` 起，至云代码前上限 1.5 MiB | 782290 B |
+| 云代码 | `0x01980000..0x01A00000` | 11712 B |
+| 原 UI 双快照 | `0x01B00000` 起，不越过 `0x01B08000` | 22896 B |
+| 云运行区 | `0x01B08000..0x01B0E000` | 21536 B |
+| 最后一组公开原译 | `0x01B0E000`，2052 B | sequence + 两组 UTF-32[256] |
+| 控制掩码池 | `0x01B0FF00`，128 B | 32 × 4 B |
+| 公开云状态 | OCM `0x0001E2C0`，64 B | sequence/request/ack、阶段、错误与计数 |
+
+现有 TX/RX 文件区地址保留；新 consumer 模式只使用 TX 预装文件，TCP 返回即时消费。OCM 栈范围 `0x1E300..0x1FFF0` 为 7408 B；GCC 静态帧与已识别的渲染回调嵌套控制回复路径合计 5976 B。帧发送函数自身 4144 B，与 JSON 解码的 2608 B 不同时存活；这不是完整所有路径证明或动态栈水位。原 libgcc 枚举宽度链接警告仍存在，编译未失败；本轮没有更改工具链。
+
+[本机验证](../../output/z7_nano/cloud_live/host_validation.json)通过 29 项检查：627 条真实公开事件回放形成 14 组定稿，实际 C 状态进入既有渲染器后零缺字、零裁切，见 [离线渲染](../../output/z7_nano/cloud_live/native_cloud_caption.png)。另执行真实 Tcl RPC 循环的模拟目标检查 4 项、Python 传输/交接检查 8 项，原发送器 241 项回归通过。独立审查修复控制回复、重复原文、stop/旧报告、consumer 切换、缺字与空白成功判据，12 组定点复核通过，无未解决 Critical/Important，见 [本阶段复核](../../output/z7_nano/cloud_live/stages/offline_20261015T144257685619Z/review.json)。这些都不是板上、TLS 吞吐、触摸或 HDMI 验收。
+
+当前停止点：电脑仍负责 TLS/WSS 初始化、预编码音频及掩码熵，部分 UI 状态文案仍为演示占位。待用户恢复接线后，先验证同一集成版的显示/触摸，再用 `--onboard-ui` 做 9.025 秒真实文件译文上屏、核账和收尾。该短测、动态栈水位和用户实屏通过前，不进入 30 分钟、ARM 自主建连、麦克风或独立启动；操作由 [RUNBOOK](../context/RUNBOOK.md#c-云端语音接入)维护。
 
 ## C2-PC 受控音频云端对照
 

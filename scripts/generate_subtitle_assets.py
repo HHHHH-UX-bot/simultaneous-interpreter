@@ -63,6 +63,7 @@ def load_text(path: Path) -> tuple[dict[str, str], list[dict[str, str]], list[in
     if max(len(item["translated"]) for item in samples) < 120:
         raise ValueError("A long Chinese sample of at least 120 codepoints is required")
     # Printable ASCII supports elapsed-time fields and any numeric UI counter.
+    texts.extend(data.get("additional_texts", []))
     codepoints = set(range(32, 127)) | {ord("□")}
     codepoints.update(ord(char) for text in texts for char in text)
     if any(cp < 32 or 0xD800 <= cp <= 0xDFFF for cp in codepoints):

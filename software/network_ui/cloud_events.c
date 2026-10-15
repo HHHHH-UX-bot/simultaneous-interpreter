@@ -4,26 +4,26 @@
 #define JSMN_PARENT_LINKS
 #include "../../third_party/jsmn/jsmn.h"
 
-static int scalar(const char *s,int end,int *at,uint32_t *cp);
-static int equal(const char *s,const jsmntok_t *t,const char *value) {
+static int cloud_json_scalar(const char *s,int end,int *at,uint32_t *cp);
+static int cloud_json_equal(const char *s,const jsmntok_t *t,const char *value) {
     if(t->type!=JSMN_STRING) return 0;
     int i=t->start;
     while(i<t->end && *value) {
-        uint32_t cp;if(!scalar(s,t->end,&i,&cp) || cp!=(uint8_t)*value++) return 0;
+        uint32_t cp;if(!cloud_json_scalar(s,t->end,&i,&cp) || cp!=(uint8_t)*value++) return 0;
     }
     return i==t->end && !*value;
 }
-static int member(const char *s,const jsmntok_t *t,int count,int object,const char *key) {
+static int cloud_json_member(const char *s,const jsmntok_t *t,int count,int object,const char *key) {
     if(object<0 || t[object].type!=JSMN_OBJECT) return -1;
     int found=-1;
     for(int i=object+1;i<count && t[i].start<t[object].end;++i) {
-        if(t[i].parent!=object || !equal(s,t+i,key)) continue;
+        if(t[i].parent!=object || !cloud_json_equal(s,t+i,key)) continue;
         if(found!=-1 || i+1>=count || t[i+1].parent!=i) return -1;
         found=i+1;
     }
     return found;
 }
-static int hex4(const char *s,int end,int *at,uint32_t *value) {
+static int cloud_json_hex4(const char *s,int end,int *at,uint32_t *value) {
     *value=0;
     for(int i=0;i<4;++i) {
         if(*at==end) return 0;
@@ -36,19 +36,19 @@ static int hex4(const char *s,int end,int *at,uint32_t *value) {
     }
     return 1;
 }
-static int scalar(const char *s,int end,int *at,uint32_t *cp) {
+static int cloud_json_scalar(const char *s,int end,int *at,uint32_t *cp) {
     uint32_t c=(uint8_t)s[(*at)++];
     if(c=='\\') {
         if(*at==end) return 0;
         c=(uint8_t)s[(*at)++];
         if(c=='"' || c=='\\' || c=='/') {*cp=c;return 1;}
         if(c=='n' || c=='r' || c=='t') {*cp=' ';return 1;}
-        if(c!='u' || !hex4(s,end,at,cp)) return 0;
+        if(c!='u' || !cloud_json_hex4(s,end,at,cp)) return 0;
         if(*cp>=0xd800u && *cp<=0xdbffu) {
             uint32_t low;
             if(end-*at<6 || s[*at]!='\\' || s[*at+1]!='u') return 0;
             *at+=2;
-            if(!hex4(s,end,at,&low) || low<0xdc00u || low>0xdfffu) return 0;
+            if(!cloud_json_hex4(s,end,at,&low) || low<0xdc00u || low>0xdfffu) return 0;
             *cp=0x10000u+((*cp-0xd800u)<<10)+(low-0xdc00u);
         }
     } else {
@@ -69,23 +69,23 @@ static int scalar(const char *s,int end,int *at,uint32_t *cp) {
     if(*cp=='\n' || *cp=='\r' || *cp=='\t') *cp=' ';
     return *cp>=0x20u && *cp!=0x7fu && *cp<=0x10ffffu && !(*cp>=0xd800u && *cp<=0xdfffu);
 }
-static enum cloud_parse_code text(const char *s,const jsmntok_t *t,int token,uint32_t *out) {
+static enum cloud_parse_code cloud_json_text(const char *s,const jsmntok_t *t,int token,uint32_t *out) {
     if(token<0 || t[token].type!=JSMN_STRING) return CLOUD_SCHEMA;
     int at=t[token].start;uint32_t n=0;
     while(at<t[token].end) {
         if(n==UI_MAX_TEXT-1) return CLOUD_LIMIT;
-        if(!scalar(s,t[token].end,&at,out+n)) return CLOUD_JSON;
+        if(!cloud_json_scalar(s,t[token].end,&at,out+n)) return CLOUD_JSON;
         ++n;
     }
     out[n]=0;return n?CLOUD_OK:CLOUD_SCHEMA;
 }
-static enum cloud_parse_code identifier(const char *s,const jsmntok_t *t,int token,char *out) {
+static enum cloud_parse_code cloud_json_identifier(const char *s,const jsmntok_t *t,int token,char *out) {
     if(token<0 || t[token].type!=JSMN_STRING) return CLOUD_SCHEMA;
     int at=t[token].start;uint32_t n=0;
     while(at<t[token].end) {
         uint32_t cp;
         if(n==CLOUD_ID_BYTES-1) return CLOUD_LIMIT;
-        if(!scalar(s,t[token].end,&at,&cp) || cp<0x21u || cp>0x7eu) return CLOUD_SCHEMA;
+        if(!cloud_json_scalar(s,t[token].end,&at,&cp) || cp<0x21u || cp>0x7eu) return CLOUD_SCHEMA;
         out[n++]=(char)cp;
     }
     out[n]=0;return n?CLOUD_OK:CLOUD_SCHEMA;
@@ -100,31 +100,40 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
     for(uint32_t i=(uint32_t)tokens[0].end;i<bytes;++i) {
         if(s[i]!=' ' && s[i]!='\n' && s[i]!='\r' && s[i]!='\t') return CLOUD_JSON;
     }
-    int type=member(s,tokens,count,0,"type"),value;
+    int type=cloud_json_member(s,tokens,count,0,"type"),value;
     if(type<0 || tokens[type].type!=JSMN_STRING) return CLOUD_SCHEMA;
     enum cloud_parse_code code;
-    if(equal(s,tokens+type,"conversation.item.input_audio_transcription.completed")) {
+    if(cloud_json_equal(s,tokens+type,"conversation.item.created")) {
+        int item=cloud_json_member(s,tokens,count,0,"item");
+        if(item<0 || tokens[item].type!=JSMN_OBJECT) return CLOUD_SCHEMA;
+        value=cloud_json_member(s,tokens,count,0,"previous_item_id");
+        if(value<0 || tokens[value].type==JSMN_PRIMITIVE) return CLOUD_OK;
+        code=cloud_json_identifier(s,tokens,value,event->previous_id);if(code) return code;
+        code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,item,"id"),event->item_id);if(code) return code;
+        event->kind=CLOUD_ITEM_LINK;return CLOUD_OK;
+    }
+    if(cloud_json_equal(s,tokens+type,"conversation.item.input_audio_transcription.completed")) {
         event->kind=CLOUD_ASR_FINAL;
-        code=identifier(s,tokens,member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
-        return text(s,tokens,member(s,tokens,count,0,"transcript"),event->text);
+        code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
+        return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,"transcript"),event->text);
     }
-    if(equal(s,tokens+type,"response.text.done")) {
+    if(cloud_json_equal(s,tokens+type,"response.text.done")) {
         event->kind=CLOUD_TRANSLATION;
-        code=identifier(s,tokens,member(s,tokens,count,0,"response_id"),event->response_id);if(code) return code;
-        code=identifier(s,tokens,member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
-        return text(s,tokens,member(s,tokens,count,0,"text"),event->text);
+        code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"response_id"),event->response_id);if(code) return code;
+        code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
+        return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,"text"),event->text);
     }
-    if(equal(s,tokens+type,"response.done")) {
-        event->kind=CLOUD_RESPONSE_DONE;int response=member(s,tokens,count,0,"response");
-        code=identifier(s,tokens,member(s,tokens,count,response,"id"),event->response_id);if(code) return code;
-        value=member(s,tokens,count,response,"status");
+    if(cloud_json_equal(s,tokens+type,"response.done")) {
+        event->kind=CLOUD_RESPONSE_DONE;int response=cloud_json_member(s,tokens,count,0,"response");
+        code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,response,"id"),event->response_id);if(code) return code;
+        value=cloud_json_member(s,tokens,count,response,"status");
         if(value<0 || tokens[value].type!=JSMN_STRING) return CLOUD_SCHEMA;
-        event->completed=(uint32_t)equal(s,tokens+value,"completed");return CLOUD_OK;
+        event->completed=(uint32_t)cloud_json_equal(s,tokens+value,"completed");return CLOUD_OK;
     }
-    if(equal(s,tokens+type,"session.finished")) {event->kind=CLOUD_FINISHED;return CLOUD_OK;}
-    if(equal(s,tokens+type,"error") || equal(s,tokens+type,"conversation.item.input_audio_transcription.failed")) {
-        event->kind=CLOUD_ERROR;int error=member(s,tokens,count,0,"error");
-        return identifier(s,tokens,member(s,tokens,count,error,"code"),event->error_code);
+    if(cloud_json_equal(s,tokens+type,"session.finished")) {event->kind=CLOUD_FINISHED;return CLOUD_OK;}
+    if(cloud_json_equal(s,tokens+type,"error") || cloud_json_equal(s,tokens+type,"conversation.item.input_audio_transcription.failed")) {
+        event->kind=CLOUD_ERROR;int error=cloud_json_member(s,tokens,count,0,"error");
+        return cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,error,"code"),event->error_code);
     }
     return CLOUD_OK;
 }

@@ -42,6 +42,9 @@
     "new_session": "新会话",
     "demo_only": "示例内容，不是真实翻译结果"
   },
+  "additional_texts": [
+    "将提者在我们开始之前，请确保每个人都能听清演讲者的声音。我们会留一点时间在演讲结束后回答问题。"
+  ],
   "samples": [
     {
       "source": "Before we begin, please make sure that everyone can hear the speaker clearly. We will leave a little time for questions after the presentation.",

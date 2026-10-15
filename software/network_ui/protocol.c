@@ -2,7 +2,7 @@
 #include "../subtitle_ui/ui_assets.h"
 uint32_t net_word(const uint8_t *p) {return p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
 void net_put(uint8_t *p,uint32_t v) {for(uint32_t i=0;i<4;++i) p[i]=(uint8_t)(v>>(8*i));}
-static int glyphs(uint32_t cp) {
+int net_glyph_available(uint32_t cp) {
     for(uint32_t f=0;f<ui_font_count;++f) {
         uint32_t lo=0,hi=ui_fonts[f].count;
         while(lo<hi) {uint32_t m=lo+(hi-lo)/2;if(ui_fonts[f].glyphs[m].codepoint<cp) lo=m+1;else hi=m;}
@@ -23,7 +23,7 @@ static uint32_t decode(const uint8_t *p,uint32_t bytes,uint32_t *text) {
         for(uint32_t j=0;j<more;++j) {uint32_t b=p[i++];if((b&0xc0u)!=0x80u) return NET_UTF8;cp=(cp<<6)|(b&63u);}
         if(cp<min || cp<0x20u || cp==0x7fu || cp>0x10ffffu || (cp>=0xd800u && cp<=0xdfffu)) return NET_UTF8;
         if(n>=UI_MAX_TEXT-1u) return NET_LENGTH;
-        if(!glyphs(cp)) return NET_GLYPH;
+        if(!net_glyph_available(cp)) return NET_GLYPH;
         text[n++]=cp;
     }
     text[n]=0;return n?NET_OK:NET_LENGTH;

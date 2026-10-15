@@ -1,5 +1,5 @@
-"""PS-paced CIPSEND of a public Ogg file; PC controls WSS setup and parses replies."""
-import argparse,base64,hashlib,json,struct,time,wave
+"""PS-paced public Ogg file; optional ARM event-to-UI consumer, PC WSS setup."""
+import argparse,base64,hashlib,json,os,struct,time,wave
 from datetime import datetime,timezone
 from pathlib import Path
 from websockets.frames import Frame,Opcode
@@ -10,8 +10,18 @@ import run_z7_nano_network as network
 import run_z7_nano_display as display
 FIELDS=("magic","sequence","phase","error","request","ack","frames","transmitted","received","max_lag_ms",
         "start_ms","sent_ms","busy","network_error","overflow","framing")
+CLOUD_FIELDS=("magic","sequence","request","ack","phase","error","messages","asr_final",
+    "translations","committed","ignored","received","pings","closed","epoch","mask_used")
 
 def sample(link):return dict(zip(FIELDS,(int(v,16) for v in link.bridge.rpc("sample").split())))
+def cloud_sample(link):return dict(zip(CLOUD_FIELDS,(int(v,16) for v in link.bridge.rpc("cloud_sample").split())))
+def cloud_wait(link,phase,ack):
+    limit=time.monotonic()+5
+    while time.monotonic()<limit:
+        state=cloud_sample(link)
+        if (state["phase"],state["ack"])==(phase,ack):return state
+        if phase!=0 and state["ack"]==ack and state["error"]:raise RuntimeError("ARM_cloud_error")
+    raise RuntimeError("ARM_cloud_control_timeout")
 def make_file(chunks,pages_per_append=4):
     records=[];due=0
     for i in range(0,len(chunks),pages_per_append):
@@ -29,7 +39,9 @@ def main():
     p=argparse.ArgumentParser();p.add_argument("--audio",type=Path,required=True)
     p.add_argument("--pages-per-append",type=int,choices=(4,8),default=4)
     p.add_argument("--defer-observation",action="store_true",help="Leave JTAG idle until five seconds after audio ends")
+    p.add_argument("--onboard-ui",action="store_true",help="ARM consumes WSS events and updates the UI; implies deferred observation")
     p.add_argument("--credentials-stdin",required=True,action="store_true");a=p.parse_args()
+    if a.onboard_ui:a.defer_observation=True
     with wave.open(str(a.audio),"rb") as audio:
         if (audio.getframerate(),audio.getnchannels(),audio.getsampwidth(),audio.getcomptype())!=(16000,1,2,"NONE"):
             p.error("16 kHz mono S16 PCM WAV required")
@@ -49,11 +61,14 @@ def main():
         "program_attempt":program["attempt"],"elf_sha256":app["elf_sha256"],"tls_reference":tls["attempt"],
         "audio_sha256":hashlib.sha256(a.audio.read_bytes()).hexdigest(),"audio_seconds":len(pcm)/32000,
         "pages_per_append":a.pages_per_append,
+        "onboard_ui":a.onboard_ui,
         "observation":"after_audio_plus_5s" if a.defer_observation else "during_audio",
         "timing_scope":"PC observation times; deferred mode cannot measure cloud response latency",
         "input_hashes":display.hashes(["scripts/pilot_z7_nano_cloud_file.py","scripts/z7_nano_wss_link.py",
             "scripts/run_bailian_file.py","scripts/z7_nano_uart_rpc.tcl","scripts/z7_nano_tls_uart.tcl"]),
         "scope":"PS independently schedules audio CIPSEND and receives TCP data; PC sets up WSS and interprets cloud events; not independent full cloud client, real microphone or translated HDMI display"}
+    if a.onboard_ui:
+        record["scope"]="ARM consumes WSS frames, pairs final events and updates subtitle UI; PC provides encoded file, TLS/WSS setup and control-mask entropy; not standalone microphone product"
     link=None;stage="uart";seen=0;source={};target={};final=[];finished=False;samples=[]
     with display.base.hardware_lock():
         try:
@@ -66,6 +81,7 @@ def main():
                     if state["phase"]==0 and state["ack"]==3:break
                 else:raise RuntimeError("pilot_reset_timeout")
             if state["phase"]!=0:raise RuntimeError("pilot_not_idle")
+            link.bridge.rpc("cloud_stop");cloud_wait(link,0,2)
             stage="preload";data,frames=make_file(chunks,a.pages_per_append)
             (folder/"stream_file.bin").write_bytes(data);preload_start=time.monotonic()
             link.bridge.rpc("load",f"{len(data):x}",timeout=300)
@@ -79,6 +95,8 @@ def main():
             configured=link.wait_event("session.updated")
             if configured["session"]["input_audio_format"]!="opus":raise RuntimeError("codec_not_acknowledged")
             link.flush();link.settle_ipd()
+            if a.onboard_ui:
+                link.bridge.rpc("cloud",os.urandom(128).hex());cloud_wait(link,1,1)
             stage="PS_audio";started=time.monotonic();link.claim_ps();link.bridge.rpc("pilot","1")
             print("STREAM_AUDIO_RUNNING",flush=True)
             deadline=started+len(pcm)/32000+35
@@ -88,6 +106,11 @@ def main():
                     time.sleep(0.1);continue
                 state=sample(link);samples.append(state)
                 if state["error"] or state["phase"]==6:raise RuntimeError("PS_stream_error")
+                if a.onboard_ui:
+                    cloud=cloud_sample(link);record["ARM_cloud"]=cloud
+                    if cloud["error"]:raise RuntimeError("ARM_cloud_error")
+                    if cloud["phase"]==2 and state["phase"]==2:break
+                    time.sleep(0.1);continue
                 while seen<state["received"]:
                     tcp=bytes.fromhex(link.bridge.rpc("tcp",f"{state['received']:x}"));seen+=len(tcp);link.feed_tcp(tcp)
                 while link.messages:
@@ -106,7 +129,16 @@ def main():
                 if finished and state["phase"]==2:break
                 if record.get("cloud_closed"):raise RuntimeError("cloud_close")
                 time.sleep(0.1)
-            if not finished or state["phase"]!=2 or not "".join(final).strip() or not " ".join(source.values()).strip():
+            if a.onboard_ui:
+                if cloud["phase"]!=2 or state["phase"]!=2 or not cloud["committed"] or cloud["received"]!=state["received"]:
+                    raise RuntimeError("no_completed_ARM_translation")
+                caption=bytes.fromhex(link.bridge.rpc("cloud_text"))
+                def caption_text(offset):return caption[offset:offset+1024].decode("utf-32-le").split("\0",1)[0]
+                source={"last":caption_text(4)};final=[caption_text(1028)]
+                record["text_scope"]="Last committed source/translation pair; ARM_cloud.committed counts the entire session"
+            elif not finished or state["phase"]!=2:
+                raise RuntimeError("no_completed_translation")
+            if not "".join(final).strip() or not " ".join(source.values()).strip():
                 raise RuntimeError("no_completed_translation")
             if state["frames"]!=len(frames) or state["transmitted"]!=record["websocket_transmit_bytes"]:
                 raise RuntimeError("transmit_accounting")

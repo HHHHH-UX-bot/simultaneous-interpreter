@@ -9,13 +9,14 @@ INPUTS=("software/network_ui/cloud_events.c","software/network_ui/cloud_events.h
         "tests/cloud_events_test.c","tests/fixtures/cloud_events_reference.jsonl","scripts/validate_cloud_events.py")
 
 def expected(event):
-    kind=0;done=0;item=response=error=text="";t=event["type"]
+    kind=0;done=0;item=response=error=text=previous="";t=event["type"]
     if t=="conversation.item.input_audio_transcription.completed":kind=1;item=event["item_id"];text=event["transcript"]
     elif t=="response.text.done":kind=2;item=event["item_id"];response=event["response_id"];text=event["text"]
     elif t=="response.done":kind=3;response=event["response"]["id"];done=int(event["response"]["status"]=="completed")
     elif t=="session.finished":kind=4
+    elif t=="conversation.item.created" and event.get("previous_item_id"):kind=6;item=event["item"]["id"];previous=event["previous_item_id"]
     elif t in ("error","conversation.item.input_audio_transcription.failed"):kind=5;error=event["error"]["code"]
-    return [0,kind,done,*[list(map(ord,s)) for s in (item,response,error,text.replace("\n"," ").replace("\r"," ").replace("\t"," "))]]
+    return [0,kind,done,*[list(map(ord,s)) for s in (item,response,error,previous,text.replace("\n"," ").replace("\r"," ").replace("\t"," "))]]
 
 def run(command,log,**kwargs):
     result=subprocess.run([str(v) for v in command],capture_output=True,timeout=30,**kwargs)
@@ -30,7 +31,7 @@ def main():
     units=run([exe,"--unit"],out/"units.log").decode()
     fixture=ROOT/"tests/fixtures/cloud_events_reference.jsonl"
     events=[json.loads(line) for line in fixture.read_text(encoding="utf-8").splitlines()]
-    full=out/"minute_events.jsonl"
+    full=out/"linked_minute_events.jsonl"
     if full.exists():events.extend(json.loads(line) for line in full.read_text(encoding="utf-8").splitlines())
     cases=[]
     for event in events:

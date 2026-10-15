@@ -51,7 +51,7 @@ int main(int argc,char **argv) {
         size_t n=strlen(line);if(n && line[n-1]=='\n') --n;
         unsigned code=cloud_event_parse(line,(uint32_t)n,&event);
         printf("[%u,%u,%u,",code,(unsigned)event.kind,event.completed);
-        chars(event.item_id);putchar(',');chars(event.response_id);putchar(',');chars(event.error_code);printf(",[");
+        chars(event.item_id);putchar(',');chars(event.response_id);putchar(',');chars(event.error_code);putchar(',');chars(event.previous_id);printf(",[");
         for(unsigned i=0;event.text[i];++i) {if(i) putchar(',');printf("%u",event.text[i]);}
         puts("]]");
     }

@@ -10,7 +10,7 @@ from websockets.uri import parse_uri
 from websockets.http11 import Request
 from websockets.frames import Frame,Opcode
 from z7_nano_wss_link import EspWss
-from pilot_z7_nano_cloud_file import make_file
+from pilot_z7_nano_cloud_file import make_file,cloud_wait,CLOUD_FIELDS
 from run_bailian_file import audio_chunks
 
 def pair():
@@ -37,6 +37,18 @@ class FakeBridge:
     def close(self):self.closed=True
 
 class StreamTests(unittest.TestCase):
+    def test_cloud_stop_waits_for_its_ack_before_checking_old_error(self):
+        def state(phase,error,ack):
+            values=dict(phase=phase,error=error,ack=ack)
+            return ' '.join(format(values.get(key,0),'x') for key in CLOUD_FIELDS)
+        replies=deque((state(6,102,1),state(0,0,2)))
+        class Link:
+            class bridge:
+                @staticmethod
+                def rpc(operation):return replies.popleft()
+        self.assertEqual(cloud_wait(Link(),0,2)['phase'],0)
+        replies.append(state(6,102,1))
+        with self.assertRaisesRegex(RuntimeError,'ARM_cloud_error'):cloud_wait(Link(),1,1)
     def setUp(self):
         self.marker=ROOT/"tmp/z7_nano/stream/test_owners"/(uuid.uuid4().hex+".json")
     def link(self,fail=False):

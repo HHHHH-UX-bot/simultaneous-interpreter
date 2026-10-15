@@ -1,5 +1,5 @@
 /* File transport pilot: PS alone owns timed CIPSEND and IPD reception.
-   Cloud handshake/event decoding remain host-side in this measured stage. */
+   The optional receiver consumes bounded cloud events; WSS setup stays host-side. */
 #include "stream_pilot.h"
 #include "network.h"
 _Static_assert(sizeof(struct stream_pilot_status)==64,"Stream pilot public ABI");
@@ -8,6 +8,7 @@ static struct stream_pilot_status live;
 static const uint8_t *upload;
 static uint8_t *download;
 static uint32_t cursor,count,received,receive_overflow,report_ms;
+static void (*consume)(uint8_t);
 static uint32_t word(uint32_t offset) {
     uint32_t value=0;for(uint32_t i=0;i<4;++i) value|=(uint32_t)upload[offset+i]<<(8*i);
     return value;
@@ -28,6 +29,7 @@ static void publish(uint32_t now) {
     fence();++stream_pilot.sequence;fence();
 }
 static void receive_byte(uint8_t byte) {
+    if(consume) {consume(byte);++received;return;}
     if(received==STREAM_PILOT_CAPACITY) {receive_overflow=1;return;}
     download[received++]=byte;
 }
@@ -43,12 +45,14 @@ static int valid_file(void) {
     return at==size;
 }
 void stream_pilot_init(const uint8_t *tx,uint8_t *rx) {
+    consume=0;
     upload=tx;download=rx;cursor=count=received=receive_overflow=0;
     volatile uint32_t *p=(volatile uint32_t *)&stream_pilot;
     for(uint32_t i=0;i<16;++i) p[i]=0;
     p=(volatile uint32_t *)&live;for(uint32_t i=0;i<16;++i) p[i]=0;
     live.magic=0x31505453u;report_ms=(uint32_t)-200;publish(0);
 }
+void stream_pilot_set_receiver(void (*receive)(uint8_t)) {consume=receive;}
 void stream_pilot_tick(uint32_t now) {
     live.received=received;
     if(receive_overflow) live.error=3;

@@ -1,5 +1,5 @@
 {"type":"input_audio_buffer.speech_started"}
-{"type":"conversation.item.created"}
+{"type":"conversation.item.created","item":{"id":"item_Lm8ajNzNI8UTPqSUr7e8f","role":"assistant"},"previous_item_id":"item_ZDnHe9pINQDKJCrZuktUg"}
 {"type":"conversation.item.input_audio_transcription.text"}
 {"type":"response.created"}
 {"type":"response.output_item.added"}

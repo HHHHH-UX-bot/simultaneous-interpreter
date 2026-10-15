@@ -1,0 +1,15 @@
+{
+  "project": "wslay",
+  "version": "release-1.1.1",
+  "commit": "c9a84aa6df8512584c77c8cd15be9536b89c35aa",
+  "source": "https://github.com/tatsuhiro-t/wslay",
+  "local_modifications": false,
+  "scope": "Framing only; singleton allocator and byte-order adapter outside upstream files",
+  "files": {
+    "lib/wslay_frame.c": "9748cab8f38182d778b9069cedf632bbbf4bb8033977e9aa9eef4d72ad976fad",
+    "lib/wslay_frame.h": "83436d7e0cbcdb7692978993db785149c3bd7cbb9b6450e678be160483d39508",
+    "lib/wslay_net.h": "c1f87fa5987126ceb4cbef9f5873848de05cb07bff3d51a94ac73cd5c5c84dc4",
+    "lib/includes/wslay/wslay.h": "4872ec239299679267fe35d0dbaa1f05fd786109b140c1a067c5f9fa27b1e47f",
+    "COPYING": "0e602a00db6ce15c1311a180b13563aa638918a77f813b24cd78c9fe5cab63d0"
+  }
+}

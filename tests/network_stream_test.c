@@ -8,6 +8,8 @@ static struct ui_state ui;
 static uint8_t fifo[8192],file[STREAM_PILOT_CAPACITY],received[STREAM_PILOT_CAPACITY+16],sent[4096];
 static uint32_t head,tail,remaining,used,sends,now,hold_ack,checks;
 static char command[64];static uint32_t command_bytes;
+static uint8_t consumed[32];static uint32_t consume_count;
+static void consume_byte(uint8_t byte) {if(consume_count<sizeof(consumed)) consumed[consume_count++]=byte;}
 static void check(int value,const char *name) {++checks;if(!value) {fprintf(stderr,"FAIL %s phase=%u error=%u\n",name,stream_pilot.phase,stream_pilot.error);exit(1);}}
 static void enqueue(const void *bytes,uint32_t count) {
     const uint8_t *p=bytes;for(uint32_t i=0;i<count;++i) fifo[tail++%sizeof(fifo)]=p[i];
@@ -62,5 +64,11 @@ int main(void) {
     for(uint32_t i=0;i<STREAM_PILOT_CAPACITY/sizeof(block)+1;++i) {text("\r\n+IPD,0,1024:");enqueue(block,sizeof(block));tick();}
     check(stream_pilot.phase==6 && stream_pilot.error==3 && stream_pilot.received==STREAM_PILOT_CAPACITY,"bounded incoming buffer reports overflow");
     for(uint32_t i=STREAM_PILOT_CAPACITY;i<sizeof(received);++i) check(received[i]==0xcc,"RX canary intact");
+    init();consume_count=0;stream_pilot_set_receiver(consume_byte);stream_pilot.request=1;run(100);
+    text("\r\n+IPD,0,5:hello");run(210);
+    check(consume_count==5 && !memcmp(consumed,"hello",5) && stream_pilot.received==5,"consumer receives exact TCP bytes and accounting");
+    check(received[0]==0xcc && received[4]==0xcc,"consumer bypasses whole-session DDR capture");
+    init();stream_pilot.request=1;run(100);text("\r\n+IPD,0,5:again");run(210);
+    check(stream_pilot.received==5 && !memcmp(received,"again",5) && consume_count==5,"init restores legacy capture without stale callback");
     printf("PASS_NETWORK_STREAM checks=%u\n",checks);return 0;
 }
