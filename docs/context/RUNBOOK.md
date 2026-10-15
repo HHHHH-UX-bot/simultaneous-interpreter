@@ -115,6 +115,8 @@ C1-1 的逐包入口是 [measure_z7_nano_upload](../../scripts/measure_z7_nano_u
 
 C2-PC 已用 [公开合成英语文件](../../output/model_backend/fixtures/english_reference.wav)执行一次真实云端对照。使用 machine 环境，从项目根目录运行 [run_bailian_file](../../scripts/run_bailian_file.py)，以 `--audio` 指定该 WAV、`--bind-ip` 指定当前实际 WLAN IPv4。输入须为 16 kHz、单声道、16 位 PCM；业务空间和 Key 由终端隐藏输入提供，不能放入参数、文件或原始日志。客户端验证 TLS、禁用代理并等待服务端完成，结果写入独立尝试目录；方法、结果与验收边界由 [C2-PC](../design/CLOUD_SPEECH.md#c2-pc-受控音频云端对照)维护。新网络或凭据不能沿用历史成功结论。
 
+同条件模型/编码对照可添加 `--model qwen3.5-livetranslate-flash-realtime --format pcm` 或 `--format opus`；默认仍为 Qwen3.8 PCM。Opus 使用已有模型隔离环境的 PyAV/libopus，不安装新依赖；工具直接从同一个 WAV 生成 Ogg 页并按采样时间发送。`response.text.done` 是 3.5 的权威定稿，不能把 stash 临时文本写入最终结果；`session.finished` 才结束会话。电脑对照与板上真实连接的证据分别记录。
+
 ## P3 USB 触摸
 
 前置：核对屏幕 TOUCH 与开发板 USB 数据口、Host/适配线和 VBUS 电气路径。HDMI 只负责视频；JTAG 口和 UART 口不是可替代的触摸 Host。
