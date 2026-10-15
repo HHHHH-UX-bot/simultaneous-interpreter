@@ -25,11 +25,11 @@ def utc_now():
     return datetime.now(timezone.utc).isoformat()
 
 class Bridge:
-    def __init__(self, vivado):
+    def __init__(self, vivado, *, command=None, cwd=None):
         self.process = subprocess.Popen(
-            [str(vivado),"-mode","batch","-notrace","-nolog","-nojournal",
-             "-source",str(ROOT/"scripts/wifi_rpc.tcl")],
-            cwd=TEMP,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
+            command or [str(vivado),"-mode","batch","-notrace","-nolog","-nojournal",
+                        "-source",str(ROOT/"scripts/wifi_rpc.tcl")],
+            cwd=cwd or TEMP,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
             text=True,encoding="utf-8",errors="replace",bufsize=1,
             creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
         self.responses=queue.Queue()
@@ -138,8 +138,9 @@ class ATClient:
 
 class IpdStream:
     """Length-based binary parser for CIPMUX=1 +IPD,id,length:payload."""
-    def __init__(self):
+    def __init__(self,control_sink=None):
         self.buffer=bytearray()
+        self.control_sink=control_sink
     def feed(self,data):
         self.buffer.extend(data)
         if len(self.buffer)>16384:
@@ -148,9 +149,15 @@ class IpdStream:
         while True:
             start=self.buffer.find(b"+IPD,")
             if start<0:
-                self.buffer=self.buffer[-4:]
+                keep=0
+                for size in range(min(4,len(self.buffer)),0,-1):
+                    if b"+IPD,".startswith(self.buffer[-size:]):keep=size;break
+                end=len(self.buffer)-keep
+                if self.control_sink:self.control_sink(self.buffer[:end])
+                del self.buffer[:end]
                 break
             if start:
+                if self.control_sink:self.control_sink(self.buffer[:start])
                 del self.buffer[:start]
             colon=self.buffer.find(b":")
             if colon<0:

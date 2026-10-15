@@ -98,6 +98,8 @@ C1-2 工具要求本机硬件服务 `127.0.0.1:3121` 可用、相同 Z7N3/ARM �
 
 [CA 工具](../../scripts/provision_z7_nano_ca.py)的 `backup` 只读取并保存完整 8192 字节的公开客户端 CA；`install` 先重新核对 live CA 等于已验证同板备份，才擦除/写入固定 `client_ca`，候选限定为已核对的 GlobalSign R3。`restore` 显式恢复该同板备份，会覆盖当前 CA。该工具会写 CA 数据，不能用文档命令代替当次实施授权。二进制写入中断时模块可能仍在等待数据；先检查阶段，不盲发 AT 或反复重试。工具完成和回读通过后，另行执行无 Key 安全预检；未经安全连接放行不发送云 Key。
 
+C1-3 [WSS 会话工具](../../scripts/probe_z7_nano_wss.py)使用相同的 fresh 应用和本次安全 TLS 记录，模块须已加入当前 Wi-Fi。运行 `--credentials-stdin`，经终端隐藏输入提供只含 `key` 的运行 JSON；工具在当前 auth2/SNI/CN 与 SSL 建连成功后才发送鉴权。预期 HTTP 101、session.created、session.updated、零 UART 错误、TCP 关闭与 MUX 恢复；仍无音频。CIPSEND 未确认完成时不补发 AT，状态不明先定位。电脑仅驱动串口，此操作不证明 ARM 自主云连接。
+
 C1-0 入口为 [固定查询工具](../../scripts/probe_z7_nano_capabilities.py)。在项目根目录选择 machine 环境；前置是匹配的 Z7N3 平台、当前源码验证和 ARM 构建。重新下载依次 stop Host → program → run；之后执行下列已实测命令：
 
 ```powershell

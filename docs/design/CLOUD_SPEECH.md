@@ -87,6 +87,14 @@ CA 更新已完成：[完整 8192 字节备份](../../output/z7_nano/tls/attempt
 
 工具为 [公开清单/传输对照](../../scripts/probe_z7_nano_tls_inventory.py)、[无 Key 预检](../../scripts/probe_z7_nano_tls.py)和 [CA 备份/更新](../../scripts/provision_z7_nano_ca.py)。仅接管 fresh 应用：网络 request/ack 均为零、PS 网络空闲、UART 速率与平台匹配，且全程持硬件锁。原始 UART 回复留在进程 RAM；记录只保留公开字段。SNI/CN/SNTP 是否持久化未验证，不把 SYSSTORE=0 推广为所有设置绝不写 Flash。
 
+## C1-3 ESP8266 云端 WSS 会话
+
+2026-10-15 [无音频实测](../../output/z7_nano/tls/attempts/20261015T084434242382Z/wss.json)通过：ESP8266 在 CYEA 上执行 auth2 TLS，由电脑经私有 JTAG/UART 通道驱动命令，取得 HTTP 101、`session.created`，并收到中文/纯文本配置的 `session.updated`。UART 错误为零；TCP 明确关闭，MUX 恢复单连接。云 Key 未进入参数、源码或原始日志。
+
+[WSS 入口](../../scripts/probe_z7_nano_wss.py)复用现有私有 Bridge、AT/IPD 通道及本机 `websockets 16` 的 Sans-I/O 客户端，处理标准升级、随机掩码及帧校验；没有新增依赖。发送的提示与 SEND OK、关闭时的 OK 都从按长度剔除 IPD 载荷后的控制流确认，避免网络内容冒充串口应答。[三项分片验证](../../tests/test_ipd_control.py)覆盖控制分离和原有帧 API。
+
+此阶段证明经 ESP 的云端鉴权与会话配置，尚未上传音频，不代表 ARM 自主客户端、真实语音翻译或实时吞吐通过。下阶段先按后续计划验证编码/实际负载，再实现裸机的云端客户端及预存音频闭环。
+
 ## C2-PC 受控音频云端对照
 
 2026-10-14 电脑通过实际 WLAN 直连北京地域服务，以实时节奏发送已有的 9.025 秒公开合成英语 PCM。API 返回了完整英语原文、中文译文及完成事件，见 [本次文件结果](../../output/cloud_speech/attempts/20261014T111342583658Z/result.json)；音频来源由 [MODEL_BACKEND](MODEL_BACKEND.md#受控文件证据与噪声修复)维护，客户端由 [run_bailian_file](../../scripts/run_bailian_file.py)实现。
