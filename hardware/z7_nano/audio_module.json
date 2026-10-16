@@ -2,41 +2,72 @@
   "status": "verified_against_schematic",
   "verified": {
     "date": "2026-10-16",
-    "method": "用户说明模块主控为 WM8731 并提供 J3→JP2→FPGA 接线表；本轮按 Z7-NANO_R21.pdf 全 15 页核对，其中第 5 页（PL BANK34&35）、第 12 页（HDMI TX）、第 13 页（GPIO）逐针比对",
-    "schematic": {
+    "board_schematic": {
       "file": "Z7-NANO_R21.pdf",
       "sha256": "f977123c8a9a8a8d2c09b962d62626f1600e4427e156d0751a8ad51a5fd0ce45",
       "pages_total": 15,
-      "sheets": [
-        "1 PS BANK500&501", "2 PS BANK502", "3 PL BANK0&13", "4 PL BANK34&35",
-        "5 ZYNQ Power", "6 DDR3 RAM", "7 PS ETHERNET", "8 PS USB", "9 PS UART SD",
-        "10 PS ETHERNET", "11 HDMI TX", "12 GPIO", "13 USB-JTAG", "14 Power",
-        "版权/说明页"
-      ],
       "no_audio_sheet": true,
-      "matches_project_record": "hardware/z7_nano/source.json（Schematic.SHA256 一致）"
+      "matches_project_record": "hardware/z7_nano/source.json（Schematic.SHA256 一致）",
+      "sheets": ["PS BANK500&501", "PS BANK502", "PL BANK0&13", "PL BANK34&35", "ZYNQ Power", "DDR3 RAM", "PS ETHERNET", "PS USB", "PS UART SD", "PS ETHERNET", "HDMI TX", "GPIO", "USB-JTAG", "Power", "版权/说明"]
     },
-    "electrical_measurement": "not performed",
-    "physical_orientation_checked": false
+    "module_schematic": {
+      "file": "AN831.pdf",
+      "sha256": "60de5187a5c21238be5ff20cf31fc68046bb60431c10478ef8fba811baba0235",
+      "title_block_date": "2015-01-28",
+      "components": {
+        "codec": "U11 = WM8731SEFL（WM8731-QFN28）",
+        "crystal": "Y3 = 12.288 MHz（XT49M-CRYSTAL）→ 模块自带 MCLK",
+        "regulator": "U8 = LT1117-3.3（模块自 5 V 生成 3.3 V）",
+        "jacks": "J10 / J11 / J12 = PJ-325（3.5 mm 麦克风/线路输入与耳机输出）",
+        "connector": "J3 = CONN PCB 20x2-S（2x20 排针，模块侧）"
+      },
+      "j3_pinout_verified": [
+        {"j3_pin": 3, "net": "VW_I2C_SCLK"},
+        {"j3_pin": 4, "net": "VM_I2C_SDAT"},
+        {"j3_pin": 5, "net": "VM_DACDAT"},
+        {"j3_pin": 6, "net": "VM_BCLK"},
+        {"j3_pin": 7, "net": "VM_ADCDAT"},
+        {"j3_pin": 8, "net": "VM_DADLRC"},
+        {"j3_pin": 9, "net": "VM_ADCLRC"}
+      ],
+      "j3_power": [
+        {"j3_pin": "1/2", "net": "VCC5V", "note": "5 V 输入；模块板载 LT1117-3.3"},
+        {"j3_pin": "39/40", "net": "D3V3", "note": "3.3 V 网络"},
+        {"j3_pin": "其他", "net": "GND", "note": "接地以接地符号绘制、无文字标注，针号需实物/目视确认"}
+      ],
+      "note": "J3 与开发板 JP2 为同一 2x20 规格；本次为逻辑针号核对，物理方向由用户 2026-10-16 确认已查看"
+    },
+    "electrical_measurement": "not performed"
   },
   "module": {
-    "identity": "WM8731 主控音频模块（用户 2026-10-16 说明）；开发板上没有音频 codec，音频全部经 JP2 外接",
-    "kind": "I2S 数字音频 + I2C 控制（WM8731 数据手册级事实，模块板级实现待核实）",
-    "clock_master": "模块（BCLK、DADLRC、ADCLRC 均为模块输出）",
-    "mclk": "开发板不提供音频时钟；用户表中 BCLK 为模块输出，故模块必然自带时钟源（WM8731 主模式需 MCLK 才能产生 BCLK/LRCLK）。待确认：模块上晶振/振荡器的存在与频率（决定采样率）",
-    "separate_lrclk": "DAC 与 ADC 各有独立 LRCLK（DADLRC/ADCLRC），RTL 需分别处理",
-    "loopback_possibility": "存在独立 ADC 与 DAC 数据线，可在 PL 内直接做 ADCDAT -> DACDAT 回环",
-    "open_items": [
-      "模块晶振/振荡器的存在与频率（MCLK 频率决定采样率）",
-      "模块板级供电需求（3.3 V / 5 V）与电流；开发板 JP2 同时提供 VCC_5V 与 VCC_3V3",
-      "模块 I/O 逻辑电平与 Bank35 的 3.3 V 是否一致",
-      "WM8731 的 I2C 从地址与寄存器序列：是否需要配置才能出音、上电默认模式是否可用",
-      "模拟前端（麦克风偏置/增益、耳机驱动）与位宽/槽宽"
+    "identity": "WM8731 主控音频模块（AN831 原理图核对）",
+    "mclk": "模块自带 12.288 MHz 晶振（Y3 → XTI/MCLK）→ 不需要 FPGA 提供 MCLK",
+    "clock_master": "由 WM8731 寄存器 R7（INTERFACE）的 MS 位决定：置 1 为主模式（写 0x42 类值）后由模块输出 BCLK/ADCLRC/DACLRC；复位默认为从模式，因此必须先用 I2C 配置",
+    "sample_rate": "12.288 MHz / 256 = 48 kHz（按 R8 SAMPLING 配置；具体档位待实测确认）",
+    "control": {
+      "bus": "I2C（2-wire）：SCLK/SDIN",
+      "address_7bit": "0x1A（CSB=0）或 0x1B（CSB=1）——模块 CSB 上拉/下拉未从文本判定，待实测",
+      "required_writes": [
+        "R7 INTERFACE：主模式 + I2S + 位宽（参考值 0x42）",
+        "R8 SAMPLING：采样率与 256fs 档",
+        "R6 POWERDOWN：保持各功能块上电（参考值 0x00 = 无掉电）",
+        "R4 APATH / R5 DAPATH：输入选择（麦克风/线路）与 DAC 通路",
+        "R2/R3 LHPVOL/RHPVOL：耳机音量与取消静音",
+        "R9 ACTIVE：置 1 使能数字音频接口（不清零则接口不工作）",
+        "R15 RESET：可选软复位"
+      ],
+      "cross_check": "开源驱动对照：I2C 地址 0x1A、R7=0x02 从模式 / 0x42 主模式、R9=1 使能、R2/R3 音量与静音位；见 docs/design/SOURCES.md"
+    },
+    "unverified": [
+      "I2C 从地址（0x1A/0x1B）与 MODE/CSB 的实际接法",
+      "模块供电电流与是否需要 5 V（LT1117-3.3 输入）",
+      "麦克风偏置/增益与耳机驱动能力；最大音量削波点",
+      "是否需要 R4/R5 之外的通路配置才能做 ADCDAT→DACDAT 直通"
     ]
   },
   "board": {
     "name": "MicroPhase Z7-Nano R2.0 / xc7z010clg400-1",
-    "bank34_35_rail": "VCC_3V3（第 5 页电源标注；PL 侧 3.3 V 逻辑）",
+    "bank34_35_rail": "VCC_3V3（第 5 页电源标注；PL 侧 3.3 V 逻辑，与模块 DBVDD/DCVDD 3.3 V 一致）",
     "hdmi": "Bank34：tmds_clk U18/U19、data0 V20/W20、data1 T20/U20、data2 N20/P20（与 source.json Pins 一致）"
   },
   "header": {
@@ -45,20 +76,20 @@
     "bank": 35,
     "net_prefix": "GPIO2_",
     "numbering_rule": "奇数为 P、偶数为 N（pin1=GPIO2_0P，pin2=GPIO2_0N，依此类推；遇电源位列跳号）",
-    "note": "JP2 与 JP1（GPIO1，ESP8266 所用）是同页的两个 40 针排针；针号为用户提供的逻辑针号，实物 1 号脚方向仍需按板上丝印复核"
+    "note": "JP2 与 JP1（GPIO1，ESP8266 所用）是同页的两个 40 针排针。模块 J3 与 JP2 同为 2x20，可用排线直连"
   },
   "signals": [
-    {"module_pin": 3, "net": "VW_I2C_SCLK", "board_net": "GPIO2_6P", "header_pin": 15, "package_pin": "B19", "bank_io": "IO_L2P_T0_AD8P_35", "direction": "FPGA->module", "board_role": "codec 控制时钟"},
-    {"module_pin": 4, "net": "VM_I2C_SDAT", "board_net": "GPIO2_6N", "header_pin": 16, "package_pin": "A20", "bank_io": "IO_L2N_T0_AD8N_35", "direction": "bidirectional", "board_role": "codec 控制数据"},
-    {"module_pin": 5, "net": "VM_DACDAT", "board_net": "GPIO2_7P", "header_pin": 17, "package_pin": "C20", "bank_io": "IO_L1P_T0_AD0P_35", "direction": "FPGA->module", "board_role": "I2S 播放数据（耳机通路）"},
-    {"module_pin": 6, "net": "VM_BCLK", "board_net": "GPIO2_5P", "header_pin": 13, "package_pin": "H16", "bank_io": "IO_L13P_T2_MRCC_35", "direction": "module->FPGA", "board_role": "I2S 位时钟；原理图确认为 MRCC 时钟脚"},
-    {"module_pin": 7, "net": "VM_ADCDAT", "board_net": "GPIO2_7N", "header_pin": 18, "package_pin": "B20", "bank_io": "IO_L1N_T0_AD0N_35", "direction": "module->FPGA", "board_role": "I2S 采集数据（麦克风通路）"},
-    {"module_pin": 8, "net": "VM_DADLRC", "board_net": "GPIO2_5N", "header_pin": 14, "package_pin": "H17", "bank_io": "IO_L13N_T2_MRCC_35", "direction": "module->FPGA", "board_role": "I2S 播放左右声道时钟；原理图确认为 MRCC"},
-    {"module_pin": 9, "net": "VM_ADCLRC", "board_net": "GPIO2_8P", "header_pin": 19, "package_pin": "D19", "bank_io": "IO_L4P_T0_35", "direction": "module->FPGA", "board_role": "I2S 采集左右声道时钟"}
+    {"module_pin_j3": 3, "net": "VW_I2C_SCLK", "board_net": "GPIO2_6P", "header_pin": 15, "package_pin": "B19", "bank_io": "IO_L2P_T0_AD8P_35", "direction": "FPGA->module", "board_role": "codec 控制时钟"},
+    {"module_pin_j3": 4, "net": "VM_I2C_SDAT", "board_net": "GPIO2_6N", "header_pin": 16, "package_pin": "A20", "bank_io": "IO_L2N_T0_AD8N_35", "direction": "bidirectional", "board_role": "codec 控制数据"},
+    {"module_pin_j3": 5, "net": "VM_DACDAT", "board_net": "GPIO2_7P", "header_pin": 17, "package_pin": "C20", "bank_io": "IO_L1P_T0_AD0P_35", "direction": "FPGA->module", "board_role": "I2S 播放数据（耳机通路）"},
+    {"module_pin_j3": 6, "net": "VM_BCLK", "board_net": "GPIO2_5P", "header_pin": 13, "package_pin": "H16", "bank_io": "IO_L13P_T2_MRCC_35", "direction": "module->FPGA（配置为主模式后）", "board_role": "I2S 位时钟；原理图确认为 MRCC 时钟脚"},
+    {"module_pin_j3": 7, "net": "VM_ADCDAT", "board_net": "GPIO2_7N", "header_pin": 18, "package_pin": "B20", "bank_io": "IO_L1N_T0_AD0N_35", "direction": "module->FPGA", "board_role": "I2S 采集数据（麦克风通路）"},
+    {"module_pin_j3": 8, "net": "VM_DADLRC", "board_net": "GPIO2_5N", "header_pin": 14, "package_pin": "H17", "bank_io": "IO_L13N_T2_MRCC_35", "direction": "module->FPGA（配置为主模式后）", "board_role": "I2S 播放左右声道时钟；原理图确认为 MRCC"},
+    {"module_pin_j3": 9, "net": "VM_ADCLRC", "board_net": "GPIO2_8P", "header_pin": 19, "package_pin": "D19", "bank_io": "IO_L4P_T0_35", "direction": "module->FPGA", "board_role": "I2S 采集左右声道时钟"}
   ],
   "unconnected": [
-    {"module_pin": 10, "note": "NC 悬空（用户标注）"},
-    {"board_pin": 20, "note": "GPIO2_8N = D20，本表未使用；与其 P 端 D19 构成一对，可作备用/差分对"}
+    {"module_pin_j3": 10, "note": "用户标注为 NC 悬空"},
+    {"board_pin": 20, "note": "GPIO2_8N = D20，本表未使用；与其 P 端 D19 构成一对，可作备用"}
   ],
   "header_power": [
     {"header_pin": 11, "net": "VCC_5V"},
@@ -74,17 +105,16 @@
         "Z7-NANO_R21.pdf 第 4/11 页（PL BANK34&35、HDMI TX）与上述球号一致",
         "音频 7 个信号全部位于 Bank35 的 JP2 排针，与 Bank34 的 HDMI 不重叠"
       ],
-      "superseded_warning": "旧板 ZYNQ_MINI_REVB 的 constraints/hdmi.xdc 把 H16/D19/C20/B19 用作 TMDS；该文件不是当前板的显示约束，2026-10-16 前据它提出的“球号冲突”不成立"
+      "superseded_warning": "旧板 ZYNQ_MINI_REVB 的 constraints/hdmi.xdc 把 H16/D19/C20/B19 用作 TMDS；该文件不是当前板显示约束，2026-10-16 前据它提出的“球号冲突”不成立"
     },
     "board_eeprom_i2c": {
       "result": "no_overlap",
-      "evidence": "第 13 页的 24C32（EEPROM_I2C_SCL/SDA）在第 5 页与 HDMI1_*、GPIO1_* 同处 Bank34 网络块，不在 JP2 的 GPIO2_* 音频脚上"
-    },
-    "other_users_of_these_balls": "JP2 的 GPIO2_5P/5N、6P/6N、7P/7N、8P 未见其他功能占用；同页 JP1 为 GPIO1（ESP8266 使用的 N17/P18 属 Bank34）"
+      "evidence": "第 13 页 24C32 EEPROM 的 EEPROM_I2C_SCL/SDA 在第 5 页与 HDMI1_*、GPIO1_* 同处 Bank34 网络块，不在 JP2 的 GPIO2_* 音频脚上"
+    }
   },
   "remaining_checks_before_wiring": [
-    "按板上丝印复核 JP2 的 1 号脚方向后再按针号计数",
-    "目视确认模块晶振/振荡器与频率，以及模块供电与 3.3 V 电平",
-    "确认 WM8731 是否需要 I2C 配置才能出音（ADCDAT→DACDAT 直通的可行性）"
+    "确认模块 I2C 从地址（0x1A 或 0x1B）与 MODE/CSB 接法",
+    "确认模块供电（5 V 输入经 LT1117-3.3）与电流，以及 GND 针位",
+    "配置 WM8731 后再测 BCLK/ADCLRC/DACLRC 是否存在，避免把“未配置”误判为接线错误"
   ]
 }

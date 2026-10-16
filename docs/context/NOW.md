@@ -59,7 +59,7 @@ P5c-0 DeepSeek 独立文本已实测：17 项离线验证和独立复核通过�
 尚需核实以下事项：
 
 - 音频模块：2026-10-16 用户确认主控为 **WM8731** 并提供 J3→JP2→FPGA 接线表。按 Z7-NANO_R21.pdf 第 5/13 页逐针核对：JP2 为 CON40A（2x20）排针、走 Bank35（`GPIO2_5P/5N`、`6P/6N`、`7P/7N`、`8P`），H16/H17 为 MRCC 时钟脚；JP2 电源针 11/12=`VCC_5V`、29/30=`VCC_3V3`。旧说法“FPGA20引脚”不再使用。第一版英语转中文已在 DECISIONS D8 确认。
-- 音频引脚占用已核对：当前板 HDMI 在 Bank34（`U18/U19`、`V20/W20`、`T20/U20`、`N20/P20`，见 [source.json](../../hardware/z7_nano/source.json)），与音频 7 个 Bank35 信号**不重叠**，无需改脚；仓库内 [hdmi.xdc](../../constraints/hdmi.xdc) 是旧板（ZYNQ_MINI_REVB）约束，此前据它提出的“冲突”已在 R17 更正。仍需确认模块自带的时钟（晶振/振荡器及其频率）、供电/电平与 JP2 实物丝印方向。[AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)
+- 音频引脚占用已核对：当前板 HDMI 在 Bank34（`U18/U19`、`V20/W20`、`T20/U20`、`N20/P20`，见 [source.json](../../hardware/z7_nano/source.json)），与音频 7 个 Bank35 信号**不重叠**，无需改脚；旧板 [hdmi.xdc](../../constraints/hdmi.xdc) 的“冲突”判断已在 R17 更正。模块原理图 AN831.pdf 也已核对：`U11=WM8731SEFL` + `Y3=12.288 MHz 晶振`（不需 FPGA 供 MCLK）、`U8=LT1117-3.3`、J3 1/2=`VCC5V`、39/40=`D3V3`，信号针 3–9 与接线表一致。**上板前置变为 I2C 配置**：需先写 R7 主模式、R8 采样率、R6/R4/R5/R2/R3 与 R9 使能，模块才会输出 BCLK/LRCLK（见 R18）。[AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)
 - 新板 USB 枚举、真实输入、四角坐标与 UI 控制已通过各自范围；完整 VBUS 电压/电流测量尚未做。
 - 触摸启动与暗屏的触发顺序、USB 供电实际电压/电流和屏幕内部电路仍待定位；最新诊断及当前接线由 USB_TOUCH/迁移专题维护。独立屏幕电源对照未执行，不先行认定电流不足。
 - 当前使用裸机 USB Host/HID；独立上电启动介质与产品启动方式尚未决定。新板最小 PS/DDR 实测结果由 JTAG/OCM 获取。

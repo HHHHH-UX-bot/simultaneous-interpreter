@@ -100,6 +100,6 @@ PS Linux、LVGL、主采样率和音频模块接口仍不是最终产品选型�
 - 决策：先在 Zynq 上打通本地音频实时回环（麦克风 → 音频模块 → 板卡 → 模块 → 耳机），并把延迟时间实时显示在 HDMI 屏幕上；屏幕已有画面及功能不动。
 - 来源：用户 2026-10-16 的需求与音频模块接线表（J3 → JP2 → FPGA 引脚 → 方向）。
 - 范围：本地音频路径、延迟测量与屏显；不改动已验收的显示布局与交互，不替代 [D13](#d13-云端语音翻译与独立终端) 的云端链路，也不涉及 Wi-Fi、字幕模型与云端凭据。本轮未接线、未构造约束、未构建、未测量。
-- 实施选择：最小延迟优先在 PL 内做 ADCDAT→DACDAT 直通；需要软件处理时再走 PS/DMA 并按 L2 单独测量。时延读数的位置由实现方决定：复用现有状态行右侧的固定宽度槽位，不改变既有布局与按钮，见 [UI_SPEC](../design/UI_SPEC.md#时延读数)。这些是建议，不是用户已确认的技术决定，承载见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)。
-- 待核实：模块晶振/振荡器频率与供电/电平、WM8731 寄存器配置（见 [RISKS](RISKS.md) R1/R18）、JP2 实物丝印方向（R2）。引脚占用已核对：当前板 HDMI 在 Bank34、音频 7 个信号在 Bank35 的 JP2，不重叠；板载 EEPROM I2C 也在 Bank34，不占用音频脚（R17 已于 2026-10-16 更正）。
+- 实施选择：模块自带 12.288 MHz 晶振，PL 作 I2S 从机；但必须先经 I2C 写 WM8731 的 R7（主模式）/R9（使能）等寄存器，模块才会输出 BCLK/LRCLK，因此 I2C 初始化是实现前置（见 [RISKS](RISKS.md) R18）。最小延迟优先在 PL 内做 ADCDAT→DACDAT 直通；需要软件处理时再走 PS/DMA 并按 L2 单独测量。时延读数的位置由实现方决定：复用现有状态行右侧的固定宽度槽位，不改变既有布局与按钮，见 [UI_SPEC](../design/UI_SPEC.md#时延读数)。这些是建议，不是用户已确认的技术决定，承载见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)。
+- 待核实：模块 I2C 从地址（0x1A/0x1B）与供电电流/GND 针位、WM8731 完整初始化序列（见 [RISKS](RISKS.md) R1/R18）。引脚占用已核对：当前板 HDMI 在 Bank34、音频 7 个信号在 Bank35 的 JP2，不重叠；板载 EEPROM I2C 也在 Bank34，不占用音频脚（R17 已于 2026-10-16 更正）。
 - 承载：接线事实见 [MAP](MAP.md#音频模块连接) 与 [audio_module.json](../../hardware/z7_nano/audio_module.json)；操作与验收见 [RUNBOOK](RUNBOOK.md#a-音频实时回环与时延显示后续)。

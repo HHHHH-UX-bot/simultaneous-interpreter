@@ -166,17 +166,17 @@ python -B scripts/run_z7_nano_usb_live.py stop
 
 状态：2026-10-16 只有需求与接线记录；接线、约束、构建、下载、测量和屏显改动均**未执行**。接口推断、时延分层定义与门禁见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)。
 
-前置：A0 已完成型号（WM8731）、逐针映射与引脚占用核对（当前板 HDMI 在 Bank34、音频在 Bank35 的 JP2，不重叠）；仍需模块 MCLK 来源与供电/电平，并按板上丝印确认 JP2 的 1 号脚方向（结论写回 [audio_module.json](../../hardware/z7_nano/audio_module.json)）。MCLK 未确认前不接线、不宣告音频通路可用。
+前置：A0 已完成（型号 WM8731、板卡与模块逐针映射、引脚占用、模块自带 12.288 MHz 晶振、JP2 与 J3 的电源针，结论见 [audio_module.json](../../hardware/z7_nano/audio_module.json)）。仍需实测确认：模块 I2C 从地址（0x1A/0x1B）与 MODE/CSB 接法、供电电流与 GND 针位。**注意**：模块的 BCLK/LRCLK 要先用 I2C 配置 R7 主模式与 R9 使能后才输出，未配置前“没有时钟”不是接线故障。
 
 操作（每步取得证据后再进入下一步；本轮均未执行）：
 
-1. A0 资料与门禁核对，结论写回 [audio_module.json](../../hardware/z7_nano/audio_module.json)。
-2. A1 约束核对：BCLK 作外部输入时钟 `create_clock`、`set_input_delay`、MRCC 与 IOSTANDARD；不修改现有 hdmi.xdc。
-3. A2 PL I2S 从机采集：仿真逐位对照 → ILA 逻辑观察 → 已知输入实采与溢出统计。
-4. A3 PL 内 ADCDAT→DACDAT 直通回环，先取最小延迟基线。
-5. A4 L1 时延计数与寄存器暴露；需要软件处理时加 L2 打点。
-6. A5 复用现有渲染器新增只读时延读数，不改变既有布局、按钮和交互。
-7. A6 持续运行、耳机听感与 L3 声学测量。
+1. A1 约束核对：BCLK/ADCLRC/DACLRC 作输入时钟与数据约束（`create_clock`、`set_input_delay`）、MRCC 与 IOSTANDARD；不修改现有 hdmi.xdc。
+2. A2 I2C 初始化：实现 I2C 主机（PL 软 I2C 或 PS 侧），写 R7（主模式/I2S/位宽）、R8（采样率）、R6、R4/R5、R2/R3、R9；先只做寄存器读写与回读，再用 ILA/示波器确认 BCLK/LRCLK 出现。地址先试 0x1A，失败再试 0x1B。
+3. A3 PL I2S 从机采集：仿真逐位对照 → ILA 逻辑观察 → 已知输入实采与溢出统计。
+4. A4 PL 内 ADCDAT→DACDAT 直通回环（耳机可听），先取最小延迟基线。
+5. A5 L1 时延计数与寄存器暴露；需要软件处理时加 L2 打点。
+6. A6 复用现有渲染器新增只读时延读数，不改变既有布局、按钮和交互。
+7. A7 持续运行、耳机听感与 L3 声学测量。
 
 构建与运行入口在 A1–A3 建立后回填本节；本轮不虚构脚本名或命令。
 
