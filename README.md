@@ -2,7 +2,7 @@
 
 目标是音频模块经 Zynq 采集与必要前处理，通过 ESP8266/Wi-Fi 访问云端语音翻译服务，把中文字幕显示在 HDMI 屏幕上，并支持 USB 触摸交互。最终使用时不依赖电脑；当前选择阿里云百炼实时语音翻译一体方案，见 [DECISIONS](docs/context/DECISIONS.md#d13-云端语音翻译与独立终端)和[云端方案](docs/design/CLOUD_SPEECH.md)。
 
-当前包含详细方案、离线交互原型、旧 RevB 基线，以及电脑端模型试验和 HTTP 文件接口。2026-10-13 起移植至 Z7-Nano 7010，新板已完成 PS/DDR、动态中文、七类 USB 触摸控件及常驻运行、ESP8266 自主关联与已知字幕网络验收；方法见 [迁移专题](docs/design/BOARD_MIGRATION.md)，当前证据见 [NOW](docs/context/NOW.md)。921600 串口及 ESP 可信 TLS/WSS 已分项验证，PS 已完成一次预编码一分钟音频收发并取得真实云译。[ARM 云事件到字幕路径](docs/design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)已完成实现、离线验证、交叉编译及真实短文件上屏验收；完整 ARM 云客户端、真实采音及独立产品仍待完成。
+当前包含详细方案、离线交互原型、旧 RevB 基线，以及电脑端模型试验和 HTTP 文件接口。2026-10-13 起移植至 Z7-Nano 7010，新板已完成 PS/DDR、动态中文、七类 USB 触摸控件及常驻运行、ESP8266 自主关联与已知字幕网络验收；方法见 [迁移专题](docs/design/BOARD_MIGRATION.md)，当前证据见 [NOW](docs/context/NOW.md)。921600 串口及 ESP 可信 TLS/WSS 已分项验证，PS 已完成一次预编码一分钟音频收发并取得真实云译。[ARM 云事件到字幕路径](docs/design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)已完成实现、离线验证、交叉编译及真实短文件上屏验收；[ARM 自主 TLS](docs/design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)已实现并通过本机检查、修正版显示/触摸验收，TLS 板测待重跑；完整云客户端、真实采音及独立启动仍待完成。
 
 ## 查看本轮成果
 

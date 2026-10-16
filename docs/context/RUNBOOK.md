@@ -123,6 +123,8 @@ python -B scripts/run_z7_nano_network.py build-app
 
 2026-10-16 已执行板测：先以 DONE/USR_ACCESS 核对状态，停 USB DMA 后按既有流程配置/运行匹配程序，恢复显示及常驻触摸并取得用户验收。ESP 缺线造成的首次 AT 超时，在用户接好后通过同版重启恢复；再完成无 Key TLS 身份对照。实际执行 `python -B scripts/pilot_z7_nano_cloud_file.py --audio output/model_backend/fixtures/english_reference.wav --onboard-ui --credentials-stdin`，凭据只经隐藏输入提供。`--onboard-ui` 自动延后 JTAG 观测，由 ARM 消费云事件；电脑仍负责 TLS/WSS 初始化、预编码文件和 32 枚随机控制掩码。每次任务先停旧 consumer，成功后保留最终字幕，释放 PS、关闭 TCP 并恢复 MUX0。本次完成非空原译、定稿/字节核账、实际像素及用户实屏验收，并观测一次栈写水位；数值、固定证据与未覆盖范围由 C1-6 专题维护。继续时重新确认实际目标和运行状态，不直接进入长测或把该命令当作独立启动流程。
 
+C1-7a 已执行 `python -B scripts/validate_z7_nano_tls_boot.py`、相关网络回归及 ARM 构建。首次板测在 JOIN 通知处停止，本机复现修正后，重新配置/运行、AT 验证、整帧比对与常驻触摸均通过；用户随后要求暂停。接续入口 `python -B scripts/probe_z7_nano_tls_boot.py --credentials-stdin` **修正版尚未重跑**：匹配程序运行，网络/音频/云 consumer 空闲，显示/触摸验收后，隐藏输入运行期 Wi-Fi 配置。工具仅写邮箱，由 ARM 执行正确/错误/正确身份与关闭对照，不输入 API Key、不操作证书或固件。遇不确定标记先核对失败尝试及实际所有权，取得恢复证据再归档，不能直接删除重试。地址、恢复范围与下一步见 [C1-7a](../design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)。
+
 C1-0 入口为 [固定查询工具](../../scripts/probe_z7_nano_capabilities.py)。在项目根目录选择 machine 环境；前置是匹配的 Z7N3 平台、当前源码验证和 ARM 构建。重新下载依次 stop Host → program → run；之后执行下列已实测命令：
 
 ```powershell

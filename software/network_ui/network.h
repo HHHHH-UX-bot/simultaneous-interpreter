@@ -7,9 +7,11 @@ struct network_status {
     uint32_t rejected,last_request,last_code,received_bytes,overflow,framing,echo_verified,epoch;
 };
 struct network_configuration {
+    /* action 1: LAN; 2: queries; 3: cloud TLS (reserved 0/1 normal/wrong CN);
+       4: close owned cloud TLS, no credentials. TLS ready reports phase 8. */
     uint32_t magic,request_sequence,action,ssid_bytes,password_bytes;
     uint8_t credentials[100];
-    uint32_t port,reserved; /* reserved=0: LAN server; otherwise single TCP peer IPv4. */
+    uint32_t port,reserved; /* action1: reserved=0 LAN server, otherwise TCP peer IPv4. */
 };
 extern volatile struct network_status network_info;
 extern volatile struct network_status network_report;

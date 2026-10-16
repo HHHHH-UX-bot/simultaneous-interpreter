@@ -4,6 +4,9 @@ from run_z7_nano import ROOT, OUT, sha
 
 
 def main():
+    tls = json.loads((OUT/"tls_boot/host_validation.json").read_text(encoding="utf-8"))
+    if tls["status"] != "passed" or any(sha(ROOT/p)!=h for p,h in tls["input_hashes"].items()):
+        raise RuntimeError("Current ARM TLS bootstrap validation required")
     for name in ("protocol_tests.json", "runtime_tests.json", "client_tests.json"):
         record = json.loads((ROOT/"output/network_ui"/name).read_text(encoding="utf-8"))
         if record["Status"] != "passed" or any(sha(ROOT/p) != h for p, h in record["SourceHashes"].items()):
@@ -36,7 +39,7 @@ def main():
     sections += ('    .cloud_mailbox 0x0001E2C0 (NOLOAD) : { KEEP(*(.cloud_mailbox)) } > OCM\n'
                  '    ASSERT(SIZEOF(.cloud_mailbox) == 0x40, "Cloud public ABI changed")\n')
     linker=linker.replace('    .text :',
-        '    .cloud_text 0x01980000 : { *(.text.cloud_* .text.jsmn_* .text.wslay_* .rodata.cloud_*) } > FONT_DDR\n'
+        '    .cloud_text 0x01980000 : { *(.text.cloud_* .text.jsmn_* .text.wslay_* .text.network_tick .rodata.cloud_*) } > FONT_DDR\n'
         '    ASSERT(SIZEOF(.cloud_text) <= 0x80000, "Cloud code exceeds DDR reserve")\n'
         '    .text :')
     linker=linker.replace(anchor,sections+'    .ui_assets 0x01800000 :')

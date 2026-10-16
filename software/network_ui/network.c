@@ -26,6 +26,19 @@ static uint8_t frame[NET_FRAME_BYTES],ack[2048];
 static uint32_t send_size;
 static uint32_t peer,peer_port,raw_state,raw_deadline;
 static void (*stream_receive)(uint8_t);
+#ifdef Z7_NETWORK_CAPABILITIES
+/* action 3: trusted cloud TLS, action 4: close and return UART ownership.
+   reserved=1 is the explicit wrong-CN diagnostic; no API key is involved. */
+#define CLOUD_HOST "ws-zckg39zhbiii3yrv.cn-beijing.maas.aliyuncs.com"
+static uint32_t tls_mode,tls_step,tls_wait_until,tls_time_deadline,tls_connected,tls_closing;
+static const char *const tls_commands[]={
+    "AT+CIPDOMAIN=\"" CLOUD_HOST "\"\r\n",
+    "AT+CIPSNTPCFG=1,0,\"ntp.aliyun.com\",\"ntp1.aliyun.com\"\r\n",
+    "AT+CIPSNTPTIME?\r\n","AT+CIPSSLCCONF=0,2,0,0\r\n","AT+CIPSSLCCONF?\r\n",
+    "AT+CIPSSLCSNI=0,\"" CLOUD_HOST "\"\r\n",
+    "AT+CIPSSLCCN=0,\"" CLOUD_HOST "\"\r\n",
+    "AT+CIPSTART=0,\"SSL\",\"" CLOUD_HOST "\",443\r\n"};
+#endif
 static void fence(void) {
 #if defined(__arm__)
     __asm__ volatile("dsb sy" ::: "memory");
@@ -131,6 +144,54 @@ static void issue_setup(void) {
     }
     begin_command(setup_step==SETUP_JOIN?join_command:commands[setup_step],setup_step==SETUP_JOIN?25000u:4000u);
 }
+#ifdef Z7_NETWORK_CAPABILITIES
+static void tls_issue(void) {
+    network_info.last_code=100u+tls_step;
+    const char *text=tls_commands[tls_step];
+    if(tls_step==6 && tls_mode==2) text="AT+CIPSSLCCN=0,\"wrong.invalid\"\r\n";
+    begin_command(text,tls_step==7?25000u:4000u);
+}
+static int tls_time_valid(void) {
+    /* SNTP's initial 1970 clock cannot validate certificate dates. */
+    const char *tag="+CIPSNTPTIME:";
+    for(uint32_t i=0;reply[i];++i) {
+        uint32_t j=0;while(tag[j] && reply[i+j]==tag[j]) ++j;
+        if(tag[j]) continue;
+        const char *p=reply+i+j;uint32_t n=0;while(p[n] && p[n]!='\r') ++n;
+        if(n<5) return 0;
+        p+=n-4;
+        return p[-1]==' ' && p[0]=='2' && p[1]=='0' &&
+            p[2]>='2' && p[2]<='9' && p[3]>='0' && p[3]<='9';
+    }
+    return 0;
+}
+static void tls_result(int failure) {
+    if(tls_closing) {
+        if(failure && (tls_closing!=1 || tls_connected)) {fault(46);return;}
+        command_phase=0;wipe(reply,sizeof(reply));line_used=0;
+        if(tls_closing==1) {
+            tls_connected=0;tls_closing=2;begin_command("AT+CIPMUX=0\r\n",4000);
+        } else {
+            tls_closing=tls_mode=0;network_info.phase=0;network_info.error=0;
+            network_info.client=0xffffffffu;
+        }
+        return;
+    }
+    if(failure) {fault(43);return;}
+    if(tls_step==0 && !contains(reply,"+CIPDOMAIN:")) {fault(44);return;}
+    if(tls_step==4 && !contains(reply,"+CIPSSLCCONF:0,2,0,0\r\n")) {fault(44);return;}
+    if(tls_step==2 && !tls_time_valid()) {
+        if((int32_t)(current_time-tls_time_deadline)>=0) {fault(45);return;}
+        command_phase=0;wipe(reply,sizeof(reply));tls_wait_until=current_time+1000u;return;
+    }
+    if(tls_step==7 && !tls_connected) {fault(44);return;}
+    command_phase=0;wipe(reply,sizeof(reply));
+    if(++tls_step<sizeof(tls_commands)/sizeof(tls_commands[0])) {
+        if(tls_step==2) tls_time_deadline=current_time+15000u;
+        tls_issue();
+    } else {network_info.phase=8;network_info.client=0;}
+}
+#endif
 static uint32_t parse_ip(const char *s) {
     const char *tag="+CIFSR:STAIP,\"";uint32_t at=0,found=0;
     for(uint32_t i=0;s[i];++i) {
@@ -203,6 +264,22 @@ static void configuration(void) {
         network_info.config_ack=request;network_info.error=35;return;
     }
 #ifdef Z7_NETWORK_CAPABILITIES
+    if(tls_mode && network_config.action!=4) {
+        for(uint32_t i=0;i<100;++i) network_config.credentials[i]=0;
+        network_config.ssid_bytes=network_config.password_bytes=0;fence();network_info.config_ack=request;
+        ++network_info.rejected;network_info.last_request=request;network_info.last_code=11;return;
+    }
+    if(network_config.action==4) {
+        int valid=network_config.magic==0x3146434eu && tls_mode &&
+            (network_info.phase==8 || (network_info.phase==6 &&
+             (network_info.error==43 || network_info.error==44 || network_info.error==45 || network_info.error==47))) && !stream_receive &&
+            !network_config.ssid_bytes && !network_config.password_bytes && !network_config.reserved && !network_config.port;
+        for(uint32_t i=0;i<100;++i) network_config.credentials[i]=0;
+        network_config.ssid_bytes=network_config.password_bytes=0;fence();network_info.config_ack=request;
+        if(!valid || request!=network_config.request_sequence) {fault(11);return;}
+        tls_closing=1;tls_wait_until=0;network_info.phase=7;
+        begin_command("AT+CIPCLOSE=0\r\n",4000);return;
+    }
     if(network_config.action==2) {
         int valid=network_config.magic==0x3146434eu && network_config.ssid_bytes==0 &&
             network_config.password_bytes==0 && network_config.port==0 && network_config.reserved==0 &&
@@ -218,9 +295,15 @@ static void configuration(void) {
     }
 #endif
     uint32_t sn=network_config.ssid_bytes,pn=network_config.password_bytes;
-    int valid=network_config.magic==0x3146434eu && network_config.action==1 && sn>=1 && sn<=32 && pn>=8 && pn<=64 &&
+    uint32_t cloud_tls=0;
+#ifdef Z7_NETWORK_CAPABILITIES
+    cloud_tls=network_config.action==3;
+#endif
+    int valid=network_config.magic==0x3146434eu && (network_config.action==1 || cloud_tls) && sn>=1 && sn<=32 && pn>=8 && pn<=64 &&
+        (!cloud_tls || (network_info.phase==0 && !enabled && network_config.reserved<=1 && !network_config.port)) &&
+        (cloud_tls ||
         (network_config.reserved ? network_config.port>=1 && network_config.port<=65535 :
-         (network_config.port==0 || network_config.port==8266));
+         (network_config.port==0 || network_config.port==8266)));
     uint32_t n=0;const char *prefix="AT+CWJAP=\"";while(*prefix) join_command[n++]=*prefix++;
     if(valid) for(uint32_t part=0;part<2;++part) {
         uint32_t count=part?pn:sn;
@@ -237,6 +320,9 @@ static void configuration(void) {
     network_config.ssid_bytes=network_config.password_bytes=0;fence();network_info.config_ack=request;
     if(!valid || request!=network_config.request_sequence) {fault(11);return;}
     peer=network_config.reserved;peer_port=network_config.port;
+#ifdef Z7_NETWORK_CAPABILITIES
+    if(cloud_tls) {tls_mode=1u+network_config.reserved;tls_step=tls_wait_until=tls_connected=tls_closing=0;peer=0;}
+#endif
     if(enabled) (void)ui_control(model,UI_PAUSE);
     setup_step=0;frame_used=frame_ready=ipd_left=line_used=last_request=ack_pending=0;
     network_info.phase=1;network_info.error=network_info.sta_ip=network_info.echo_verified=0;
@@ -262,6 +348,15 @@ static void commit_frame(void) {
 }
 static void line_event(void) {
 #ifdef Z7_NETWORK_CAPABILITIES
+    if(tls_mode) {
+        if(same(line,"0,CONNECT")) tls_connected=1;
+        if(same(line,"0,CLOSED")) {
+            tls_connected=0;
+            if(!tls_closing && network_info.phase==8) fault(47);
+        }
+        if(same(line,"ready") || (same(line,"WIFI DISCONNECT") && setup_step>SETUP_JOIN)) fault(34);
+        return;
+    }
     if(network_capabilities.phase==1) {
         if(same(line,"ready")) fault(34);
         return; // Queries do not own a Wi-Fi link or TCP client.
@@ -366,6 +461,7 @@ static void command_tick(void) {
     }
 #ifdef Z7_NETWORK_CAPABILITIES
     if(network_capabilities.phase==1) {capability_result(failure);return;}
+    if(tls_mode && (tls_closing || setup_step==SETUP_COUNT)) {tls_result(failure);return;}
 #endif
     if(failure && setup_step!=SETUP_STOP_SERVER) {fault(29);return;} // deleting an absent old server may ERROR.
     if(setup_step==SETUP_VERSION) {
@@ -377,6 +473,9 @@ static void command_tick(void) {
     if(setup_step==SETUP_JOIN) wipe(join_command,sizeof(join_command));
     if(setup_step==SETUP_IP) {network_info.sta_ip=parse_ip(reply);if(!network_info.sta_ip) {fault(31);return;}}
     command_phase=0;wipe(reply,sizeof(reply));
+#ifdef Z7_NETWORK_CAPABILITIES
+    if(tls_mode && setup_step==SETUP_ACTIVE_RECEIVE) {setup_step=SETUP_COUNT;tls_issue();return;}
+#endif
     if(++setup_step<SETUP_COUNT) issue_setup();
     else {network_info.phase=3;enabled=1;(void)ui_control(model,UI_CLEAR);(void)ui_control(model,UI_START);}
 }
@@ -405,6 +504,7 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
 #ifdef Z7_NETWORK_CAPABILITIES
     words=(volatile uint32_t *)&network_capabilities;for(uint32_t i=0;i<16;++i) words[i]=0;
     network_capabilities.magic=0x43415031u;capability_query=0;
+    tls_mode=tls_step=tls_wait_until=tls_time_deadline=tls_connected=tls_closing=0;
 #endif
     network_info.magic=0x3154454eu;network_info.client=0xffffffffu;network_config.magic=0x3146434eu;
     enabled=ipd_left=line_used=frame_used=frame_ready=command_phase=ack_pending=prompt_padding=0;wipe(join_command,sizeof(join_command));
@@ -415,6 +515,11 @@ int network_owns_ui(void) {return enabled!=0;}
 void network_tick(struct ui_state *state,uint32_t now) {
     model=state;current_time=now;++network_info.sequence;fence();
     configuration();network_info.overflow=read_reg(32);network_info.framing=read_reg(36);
+#ifdef Z7_NETWORK_CAPABILITIES
+    if(tls_mode && tls_wait_until && network_info.phase==1 && (int32_t)(now-tls_wait_until)>=0) {
+        tls_wait_until=0;tls_issue();
+    }
+#endif
     if((network_info.overflow || network_info.framing) && (!raw_state || !network_info.error)) fault(32);
     if(raw_state && raw_state<=5) {
         /* Passthrough RX is data, never AT replies or the LAN frame format. */
