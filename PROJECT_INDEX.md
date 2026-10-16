@@ -14,7 +14,7 @@
 | 验证新板 USB Host 与触摸 | [USB_TOUCH](docs/design/USB_TOUCH.md) | 控制器/PHY、坐标、按钮、常驻生命周期与断电恢复 |
 | 连接新板 ESP8266 | [新板接线](docs/design/BOARD_MIGRATION.md#esp8266-新板接线)、[新板 UART](docs/design/BOARD_MIGRATION.md#m5-新板-uart-与自主-at) | JP1 针位、UART/AT 入口及后续网络验证 |
 | 接音频模块、做实时回环与延迟显示 | [AUDIO_LOOPBACK](docs/design/AUDIO_LOOPBACK.md)、[接线与球号](docs/context/MAP.md#音频模块连接)、[A 阶段操作](docs/context/RUNBOOK.md#a-音频实时回环与时延显示后续) | 需求、接口推断、时延分层定义、接线门禁、分阶段计划与验收 |
-| 核对音频引脚是否与已验收 HDMI 冲突 | [风险 R17](docs/context/RISKS.md)、[接线事实](hardware/z7_nano/audio_module.json) | 球号重叠门禁与核对结论的落盘位置 |
+| 核对音频引脚占用与新板显示是否冲突 | [风险 R17/R18](docs/context/RISKS.md)、[接线事实](hardware/z7_nano/audio_module.json) | 已核对不重叠（Bank35 JP2 vs Bank34 HDMI）；残留项为 MCLK、电平与丝印方向 |
 | 调整时延读数在屏幕上的呈现 | [UI_SPEC 时延读数](docs/design/UI_SPEC.md#时延读数)、[测量层级](docs/design/AUDIO_LOOPBACK.md#4-时延测量定义) | 位置、内容、刷新与禁止项 |
 | 理解系统分工、选型、资源和时延预算 | [SYSTEM_PLAN](docs/design/SYSTEM_PLAN.md) | 产品与系统方案 |
 | 接入云端语音翻译、脱离电脑运行 | [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md) | 已选百炼方案、官方接口来源、凭据准备、音频带宽与分阶段接入 |

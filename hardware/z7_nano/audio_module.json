@@ -1,42 +1,72 @@
 {
-  "status": "user_provided_unverified",
-  "wiring_confirmation": {
+  "status": "verified_against_schematic",
+  "verified": {
     "date": "2026-10-16",
-    "source": "user",
-    "form": "接线表截图：J3 脚 -> JP2 脚 -> FPGA 引脚 -> 方向",
+    "method": "用户在对话中说明模块主控为 WM8731，并提供 J3→JP2→FPGA 接线表；本轮按 Z7-NANO_R21.pdf 第 5/13 页逐针核对",
+    "schematic": {
+      "file": "Z7-NANO_R21.pdf",
+      "sha256": "f977123c8a9a8a8d2c09b962d62626f1600e4427e156d0751a8ad51a5fd0ce45",
+      "pages_read": [5, 13],
+      "matches_project_record": "hardware/z7_nano/source.json（Schematic.SHA256 一致）"
+    },
     "electrical_measurement": "not performed",
-    "physical_orientation_checked": false,
-    "module_identity": "型号待核实"
+    "physical_orientation_checked": false
   },
-  "board": "Z7-Nano R2.0 / xc7z010clg400-1",
-  "module": "音频模块（麦克风输入 + 耳机输出；信号集与 WM8731 类 codec 一致，仅为推断）",
-  "header": "JP2",
+  "module": {
+    "identity": "WM8731 主控音频模块（用户 2026-10-16 说明）",
+    "kind": "I2S 数字音频 + I2C 控制（WM8731 数据手册级事实，模块板级实现待核实）",
+    "clock_master": "模块（BCLK、DADLRC、ADCLRC 均为模块输出；WM8731 主模式下输出 BCLK/ADCLRC/DACLRC）",
+    "separate_lrclk": "DAC 与 ADC 各有独立 LRCLK（DADLRC/ADCLRC），RTL 需分别处理",
+    "loopback_possibility": "存在独立 ADC 与 DAC 数据线，可在 PL 内直接做 ADCDAT -> DACDAT 回环",
+    "open_items": [
+      "模块是否自带 MCLK 晶振/振荡器：接线表未列 MCLK 线，而 WM8731 需要主时钟才能工作并输出 BCLK/LRCLK；缺 MCLK 时本回环无法出音",
+      "模块板级供电需求（3.3 V / 5 V）与电流",
+      "模块 I/O 逻辑电平与 Bank35 的 VCCO 是否一致",
+      "I2C 从地址与寄存器序列：是否需要配置才能出音、上电默认模式是否可用",
+      "模拟前端（麦克风偏置/增益、耳机驱动）与采样率、位宽、MCLK 频率"
+    ]
+  },
+  "board": "MicroPhase Z7-Nano R2.0 / xc7z010clg400-1",
+  "header": {
+    "name": "JP2",
+    "type": "CON40A（2x20）",
+    "bank": 35,
+    "net_prefix": "GPIO2_",
+    "note": "JP2 与 JP1（GPIO1，ESP8266 所用）是同页的两个 40 针排针；针号为用户提供的逻辑针号，实物 1 号脚方向仍需按板上丝印复核"
+  },
   "signals": [
-    {"module_pin": 3, "net": "VW_I2C_SCLK", "header_pin": 15, "package_pin": "B19", "direction": "FPGA->module", "board_role": "codec 控制时钟"},
-    {"module_pin": 4, "net": "VM_I2C_SDAT", "header_pin": 16, "package_pin": "A20", "direction": "bidirectional", "board_role": "codec 控制数据"},
-    {"module_pin": 5, "net": "VM_DACDAT", "header_pin": 17, "package_pin": "C20", "direction": "FPGA->module", "board_role": "I2S 播放数据（耳机通路）"},
-    {"module_pin": 6, "net": "VM_BCLK", "header_pin": 13, "package_pin": "H16", "direction": "module->FPGA", "board_role": "I2S 位时钟；用户标注 MRCC 时钟脚"},
-    {"module_pin": 7, "net": "VM_ADCDAT", "header_pin": 18, "package_pin": "B20", "direction": "module->FPGA", "board_role": "I2S 采集数据（麦克风通路）"},
-    {"module_pin": 8, "net": "VM_DADLRC", "header_pin": 14, "package_pin": "H17", "direction": "module->FPGA", "board_role": "I2S 播放左右声道时钟；用户标注 MRCC"},
-    {"module_pin": 9, "net": "VM_ADCLRC", "header_pin": 19, "package_pin": "D19", "direction": "module->FPGA", "board_role": "I2S 采集左右声道时钟"}
+    {"module_pin": 3, "net": "VW_I2C_SCLK", "board_net": "GPIO2_6P", "header_pin": 15, "package_pin": "B19", "bank_io": "IO_L2P_T0_AD8P_35", "direction": "FPGA->module", "board_role": "codec 控制时钟"},
+    {"module_pin": 4, "net": "VM_I2C_SDAT", "board_net": "GPIO2_6N", "header_pin": 16, "package_pin": "A20", "bank_io": "IO_L2N_T0_AD8N_35", "direction": "bidirectional", "board_role": "codec 控制数据"},
+    {"module_pin": 5, "net": "VM_DACDAT", "board_net": "GPIO2_7P", "header_pin": 17, "package_pin": "C20", "bank_io": "IO_L1P_T0_AD0P_35", "direction": "FPGA->module", "board_role": "I2S 播放数据（耳机通路）"},
+    {"module_pin": 6, "net": "VM_BCLK", "board_net": "GPIO2_5P", "header_pin": 13, "package_pin": "H16", "bank_io": "IO_L13P_T2_MRCC_35", "direction": "module->FPGA", "board_role": "I2S 位时钟；原理图确认为 MRCC 时钟脚"},
+    {"module_pin": 7, "net": "VM_ADCDAT", "board_net": "GPIO2_7N", "header_pin": 18, "package_pin": "B20", "bank_io": "IO_L1N_T0_AD0N_35", "direction": "module->FPGA", "board_role": "I2S 采集数据（麦克风通路）"},
+    {"module_pin": 8, "net": "VM_DADLRC", "board_net": "GPIO2_5N", "header_pin": 14, "package_pin": "H17", "bank_io": "IO_L13N_T2_MRCC_35", "direction": "module->FPGA", "board_role": "I2S 播放左右声道时钟；原理图确认为 MRCC"},
+    {"module_pin": 9, "net": "VM_ADCLRC", "board_net": "GPIO2_8P", "header_pin": 19, "package_pin": "D19", "bank_io": "IO_L4P_T0_35", "direction": "module->FPGA", "board_role": "I2S 采集左右声道时钟"}
   ],
   "unconnected": [
     {"module_pin": 10, "note": "NC 悬空（用户标注）"}
   ],
-  "interface_read": {
-    "kind": "I2S 类数字音频 + I2C 控制（推断）",
-    "clock_master": "模块（BCLK、DADLRC、ADCLRC 均为模块输出，PL 侧只能作从机）",
-    "separate_lrclk": "DAC 与 ADC 各有独立 LRCLK，RTL 需分别处理，不能只接一个 LRCLK",
-    "loopback_possibility": "存在独立 ADC 与 DAC 数据线，可在 PL 内直接做 ADCDAT -> DACDAT 回环",
-    "codec_config": "I2C 主机与寄存器序列待核实；模块上电默认模式是否可用未验证",
-    "unverified": ["型号与数据手册", "供电电压与电流", "I/O 逻辑电平与 Bank 电压", "主从关系与位宽/槽宽/对齐方式", "采样率与 MCLK 需求", "是否需要 I2C 配置才能出声"]
-  },
+  "header_power": [
+    {"header_pin": 11, "net": "VCC_5V"},
+    {"header_pin": 12, "net": "VCC_5V"},
+    {"header_pin": 29, "net": "VCC_3V3"},
+    {"header_pin": 30, "net": "VCC_3V3"}
+  ],
   "conflict_check": {
-    "hdmi_tmds_overlap": {
-      "evidence": ["constraints/hdmi.xdc 第 12-15 行：H16=tmds_clk_p、D19=tmds_data_p[0]、C20=tmds_data_p[1]、B19=tmds_data_p[2]（TMDS_33，N 端由 Vivado 派生）", "厂商 F:\\ZYNQ_MINI开发板\\08常用引脚约束文件\\hdmi.xdc 使用同一组球号"],
-      "scope": "该约束文件标注为 ZYNQ_MINI_REVB（旧板）；Z7-Nano 当前显示约束生成在 output/z7_nano/config/hdmi.xdc，不在仓库内",
-      "status": "待核实",
-      "gate": "接线或建立引脚约束前，必须用 Z7-Nano 原理图/实物丝印核对 JP2 各针球号与当前 HDMI 实际球号；若重叠，本表不可用，须改到空闲 I/O"
-    }
-  }
+    "hdmi_tmds": {
+      "result": "no_overlap_on_current_board",
+      "evidence": [
+        "hardware/z7_nano/source.json Pins 段：当前板 TMDS = U18/U19、V20/W20、T20/U20、N20/P20（Bank34）",
+        "Z7-NANO_R21.pdf 第 5 页 BANK34 引脚表与上述球号一致；HDMI1_* 网络在第 12 页",
+        "音频 7 个信号全部位于 Bank35 的 JP2 排针，与 Bank34 的 HDMI 不重叠"
+      ],
+      "superseded_warning": "旧板 ZYNQ_MINI_REVB 的 constraints/hdmi.xdc 把 H16/D19/C20/B19 用作 TMDS；该文件不是当前板的显示约束，2026-10-16 前据它提出的“球号冲突”不成立"
+    },
+    "other_users_of_these_balls": "JP2 侧未见其他功能占用这 7 个网络；EEPROM（24C32）与 HDMI I2C 使用各自的 I2C 网络，未接入上述球号（按第 13/12 页网络名核对）"
+  },
+  "remaining_checks_before_wiring": [
+    "按板上丝印复核 JP2 的 1 号脚方向后再按针号计数",
+    "确认模块 MCLK 来源（自带晶振或需 PL 提供）与模块供电/电平",
+    "目视复核 Bank35 VCCO 网络（本轮文本核对指向 VCC_3V3，未做电气测量）"
+  ]
 }

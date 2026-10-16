@@ -46,7 +46,7 @@ DDR 显示的配置、地址和运行入口由 [FRAMEBUFFER](../design/FRAMEBUFF
 | 对象 | 事实或状态 | 来源与限制 |
 |---|---|---|
 | 开发板、器件、屏幕、既有 HDMI 显示 | 沿用同级 HDMI 项目的对象 | [其 MAP](../../../hdmi/docs/context/MAP.md#对象与证据)、[显示验收](../../../hdmi/docs/context/NOW.md#当前进展)；旧结果不替代新项目验收 |
-| 音频模块 | 2026-10-16 用户提供 J3→JP2→FPGA 接线表（I2C 控制 + I2S 采集/播放，共 7 根信号）；型号、供电、电平、采样率与物理针序均待核实 | 用户接线表，映射见[音频模块连接](#音频模块连接)与 [audio_module.json](../../hardware/z7_nano/audio_module.json)；核对前不得接线或分配引脚 |
+| 音频模块 | WM8731 主控模块；J3→JP2→Bank35 的 7 根信号已与原理图逐针对上（含 MRCC 时钟脚与电源针）；模块 MCLK 来源、供电/电平与实物丝印方向待核实 | 用户说明 + Z7-NANO_R21.pdf 第 5/13 页；映射见[音频模块连接](#音频模块连接)与 [audio_module.json](../../hardware/z7_nano/audio_module.json) |
 | “FPGA20引脚” | 2026-10-16 的音频接线表改用明确的 FPGA 球号与 JP2 针号，旧说法不再引用；球号本身仍待与原理图核对 | 用户接线表；区分排针序号、板上丝印、FPGA 封装球号和 HDL 端口，见 R2 |
 | 扩展连接器 CAM1 | 原理图为 40 针双排，提供 34 个 PL I/O；物理针号 20、21 为 3.3 V，40 为 5 V，1、19、22 为 GND | 原理图第 9 页；[所读页](../../tmp/schematic-page-09.png)。核对实物方向后才能用针号 |
 | DDR | 原理图一颗 MT41J256M16、16 位数据总线；配置声明 512 MiB | 第 6 页，[所读页](../../tmp/schematic-page-06.png)；2026-10-11 最小初始化及限定区域检查两次通过，范围见 [PS_BRINGUP](../design/PS_BRINGUP.md)。未全容量逐字节测试，Linux 可用内存未测 |
@@ -77,25 +77,26 @@ DDR 显示的配置、地址和运行入口由 [FRAMEBUFFER](../design/FRAMEBUFF
 
 ## 音频模块连接
 
-核验日期：2026-10-16；范围：用户提供的接线表截图（J3 脚 → JP2 脚 → FPGA 引脚 → 方向）与仓库内 [hdmi.xdc](../../constraints/hdmi.xdc) 的球号对照。未做电气测量、未核对实物针序、本轮未接线。
+核验日期：2026-10-16；范围：用户提供的接线表、模块主控说明（WM8731）与 Z7-NANO_R21.pdf 第 5/13 页逐针核对。未做电气测量、未核对实物丝印方向、本轮未接线。
 
-用户 2026-10-16 提供的接线如下，机器可读副本见 [audio_module.json](../../hardware/z7_nano/audio_module.json)：
+用户 2026-10-16 提供的接线（已与原理图逐针对上）如下，机器可读副本见 [audio_module.json](../../hardware/z7_nano/audio_module.json)：
 
-| J3 脚 | 信号 | → JP2 脚 | FPGA 引脚 | 方向 |
-|---|---|---|---|---|
-| 3 | VW_I2C_SCLK | 15 | B19 | FPGA → 模块 |
-| 4 | VM_I2C_SDAT | 16 | A20 | 双向 |
-| 5 | VM_DACDAT | 17 | C20 | FPGA → 模块 |
-| 6 | VM_BCLK | 13 | H16 | 模块 → FPGA（MRCC 时钟脚） |
-| 7 | VM_ADCDAT | 18 | B20 | 模块 → FPGA |
-| 8 | VM_DADLRC | 14 | H17 | 模块 → FPGA（MRCC） |
-| 9 | VM_ADCLRC | 19 | D19 | 模块 → FPGA |
-| 10 | NC | — | — | 悬空 |
+| J3 脚 | 模块信号 | JP2 脚 | 板级网络 | FPGA 球号 | Bank35 引脚名 | 方向 |
+|---|---|---|---|---|---|---|
+| 3 | VW_I2C_SCLK | 15 | GPIO2_6P | B19 | IO_L2P_T0_AD8P_35 | FPGA → 模块 |
+| 4 | VM_I2C_SDAT | 16 | GPIO2_6N | A20 | IO_L2N_T0_AD8N_35 | 双向 |
+| 5 | VM_DACDAT | 17 | GPIO2_7P | C20 | IO_L1P_T0_AD0P_35 | FPGA → 模块 |
+| 6 | VM_BCLK | 13 | GPIO2_5P | H16 | IO_L13P_T2_MRCC_35 | 模块 → FPGA |
+| 7 | VM_ADCDAT | 18 | GPIO2_7N | B20 | IO_L1N_T0_AD0N_35 | 模块 → FPGA |
+| 8 | VM_DADLRC | 14 | GPIO2_5N | H17 | IO_L13N_T2_MRCC_35 | 模块 → FPGA |
+| 9 | VM_ADCLRC | 19 | GPIO2_8P | D19 | IO_L4P_T0_35 | 模块 → FPGA |
+| 10 | NC | — | — | — | — | 悬空 |
 
-- JP2 针号是用户提供的逻辑针号；实物 1 号脚方向与丝印尚未核对，不能直接按图计数（同 ESP8266 的 JP1 约定）。
-- **接线前门禁**：表中 H16/D19/C20/B19、A20/B20/H17 与 [hdmi.xdc](../../constraints/hdmi.xdc) 已约束为 TMDS 的球号重合（该文件标注 ZYNQ_MINI_REVB；新板显示约束生成在 `output/z7_nano/config/hdmi.xdc`，不在仓库内）。接线或写约束前必须核对新板 HDMI 实际球号与 JP2 球号定义；重叠时改选空闲 I/O。见 [RISKS](RISKS.md) R17 与 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#3-接线前门禁球号与已验收-hdmi-重叠)。
-- 接口读取（**推断**，型号待核实）：模块为 I2S 时钟主（BCLK、DADLRC、ADCLRC 均由模块输出），PL 只能作从机；采集与播放各有独立 LRCLK；控制走 I2C；供电、电平、采样率、位宽与寄存器序列均未核实。
-- 音频约束入口尚未建立；门禁通过前不新增音频 xdc，也不修改现有显示约束。
+- JP2 = CON40A（2x20），在 Bank35，网络前缀 `GPIO2_`；同页 JP1 为 GPIO1（ESP8266 所用）。JP2 电源针：11/12 = `VCC_5V`，29/30 = `VCC_3V3`。
+- 针号是用户提供的逻辑针号；实物 1 号脚方向与丝印尚未核对，不能直接按图计数（同 ESP8266 的 JP1 约定）。
+- **引脚占用已核对：与当前板显示不冲突**。当前板 TMDS 由 [source.json](../../hardware/z7_nano/source.json) 的 `Pins` 定为 Bank34 的 `U18/U19`、`V20/W20`、`T20/U20`、`N20/P20`；音频 7 个信号全在 Bank35 的 JP2 上。仓库内 [hdmi.xdc](../../constraints/hdmi.xdc) 标注 ZYNQ_MINI_REVB（旧板），不是当前板显示约束，不能据此认定冲突。见 [RISKS](RISKS.md) R17 与 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#3-引脚占用核对已核实与当前板显示不冲突)。
+- 接口事实：模块主控为 WM8731（用户说明），工作为 I2S 时钟主（BCLK、DADLRC、ADCLRC 由模块输出），PL 只能作从机；采集与播放各有独立 LRCLK；控制走 I2C；H16/H17 是 MRCC 时钟脚。MCLK 来源、供电/电平、采样率与寄存器序列待核实。
+- 音频约束入口尚未建立；写约束前需先确认模块 MCLK/电平与实物丝印方向。
 
 ## 沿用而不复制的权威配置
 

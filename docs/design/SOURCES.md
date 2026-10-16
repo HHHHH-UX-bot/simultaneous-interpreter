@@ -18,5 +18,6 @@
 | [Android 可访问性](https://developer.android.com/guide/topics/ui/accessibility/apps) | 触控区域、文字对比与控件说明 | dp 不等于本屏硬件像素；本产品采用更大逻辑触控目标并待实屏确认 |
 | [W3C 目标尺寸解释](https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced.html) | 粗指针、触控误差和目标面积 | CSS px 与硬件像素不同，不据此宣布产品整体 WCAG 合规 |
 | [LVGL Button 文档](https://lvgl.io/docs/open/widgets/button) | checked/disabled/focused 等状态与事件 | 将设计映射到原生控件，实际版本与平台待验证 |
+| [Cirrus Logic WM8731 编解码器](https://www.cirrus.com/products/wm8731/) | I2S 数字音频接口、主/从模式与 BCLK/ADCLRC/DACLRC 方向、MCLK 主时钟需求、I2C/SPI 控制口 | 本轮未取得原始 PDF 正文（第三方镜像返回 403），MCLK 频率、寄存器序列与 I2C 从地址须在实施前查原文；芯片手册结论不等于模块板级实现。镜像线索：[alldatasheet](https://www.alldatasheet.co.nz/html-pdf/473988/WOLFSON/WM8731_09/4524/15/WM8731_09.html) |
 
 较旧的板卡参考工程应按源码与硬件配置迁移，不混用旧 XSA/bitstream 与新工具的产物。长期记录版本时写入具体对象和验证范围，避免只记“最新版”。

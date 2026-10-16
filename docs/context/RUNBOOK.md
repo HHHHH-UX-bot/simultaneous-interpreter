@@ -166,7 +166,7 @@ python -B scripts/run_z7_nano_usb_live.py stop
 
 状态：2026-10-16 只有需求与接线记录；接线、约束、构建、下载、测量和屏显改动均**未执行**。接口推断、时延分层定义与门禁见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)。
 
-前置：A0 门禁完成——模块型号/数据手册/供电/电平；JP2 实物针序与 1 号脚方向；接线表球号与当前 HDMI 实际球号不重叠（当前表中 H16/D19/C20/B19、A20/B20/H17 与 [hdmi.xdc](../../constraints/hdmi.xdc) 的 TMDS 球号重合，未核对前不得接线）。
+前置：A0 已完成型号（WM8731）、逐针映射与引脚占用核对（当前板 HDMI 在 Bank34、音频在 Bank35 的 JP2，不重叠）；仍需模块 MCLK 来源与供电/电平，并按板上丝印确认 JP2 的 1 号脚方向（结论写回 [audio_module.json](../../hardware/z7_nano/audio_module.json)）。MCLK 未确认前不接线、不宣告音频通路可用。
 
 操作（每步取得证据后再进入下一步；本轮均未执行）：
 
