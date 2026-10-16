@@ -21,7 +21,7 @@
 | R16 重新下载后的 PS 调试事务错误 | 高速 UART 首次实测通过后，一次重新配置后的启动在 CPU 初始化前报告 DAP AHB 事务错误；完整断电后恢复，屏幕断开时的冷启动和暖重载均通过，随后屏幕/常驻触摸恢复正常 | 根因仍未定位，不归因于波特率或宣布永久修复；CPU 目标不可见时不跳过身份保护，当前证据见 [NOW](NOW.md) |
 | R15 长时连续音频尚未放行 | 一分钟延后 JTAG 观测的 Opus/TLS 收发通过且 UART 零错误；中途观测的一轮发生 RX 溢出，根因未完全确定；30 分钟未验证，旧透传损坏保持未放行 | 两轮证据与范围由 [一分钟持续对照](../design/CLOUD_SPEECH.md#一分钟持续对照)维护；C1-6 已通过 ARM 边消费的短文件，仍须另测长时及控制回复路径，不绕过错误或用单轮结果宣布长期修复 |
 | R17 引脚冲突（已核对，不成立） | 2026-10-16 曾据 [hdmi.xdc](../../constraints/hdmi.xdc)（标注 ZYNQ_MINI_REVB，旧板）判断音频球号与已验收 HDMI 重叠；按 [source.json](../../hardware/z7_nano/source.json) 与 Z7-NANO_R21.pdf 核对后确认：当前板 TMDS 在 Bank34（U18/U19、V20/W20、T20/U20、N20/P20），音频 7 个信号在 Bank35 的 JP2，**不重叠** | 结论已写回 [audio_module.json](../../hardware/z7_nano/audio_module.json)。教训：不得把旧板 xdc 当作当前板引脚事实；换板后引脚以 source.json 为唯一板级记录 |
-| R18 接线表未列 MCLK 线 | WM8731 需要主时钟（MCLK）才能工作并输出 BCLK/ADCLRC/DACLRC，而用户接线表只有 7 根信号、没有 MCLK；模块是否自带振荡器未核实 | 接线与出音验证前先确认模块 MCLK 来源与频率；若模块不自带振荡器，需另接 MCLK 后才能验证回环。不得据“已接 7 根线”宣布音频通路可用。依据见 [SOURCES](../design/SOURCES.md) |
+| R18 模块时钟（MCLK）来源待确认 | 开发板没有音频 codec，也不提供音频时钟（Z7-NANO_R21.pdf 全 15 页无音频页）；用户表中 BCLK 为“模块→FPGA”，说明模块必然自带时钟源（WM8731 主模式需 MCLK 才能输出 BCLK/ADCLRC/DACLRC） | 接线前目视确认模块上的晶振/振荡器及其频率（决定采样率），并确认模块供电与 3.3 V 逻辑电平。若模块实际没有时钟源，则现有 7 根线不足，必须另接 MCLK 后才能验证回环。依据见 [SOURCES](../design/SOURCES.md) 与 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md) |
 
 方案和模拟 UI 可独立使用；硬件阶段按对应放行条件推进，不通过假数据宣称解决任何硬件或模型缺口。
 

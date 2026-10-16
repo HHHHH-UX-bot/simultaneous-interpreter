@@ -96,7 +96,9 @@ DDR 显示的配置、地址和运行入口由 [FRAMEBUFFER](../design/FRAMEBUFF
 - 针号是用户提供的逻辑针号；实物 1 号脚方向与丝印尚未核对，不能直接按图计数（同 ESP8266 的 JP1 约定）。
 - **引脚占用已核对：与当前板显示不冲突**。当前板 TMDS 由 [source.json](../../hardware/z7_nano/source.json) 的 `Pins` 定为 Bank34 的 `U18/U19`、`V20/W20`、`T20/U20`、`N20/P20`；音频 7 个信号全在 Bank35 的 JP2 上。仓库内 [hdmi.xdc](../../constraints/hdmi.xdc) 标注 ZYNQ_MINI_REVB（旧板），不是当前板显示约束，不能据此认定冲突。见 [RISKS](RISKS.md) R17 与 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#3-引脚占用核对已核实与当前板显示不冲突)。
 - 接口事实：模块主控为 WM8731（用户说明），工作为 I2S 时钟主（BCLK、DADLRC、ADCLRC 由模块输出），PL 只能作从机；采集与播放各有独立 LRCLK；控制走 I2C；H16/H17 是 MRCC 时钟脚。MCLK 来源、供电/电平、采样率与寄存器序列待核实。
-- 音频约束入口尚未建立；写约束前需先确认模块 MCLK/电平与实物丝印方向。
+- 板级补充核对（2026-10-16，Z7-NANO_R21.pdf 全 15 页）：①开发板没有音频 codec 或音频时钟，音频全部经 JP2 外接模块；②Bank34 与 Bank35 均由 `VCC_3V3` 供电，PL 侧为 3.3 V 逻辑；③板载 24C32 EEPROM 的 I2C 网络位于 Bank34 网络块（与 `HDMI1_*`、`GPIO1_*` 同块），不占用 JP2 的音频脚。
+- JP2 编号规则（同页核对）：奇数为 P、偶数为 N（pin1=GPIO2_0P，pin2=GPIO2_0N，依此类推，遇电源位列跳号）；第 11/12 针 = `VCC_5V`，第 29/30 针 = `VCC_3V3`。
+- 音频约束入口尚未建立；写约束前需先确认模块时钟与电平，并按实物丝印核对 1 号脚方向。
 
 ## 沿用而不复制的权威配置
 
