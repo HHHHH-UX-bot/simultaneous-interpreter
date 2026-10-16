@@ -46,8 +46,8 @@ DDR 显示的配置、地址和运行入口由 [FRAMEBUFFER](../design/FRAMEBUFF
 | 对象 | 事实或状态 | 来源与限制 |
 |---|---|---|
 | 开发板、器件、屏幕、既有 HDMI 显示 | 沿用同级 HDMI 项目的对象 | [其 MAP](../../../hdmi/docs/context/MAP.md#对象与证据)、[显示验收](../../../hdmi/docs/context/NOW.md#当前进展)；旧结果不替代新项目验收 |
-| 音频模块 | 尚未到货；型号、输入类型、数字协议、采样率和电平均待核实 | 用户当前说明；不得假定是 I2S 或直接分配引脚 |
-| “FPGA20引脚” | 含义待核实 | 可能指连接器针号或接口称呼；不能直接认定为信号线 |
+| 音频模块 | 2026-10-16 用户提供 J3→JP2→FPGA 接线表（I2C 控制 + I2S 采集/播放，共 7 根信号）；型号、供电、电平、采样率与物理针序均待核实 | 用户接线表，映射见[音频模块连接](#音频模块连接)与 [audio_module.json](../../hardware/z7_nano/audio_module.json)；核对前不得接线或分配引脚 |
+| “FPGA20引脚” | 2026-10-16 的音频接线表改用明确的 FPGA 球号与 JP2 针号，旧说法不再引用；球号本身仍待与原理图核对 | 用户接线表；区分排针序号、板上丝印、FPGA 封装球号和 HDL 端口，见 R2 |
 | 扩展连接器 CAM1 | 原理图为 40 针双排，提供 34 个 PL I/O；物理针号 20、21 为 3.3 V，40 为 5 V，1、19、22 为 GND | 原理图第 9 页；[所读页](../../tmp/schematic-page-09.png)。核对实物方向后才能用针号 |
 | DDR | 原理图一颗 MT41J256M16、16 位数据总线；配置声明 512 MiB | 第 6 页，[所读页](../../tmp/schematic-page-06.png)；2026-10-11 最小初始化及限定区域检查两次通过，范围见 [PS_BRINGUP](../design/PS_BRINGUP.md)。未全容量逐字节测试，Linux 可用内存未测 |
 | USB 数据口 | 原理图 P3 连接 USB3320 ULPI PHY，并有 `USBCP_EN` 控制 VBUS；CC1/CC2 接到 `USB_ID` | 第 10 页，[所读页](../../tmp/schematic-page-10.png)；这不证明任意 Type-C 线能进入 Host 模式 |
@@ -75,6 +75,28 @@ DDR 显示的配置、地址和运行入口由 [FRAMEBUFFER](../design/FRAMEBUFF
 
 新增 Wi-Fi 源码位于 rtl、sim 和 scripts；产物及证据放在 output/wifi，中间文件放在 tmp/wifi。实现与接口见 [WIFI_LINK](../design/WIFI_LINK.md)。
 
+## 音频模块连接
+
+核验日期：2026-10-16；范围：用户提供的接线表截图（J3 脚 → JP2 脚 → FPGA 引脚 → 方向）与仓库内 [hdmi.xdc](../../constraints/hdmi.xdc) 的球号对照。未做电气测量、未核对实物针序、本轮未接线。
+
+用户 2026-10-16 提供的接线如下，机器可读副本见 [audio_module.json](../../hardware/z7_nano/audio_module.json)：
+
+| J3 脚 | 信号 | → JP2 脚 | FPGA 引脚 | 方向 |
+|---|---|---|---|---|
+| 3 | VW_I2C_SCLK | 15 | B19 | FPGA → 模块 |
+| 4 | VM_I2C_SDAT | 16 | A20 | 双向 |
+| 5 | VM_DACDAT | 17 | C20 | FPGA → 模块 |
+| 6 | VM_BCLK | 13 | H16 | 模块 → FPGA（MRCC 时钟脚） |
+| 7 | VM_ADCDAT | 18 | B20 | 模块 → FPGA |
+| 8 | VM_DADLRC | 14 | H17 | 模块 → FPGA（MRCC） |
+| 9 | VM_ADCLRC | 19 | D19 | 模块 → FPGA |
+| 10 | NC | — | — | 悬空 |
+
+- JP2 针号是用户提供的逻辑针号；实物 1 号脚方向与丝印尚未核对，不能直接按图计数（同 ESP8266 的 JP1 约定）。
+- **接线前门禁**：表中 H16/D19/C20/B19、A20/B20/H17 与 [hdmi.xdc](../../constraints/hdmi.xdc) 已约束为 TMDS 的球号重合（该文件标注 ZYNQ_MINI_REVB；新板显示约束生成在 `output/z7_nano/config/hdmi.xdc`，不在仓库内）。接线或写约束前必须核对新板 HDMI 实际球号与 JP2 球号定义；重叠时改选空闲 I/O。见 [RISKS](RISKS.md) R17 与 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#3-接线前门禁球号与已验收-hdmi-重叠)。
+- 接口读取（**推断**，型号待核实）：模块为 I2S 时钟主（BCLK、DADLRC、ADCLRC 均由模块输出），PL 只能作从机；采集与播放各有独立 LRCLK；控制走 I2C；供电、电平、采样率、位宽与寄存器序列均未核实。
+- 音频约束入口尚未建立；门禁通过前不新增音频 xdc，也不修改现有显示约束。
+
 ## 沿用而不复制的权威配置
 
 HDMI 引脚、电气连接和当前已验收视频时序以 [HDMI MAP 的硬件与视频配置](../../../hdmi/docs/context/MAP.md#已核对的硬件与视频配置) 为唯一权威表。新项目选择显示方案时按需读取；不复制旧 bitstream 当成新实现。
@@ -100,3 +122,5 @@ Linux 资料只做文件名定位：`02教程文档/LINUX篇/` 含 Ubuntu 虚拟
 2026-10-14 已确认关联账号与本机现有 Git 登录均为 `HHHHH-UX-bot`，创建仓库 [simultaneous-interpreter](https://github.com/HHHHH-UX-bot/simultaneous-interpreter)时为私有。2026-10-15 GitHub API 核验时仓库为公开，本轮未修改可见性；变化时间与原因未核实。本项目独立 Git 根目录、分支 `main`，远程目标为该仓库；当前提交/远端核验见 [Git 结果](../../output/github/publish.json)，流程见 [RUNBOOK](RUNBOOK.md#git-维护)。
 
 [忽略规则](../../.gitignore)将 tmp/output、运行模型/构建产物、密钥/许可证及安装字体留在本地。文档中的这些路径及同级旧 HDMI 工程是本机证据/资料入口，Git 仓库不携带所有运行缓存。[字节规则](../../.gitattributes)保留现有行尾，避免改变绑定源码字节的验证哈希。TinyUSB 许可随裁剪源码保留；本项目未另行声明全部材料可开源再分发。
+
+2026-10-16 用户说明已将仓库 fork 到 `max133777/simultaneous-interpreter`，并要求本次改动以 PR 形式提交。该 fork 的远端地址、可见性、默认分支及与上游的关系尚未核验（待核实）。本轮核对发现：交给本次修改的本地副本是一个解压目录、不含 Git 元数据，不能直接在其中提交或推送。PR 的基线仓库、分支与合并方式以用户当次指令为准，流程见 [RUNBOOK](RUNBOOK.md#git-维护)。

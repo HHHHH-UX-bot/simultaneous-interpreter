@@ -1,0 +1,42 @@
+{
+  "status": "user_provided_unverified",
+  "wiring_confirmation": {
+    "date": "2026-10-16",
+    "source": "user",
+    "form": "接线表截图：J3 脚 -> JP2 脚 -> FPGA 引脚 -> 方向",
+    "electrical_measurement": "not performed",
+    "physical_orientation_checked": false,
+    "module_identity": "型号待核实"
+  },
+  "board": "Z7-Nano R2.0 / xc7z010clg400-1",
+  "module": "音频模块（麦克风输入 + 耳机输出；信号集与 WM8731 类 codec 一致，仅为推断）",
+  "header": "JP2",
+  "signals": [
+    {"module_pin": 3, "net": "VW_I2C_SCLK", "header_pin": 15, "package_pin": "B19", "direction": "FPGA->module", "board_role": "codec 控制时钟"},
+    {"module_pin": 4, "net": "VM_I2C_SDAT", "header_pin": 16, "package_pin": "A20", "direction": "bidirectional", "board_role": "codec 控制数据"},
+    {"module_pin": 5, "net": "VM_DACDAT", "header_pin": 17, "package_pin": "C20", "direction": "FPGA->module", "board_role": "I2S 播放数据（耳机通路）"},
+    {"module_pin": 6, "net": "VM_BCLK", "header_pin": 13, "package_pin": "H16", "direction": "module->FPGA", "board_role": "I2S 位时钟；用户标注 MRCC 时钟脚"},
+    {"module_pin": 7, "net": "VM_ADCDAT", "header_pin": 18, "package_pin": "B20", "direction": "module->FPGA", "board_role": "I2S 采集数据（麦克风通路）"},
+    {"module_pin": 8, "net": "VM_DADLRC", "header_pin": 14, "package_pin": "H17", "direction": "module->FPGA", "board_role": "I2S 播放左右声道时钟；用户标注 MRCC"},
+    {"module_pin": 9, "net": "VM_ADCLRC", "header_pin": 19, "package_pin": "D19", "direction": "module->FPGA", "board_role": "I2S 采集左右声道时钟"}
+  ],
+  "unconnected": [
+    {"module_pin": 10, "note": "NC 悬空（用户标注）"}
+  ],
+  "interface_read": {
+    "kind": "I2S 类数字音频 + I2C 控制（推断）",
+    "clock_master": "模块（BCLK、DADLRC、ADCLRC 均为模块输出，PL 侧只能作从机）",
+    "separate_lrclk": "DAC 与 ADC 各有独立 LRCLK，RTL 需分别处理，不能只接一个 LRCLK",
+    "loopback_possibility": "存在独立 ADC 与 DAC 数据线，可在 PL 内直接做 ADCDAT -> DACDAT 回环",
+    "codec_config": "I2C 主机与寄存器序列待核实；模块上电默认模式是否可用未验证",
+    "unverified": ["型号与数据手册", "供电电压与电流", "I/O 逻辑电平与 Bank 电压", "主从关系与位宽/槽宽/对齐方式", "采样率与 MCLK 需求", "是否需要 I2C 配置才能出声"]
+  },
+  "conflict_check": {
+    "hdmi_tmds_overlap": {
+      "evidence": ["constraints/hdmi.xdc 第 12-15 行：H16=tmds_clk_p、D19=tmds_data_p[0]、C20=tmds_data_p[1]、B19=tmds_data_p[2]（TMDS_33，N 端由 Vivado 派生）", "厂商 F:\\ZYNQ_MINI开发板\\08常用引脚约束文件\\hdmi.xdc 使用同一组球号"],
+      "scope": "该约束文件标注为 ZYNQ_MINI_REVB（旧板）；Z7-Nano 当前显示约束生成在 output/z7_nano/config/hdmi.xdc，不在仓库内",
+      "status": "待核实",
+      "gate": "接线或建立引脚约束前，必须用 Z7-Nano 原理图/实物丝印核对 JP2 各针球号与当前 HDMI 实际球号；若重叠，本表不可用，须改到空闲 I/O"
+    }
+  }
+}

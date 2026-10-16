@@ -17,6 +17,7 @@
 9. 旧 RevB 网络应用能自主关联 ESP8266，并接收电脑通过 TCP 发送的有界模拟字幕和控制；运行入口与边界见 [NETWORK_UI](docs/design/NETWORK_UI.md)。该旧板验收不替代新板网络验证；电脑须处于可访问模块的局域网。
 10. 电脑端已用合成英语音频完成真实识别与中文翻译；模型、文件证据、HTTP 接口和运行方法见 [MODEL_BACKEND](docs/design/MODEL_BACKEND.md)。现有板端演示尚未消费模型译文，单文件结果不代表麦克风或整机效果。
 11. PS 自主调度的加密音频文件收发见 [C1-4](docs/design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)，该历史版本的 WSS 控制和返回解析在电脑。新增 [C1-6](docs/design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)把有界事件消费与真实译文更新移入 ARM；2026-10-16 已通过同一程序的短文件真实云译、像素比对及用户实屏验收，电脑仍负责建连和预装音频。验证与后续入口见 [云接入操作](docs/context/RUNBOOK.md#c-云端语音接入)。
+12. 音频模块已有用户提供的 J3→JP2→FPGA 接线表，近期目标是在板上做麦克风到耳机的实时回环并把延迟显示在屏幕上。接口推断、时延分层定义、接线门禁与分阶段计划见 [AUDIO_LOOPBACK](docs/design/AUDIO_LOOPBACK.md)，接线与球号映射见 [MAP](docs/context/MAP.md#音频模块连接)。回环与延迟屏显**尚未实现、未验收**；接线前必须先排除与已验收 HDMI 的球号重叠（[RISKS](docs/context/RISKS.md) R17）。
 
 界面按目标屏幕的逻辑像素设计，窄窗口会等比例缩放。浏览器鼠标/键盘和板端真实 USB 触摸分别取证，当前板级能力由 NOW 路由。
 

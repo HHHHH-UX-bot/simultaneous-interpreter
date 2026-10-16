@@ -13,6 +13,9 @@
 | 移植或操作当前 Z7-Nano 板卡 | [BOARD_MIGRATION](docs/design/BOARD_MIGRATION.md) | 新板资料、板级入口、迁移顺序及验收范围；旧 RevB 入口不用于新板 |
 | 验证新板 USB Host 与触摸 | [USB_TOUCH](docs/design/USB_TOUCH.md) | 控制器/PHY、坐标、按钮、常驻生命周期与断电恢复 |
 | 连接新板 ESP8266 | [新板接线](docs/design/BOARD_MIGRATION.md#esp8266-新板接线)、[新板 UART](docs/design/BOARD_MIGRATION.md#m5-新板-uart-与自主-at) | JP1 针位、UART/AT 入口及后续网络验证 |
+| 接音频模块、做实时回环与延迟显示 | [AUDIO_LOOPBACK](docs/design/AUDIO_LOOPBACK.md)、[接线与球号](docs/context/MAP.md#音频模块连接)、[A 阶段操作](docs/context/RUNBOOK.md#a-音频实时回环与时延显示后续) | 需求、接口推断、时延分层定义、接线门禁、分阶段计划与验收 |
+| 核对音频引脚是否与已验收 HDMI 冲突 | [风险 R17](docs/context/RISKS.md)、[接线事实](hardware/z7_nano/audio_module.json) | 球号重叠门禁与核对结论的落盘位置 |
+| 调整时延读数在屏幕上的呈现 | [UI_SPEC 时延读数](docs/design/UI_SPEC.md#时延读数)、[测量层级](docs/design/AUDIO_LOOPBACK.md#4-时延测量定义) | 位置、内容、刷新与禁止项 |
 | 理解系统分工、选型、资源和时延预算 | [SYSTEM_PLAN](docs/design/SYSTEM_PLAN.md) | 产品与系统方案 |
 | 接入云端语音翻译、脱离电脑运行 | [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md) | 已选百炼方案、官方接口来源、凭据准备、音频带宽与分阶段接入 |
 | 复盘产品瓶颈、选择后续验证顺序 | [2026-10-15 计划](docs/design/CLOUD_SPEECH.md#2026-10-15-复盘后的验证顺序建议)、[当前系统主线](docs/design/SYSTEM_PLAN.md#当前产品主线与实施取舍) | 建议、依赖、停止条件与预存音频闭环；不是恢复实验或已确认换型 |
