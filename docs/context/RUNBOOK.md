@@ -112,16 +112,16 @@ C1-4 [文件短测工具](../../scripts/pilot_z7_nano_cloud_file.py)运行 `--au
 
 C1-5 的独立 C 解码验证使用 `python -B scripts/validate_cloud_events.py`，需要已配置的本机 GCC 与 ARM 工具链；本轮已执行通过，范围见 [C1-5](../design/CLOUD_SPEECH.md#c1-5-c-端云事件解码)。它编译本机测试和 ARM 对象，不连接板卡或云端；仓库固定样例始终执行，本机完整公开会话样例存在时额外对照。
 
-C1-6 本轮只收尾实现与离线验证。2026-10-15 用户已断开 USB，明确暂缓所有板上验证；不得根据旧 program/Host 记录推断设备仍在线。已在现有 machine 环境执行：
+C1-6 于 2026-10-15 完成实现与离线验证，当时按用户要求暂缓板测；该历史限制已由后续接线恢复及继续指令解除。不得根据旧 program/Host 记录推断设备仍在线。离线阶段在现有 machine 环境执行：
 
 ```powershell
 python -B scripts/validate_cloud_live.py
 python -B scripts/run_z7_nano_network.py build-app
 ```
 
-前者编译实际 C 帧/事件/UI 链路，回放公开消息，执行私有 Tcl RPC 的模拟目标检查和现有 Python 传输检查，再用实际渲染器生成离线预览；不使用 JTAG、网络或 Key。后者仅编译 ARM 应用，复用既有 PL；字体和相关 UI/网络检查必须与当前输入一致，不能手工改哈希绕过。阶段证据与边界由 [C1-6](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕离线阶段)维护。
+前者编译实际 C 帧/事件/UI 链路，回放公开消息，执行私有 Tcl RPC 的模拟目标检查和现有 Python 传输检查，再用实际渲染器生成离线预览；不使用 JTAG、网络或 Key。后者仅编译 ARM 应用，复用既有 PL；字体和相关 UI/网络检查必须与当前输入一致，不能手工改哈希绕过。阶段证据与边界由 [C1-6](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)维护。
 
-以下属于后续板测，**本轮未执行**：用户恢复接线并通知后先按上方 DONE/USR_ACCESS 流程核对实际状态，再依匹配程序恢复显示/触摸。通过后，文件工具增加 `--onboard-ui`，使用已有短参考 WAV 和隐藏 Key；该参数自动延后 JTAG 观测，ARM 消费事件，电脑不再取整段 RX 留存。仍由电脑建 TLS/WSS、提供预编码文件和 32 枚随机控制掩码。每次文件任务先停用旧 consumer；成功后保留最终字幕，释放 PS、关闭 TCP 并恢复 MUX0。核对非空原译、定稿/字节核账、实际像素与用户实屏，才可放行当前阶段；不要直接进入长测或后续产品功能。
+2026-10-16 已执行板测：先以 DONE/USR_ACCESS 核对状态，停 USB DMA 后按既有流程配置/运行匹配程序，恢复显示及常驻触摸并取得用户验收。ESP 缺线造成的首次 AT 超时，在用户接好后通过同版重启恢复；再完成无 Key TLS 身份对照。实际执行 `python -B scripts/pilot_z7_nano_cloud_file.py --audio output/model_backend/fixtures/english_reference.wav --onboard-ui --credentials-stdin`，凭据只经隐藏输入提供。`--onboard-ui` 自动延后 JTAG 观测，由 ARM 消费云事件；电脑仍负责 TLS/WSS 初始化、预编码文件和 32 枚随机控制掩码。每次任务先停旧 consumer，成功后保留最终字幕，释放 PS、关闭 TCP 并恢复 MUX0。本次完成非空原译、定稿/字节核账、实际像素及用户实屏验收，并观测一次栈写水位；数值、固定证据与未覆盖范围由 C1-6 专题维护。继续时重新确认实际目标和运行状态，不直接进入长测或把该命令当作独立启动流程。
 
 C1-0 入口为 [固定查询工具](../../scripts/probe_z7_nano_capabilities.py)。在项目根目录选择 machine 环境；前置是匹配的 Z7N3 平台、当前源码验证和 ARM 构建。重新下载依次 stop Host → program → run；之后执行下列已实测命令：
 

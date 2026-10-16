@@ -4,7 +4,7 @@
 
 长期目标是形成语音进入板卡、Wi-Fi 直接调用云端语音翻译、中文字幕上屏、触摸交互的独立产品，使用时不依赖电脑。2026-10-14 用户选择阿里百炼一体方案，见 [D13](DECISIONS.md#d13-云端语音翻译与独立终端)和[CLOUD_SPEECH](../design/CLOUD_SPEECH.md)；旧系统方案保留历史范围。
 
-本轮只收尾 [C1-6 ARM 云事件到字幕的离线阶段](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕离线阶段)。2026-10-15 用户明确 USB 已断开、人不在电脑旁，暂停所有板上验证，完成当前阶段的其余实现/离线检查后提交 GitHub；不是要求本轮完成整个产品。新 ELF 未下载，设备当前运行状态不由旧记录推断。
+当前 [C1-6 ARM 云事件到字幕](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)阶段已通过。2026-10-16 同一集成 ELF 已完成公开短音频的真实云译、ARM 原译配对和字幕上屏；用户确认“显示正确，清楚稳定”。当前保持最终译文与常驻触摸任务运行，板测与实屏范围见 [板上阶段](../../output/z7_nano/cloud_live/board_stage.json)。本轮只收尾当前阶段并同步 GitHub。
 
 2026-10-13 用户更换为 Z7-Nano 7010，并要求移植现有工程，见 [D9](DECISIONS.md#d9-换为-z7-nano-7010-并继续产品迁移)。[板级迁移](../design/BOARD_MIGRATION.md)已取得显示、PS/DDR、动态中文、USB 触摸与基本网络的分项证据；当前实施缺口集中在板端云连接、连续音频、完整字库及独立启动。旧 RevB 的验收仅属于旧板；电脑 P5 文件推理及接口证据可保留原范围。
 
@@ -40,11 +40,11 @@ C2-PC 已完成同一公开音频的 Qwen3.8 PCM、Qwen3.5 PCM、Qwen3.5 Ogg/Opu
 
 2026-10-15 用户指定 CYEA 并恢复实施。板卡临时配置已丢失，已重新加载原位流和相同 ARM 固件，整帧比较通过，常驻触摸重新启动；用户确认画面正常、主按钮和 A+ 正确响应，见 [本次恢复](../../output/z7_nano/usb/restore_20261015.json)。已修复同板新配置被旧 Host 记录阻挡的接续问题，保留实际 CPU1 停止与 DMA Halt 检查，见 [限定复核](../../output/z7_nano/usb/restart_review.json)。
 
-C1-2 已完成 CYEA 关联、DNS、时间同步、原 CA 备份及 GlobalSign R3 安装/回读，无 Key 可信 TLS 对照通过。[C1-3](../design/CLOUD_SPEECH.md#c1-3-esp8266-云端-wss-会话)进一步实测通过 ESP8266 到百炼的 WSS 鉴权/中文纯文本会话配置。随后 JTAG 逐字节音频诊断因发送严重落后而未通过，模块已恢复 AT、连接关闭、MUX0/auth2 和零 UART 错误；不再重复该音频路径。后续 [C1-4](../design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)已通过 ARM 自主调度的 9.025 秒 Ogg/Opus 加密文件收发，得到完整转写与中文定稿，收尾释放/关闭均确认、UART 错误为零。首轮镜像发布交接问题已定位修复，同版重复执行通过。WSS 控制和云事件解析仍在电脑，屏幕仍为演示字幕。短测程序和实屏验收见 [本版](../../output/z7_nano/stream/user_acceptance.json)。后续 512 KiB 程序的一分钟上传在中途 JTAG 轮询时溢出；断电恢复后，延后观测的同音频对照通过，752 帧全部确认，UART 错误为零，用户确认画面与按钮正常。范围与两轮证据由 [一分钟持续对照](../design/CLOUD_SPEECH.md#一分钟持续对照)维护，不把单次通过当作长期修复。[C 端事件解码](../design/CLOUD_SPEECH.md#c1-5-c-端云事件解码)已本机验证并完成 ARM 对象编译，尚未接入板上程序。
+C1-2 已完成 CYEA 关联、DNS、时间同步、原 CA 备份及 GlobalSign R3 安装/回读，无 Key 可信 TLS 对照通过。[C1-3](../design/CLOUD_SPEECH.md#c1-3-esp8266-云端-wss-会话)进一步实测通过 ESP8266 到百炼的 WSS 鉴权/中文纯文本会话配置。随后 JTAG 逐字节音频诊断因发送严重落后而未通过，模块已恢复 AT、连接关闭、MUX0/auth2 和零 UART 错误；不再重复该音频路径。后续 [C1-4](../design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)已通过 ARM 自主调度的 9.025 秒 Ogg/Opus 加密文件收发，得到完整转写与中文定稿，收尾释放/关闭均确认、UART 错误为零。首轮镜像发布交接问题已定位修复，同版重复执行通过。WSS 控制和云事件解析仍在电脑，屏幕仍为演示字幕。短测程序和实屏验收见 [本版](../../output/z7_nano/stream/user_acceptance.json)。后续 512 KiB 程序的一分钟上传在中途 JTAG 轮询时溢出；断电恢复后，延后观测的同音频对照通过，752 帧全部确认，UART 错误为零，用户确认画面与按钮正常。范围与两轮证据由 [一分钟持续对照](../design/CLOUD_SPEECH.md#一分钟持续对照)维护，不把单次通过当作长期修复。[C 端事件解码](../design/CLOUD_SPEECH.md#c1-5-c-端云事件解码)独立阶段完成本机验证及 ARM 对象编译；后续集成与板上验收见下方 C1-6。
 
-C1-6 已完成有界 WebSocket 接收、原译 ID/epoch 配对、字形保护和现有字幕模型接入；离线回放、实际 C 渲染、ARM 链接及独立复核通过，证据由 [当前离线阶段](../../output/z7_nano/cloud_live/offline_stage.json)与 [C1-6 专题](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕离线阶段)维护。复用原 PL，未下载新程序、未执行新一轮真实云文件/显示/触摸验证。旧 C1-4 的板端运行和实屏证据保持原范围。
+C1-6 的实现、离线验证、ARM 编译和独立复核见 [离线阶段](../../output/z7_nano/cloud_live/offline_stage.json)；后续同一程序的 TLS、短文件真实字幕、实际像素及用户验收见 [板上阶段](../../output/z7_nano/cloud_live/board_stage.json)。具体数值和能力边界统一由 [C1-6 专题](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)维护，仍依赖电脑初始化云会话与预装音频。
 
-P5c-0 DeepSeek 独立文本已实测：17 项离线验证和独立复核通过，操作者隐藏输入密钥后，一条公开英语参考文本取得完整中文，耗时 6.297 秒；见 [MODEL_BACKEND](../design/MODEL_BACKEND.md#p5c-0-deepseek-独立文本翻译)。尚未接入 ASR/HTTP 或上屏，人工译文质量与流式首字时延待验收；参考译文的三个缺字已在 C1-6 补齐，但尚未实屏验证。历史选择由 [D11](DECISIONS.md#d11-中文翻译优先使用-deepseek-api)维护，当前主线为 D13 百炼。
+P5c-0 DeepSeek 独立文本已实测：17 项离线验证和独立复核通过，操作者隐藏输入密钥后，一条公开英语参考文本取得完整中文，耗时 6.297 秒；见 [MODEL_BACKEND](../design/MODEL_BACKEND.md#p5c-0-deepseek-独立文本翻译)。尚未接入 ASR/HTTP 或上屏，人工译文质量与流式首字时延待验收；参考译文的三个缺字已在 C1-6 补齐；本次云文件实屏覆盖范围以 C1-6 为准，不等于 DeepSeek 上屏验收。历史选择由 [D11](DECISIONS.md#d11-中文翻译优先使用-deepseek-api)维护，当前主线为 D13 百炼。
 
 用户授权维护 Git 和上传关联 GitHub 账号。首次 241 个源码/文档文件已提交并推送私有仓库，远程 main 与本地一致；后续上传核验由 [Git 结果](../../output/github/publish.json)维护，仓库映射见 [MAP](MAP.md#git-与-github)。
 
@@ -66,7 +66,7 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 
 ## 下一步
 
-当前离线阶段收尾后提交并推送，停止本轮工作。等用户恢复 USB 接线并通知，再先核对实际 JTAG 配置状态，按 [RUNBOOK C](RUNBOOK.md#c-云端语音接入)恢复同一集成版显示/常驻触摸，接着验证短参考文件的真实译文上屏、字节核账、释放/关闭和用户实屏。新代码已编译不等于已安装；不得按最新 app_build 伪造运行状态，也不因旧 Host 清单直接访问未配置 PL。30 分钟、ARM TLS/WSS 自主初始化、实时编码与麦克风均属后续阶段，本轮不扩展。系统主线见 [SYSTEM_PLAN](../design/SYSTEM_PLAN.md#当前产品主线与实施取舍)，精简实现要求见 [AGENTS](../../AGENTS.md#实现与换板约定)。
+当前阶段已完成，继续时优先将 TLS/WSS 初始化和会话控制移入 ARM，先明确设备凭据、随机掩码熵及启动/停止生命周期，再做短文件对照；详细边界见 [C1-6](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)。长时、麦克风、独立启动仍未验收，音频模块到货与接口待核实。系统主线见 [SYSTEM_PLAN](../design/SYSTEM_PLAN.md#当前产品主线与实施取舍)，精简实现要求见 [AGENTS](../../AGENTS.md#实现与换板约定)。
 
 2026-10-14 的额度暂停点保留为 [历史接续记录](../../output/z7_nano/upload/pause.json)，现已被本次继续指令解除。Git 维护授权继续有效；本轮源码、限定测试与进度在核对后同步，远端核验由 [Git 结果](../../output/github/publish.json)维护。
 

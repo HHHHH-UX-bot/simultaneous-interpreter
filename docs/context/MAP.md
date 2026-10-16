@@ -26,7 +26,7 @@
 | `software/model_backend/`、`output/model_backend/` | 电脑 CPU ASR/MT 与独立云文本翻译的对照试验、依赖锁、文件接口证据 | 已建立；由 MODEL_BACKEND 维护；最终云语音方案由 CLOUD_SPEECH 维护，不是最终电脑运行依赖 |
 | `software/network_ui/stream_pilot.*`、`scripts/pilot_z7_nano_cloud_file.py`、`output/z7_nano/stream/` | ARM 定时加密音频文件短测、公开状态与取证 | 内存地址、范围与方法见 [C1-4](../design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)；不属于已完成自主云客户端 |
 | `software/network_ui/cloud_events.*`、`third_party/jsmn/`、`output/z7_nano/cloud_events/` | 有界 C 事件解码、固定上游来源及公开样例验证 | [C1-5](../design/CLOUD_SPEECH.md#c1-5-c-端云事件解码)维护解码范围，集成见 C1-6 |
-| `software/network_ui/cloud_frame.c`、`cloud_wire.*`、`cloud_live.*`、`third_party/wslay/`、`output/z7_nano/cloud_live/` | 帧重组、原译 ID 配对、字幕消费与离线阶段证据 | [C1-6](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕离线阶段)维护内存分区、栈与边界；尚未下载新程序 |
+| `software/network_ui/cloud_frame.c`、`cloud_wire.*`、`cloud_live.*`、`third_party/wslay/`、`output/z7_nano/cloud_live/` | 帧重组、原译 ID 配对、字幕消费与离线/板上阶段证据 | [C1-6](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)维护内存分区、栈与边界；当前 ELF 短文件云译上屏已验收 |
 | `hardware/z7_nano/`、`output/z7_nano/` | 新板权威配置、独立构建/下载与 PS 验证产物 | 2026-10-13 建立；方法见 BOARD_MIGRATION，当前验收见 NOW |
 | `tmp/` | 必要中间脚本与选定原理图页 | 已建立，不作为长期规则来源 |
 

@@ -145,15 +145,15 @@ CA 更新已完成：[完整 8192 字节备份](../../output/z7_nano/tls/attempt
 
 已新增 [cloud_events.c](../../software/network_ui/cloud_events.c)和 [接口](../../software/network_ui/cloud_events.h)：对一条完成重组的 JSON 文本，提取英语定稿、中文文本、response 完成状态、会话结束与错误码；其余事件忽略。输入上限 4096 B、128 token、文本 255 个 Unicode scalar，保留 item_id/response_id，处理 UTF-8 与 JSON Unicode 转义，无堆分配。JSON 分词沿用上游 [jsmn v1.1.0](https://github.com/zserge/jsmn/tree/v1.1.0)，固定提交与未改动源码哈希见 [来源](../../third_party/jsmn/source.json)，保留 [MIT 许可](../../third_party/jsmn/LICENSE)。它是可信 API 消息的定向提取器，不承诺完整 JSON 语法校验。
 
-[验证](../../output/z7_nano/cloud_events/validation.json)覆盖 25 项定向边界及 1929 条与 Python JSON 结果的格式对照，包含已完成一分钟会话提取的 627 条公开事件和 [固定样例](../../tests/fixtures/cloud_events_reference.jsonl)的键序/Unicode 变体。C1-6 扩展了 `conversation.item.created` 的 `previous_item_id` 提取，重新从同一次已完成的公开会话读取关联字段；[新样例清单](../../output/z7_nano/cloud_events/linked_fixture.json)仅保留允许的字段，没有新调用 API、保存原始串口或私人音频。仓库保留 16 条固定样例，可独立复现 48 种格式对照；完整会话样例保存在本机 output，不随源码上传。当前对象代码 4893 B；完整集成编译与待板测状态见 C1-6。
+[验证](../../output/z7_nano/cloud_events/validation.json)覆盖 25 项定向边界及 1929 条与 Python JSON 结果的格式对照，包含已完成一分钟会话提取的 627 条公开事件和 [固定样例](../../tests/fixtures/cloud_events_reference.jsonl)的键序/Unicode 变体。C1-6 扩展了 `conversation.item.created` 的 `previous_item_id` 提取，重新从同一次已完成的公开会话读取关联字段；[新样例清单](../../output/z7_nano/cloud_events/linked_fixture.json)仅保留允许的字段，没有新调用 API、保存原始串口或私人音频。仓库保留 16 条固定样例，可独立复现 48 种格式对照；完整会话样例保存在本机 output，不随源码上传。当前对象代码 4893 B；完整集成编译与板测范围见 C1-6。
 
 [最初独立复核](../../output/z7_nano/cloud_events/review.json)发现并修复了等价 JSON 转义的字段比较问题；字段名、type/status 统一复用 Unicode 解码比较，相关重复字段拒绝。该版 37 个聚焦回归和 4573 B 对象已由 [C1-5 阶段](../../output/z7_nano/cloud_events/stage.json)保留；本次集成的复核另见 C1-6，不把旧哈希当成当前通过。
 
 `cloud_event_parse` 自身静态栈帧仍为 2608 B。旧 OCM 布局无法直接容纳集成；C1-6 已分离 DDR 代码与有界运行区，并完成新 ELF 的静态布局检查。对象编译和链接均不计作板上执行。
 
-## C1-6 ARM 云事件到字幕离线阶段
+## C1-6 ARM 云事件到字幕
 
-2026-10-15 完成当前阶段的实现、离线验证和 ARM 编译。用户随后明确断开 USB、人不在场，本轮只收尾当前阶段并提交 GitHub，**新 ELF 未下载，板测与实屏尚未执行**。阶段结果及固定产物哈希见 [离线阶段](../../output/z7_nano/cloud_live/offline_stage.json)；不替代 C1-4 已验收的旧运行程序。
+2026-10-15 完成实现、离线验证和 ARM 编译，当时按用户要求暂缓板测；[离线阶段](../../output/z7_nano/cloud_live/offline_stage.json)保留该历史范围。2026-10-16 接线恢复后，同一 ELF 已完成真实云文件消费和 HDMI 用户验收，当前阶段通过；[板上阶段](../../output/z7_nano/cloud_live/board_stage.json)绑定同一次配置、程序和证据。
 
 [cloud_frame.c](../../software/network_ui/cloud_frame.c)以单个固定上下文适配上游 [wslay 1.1.1](https://github.com/tatsuhiro-t/wslay/tree/release-1.1.1)帧处理，固定提交、逐文件哈希及许可见 [来源](../../third_party/wslay/source.json)和 [COPYING](../../third_party/wslay/COPYING)，上游文件未改动。[cloud_wire.c](../../software/network_ui/cloud_wire.c)重组最大 4096 B 文本，支持分片间插入控制帧；同批未回复 PING 合并为最新 PONG，CLOSE 优先。控制回复使用电脑经私有管道一次提供的 32 枚新随机掩码；没有堆分配、无限队列或整段会话 RX 留存。
 
@@ -177,7 +177,17 @@ CA 更新已完成：[完整 8192 字节备份](../../output/z7_nano/tls/attempt
 
 [本机验证](../../output/z7_nano/cloud_live/host_validation.json)通过 29 项检查：627 条真实公开事件回放形成 14 组定稿，实际 C 状态进入既有渲染器后零缺字、零裁切，见 [离线渲染](../../output/z7_nano/cloud_live/native_cloud_caption.png)。另执行真实 Tcl RPC 循环的模拟目标检查 4 项、Python 传输/交接检查 8 项，原发送器 241 项回归通过。独立审查修复控制回复、重复原文、stop/旧报告、consumer 切换、缺字与空白成功判据，12 组定点复核通过，无未解决 Critical/Important，见 [本阶段复核](../../output/z7_nano/cloud_live/stages/offline_20261015T144257685619Z/review.json)。这些都不是板上、TLS 吞吐、触摸或 HDMI 验收。
 
-当前停止点：电脑仍负责 TLS/WSS 初始化、预编码音频及掩码熵，部分 UI 状态文案仍为演示占位。待用户恢复接线后，先验证同一集成版的显示/触摸，再用 `--onboard-ui` 做 9.025 秒真实文件译文上屏、核账和收尾。该短测、动态栈水位和用户实屏通过前，不进入 30 分钟、ARM 自主建连、麦克风或独立启动；操作由 [RUNBOOK](../context/RUNBOOK.md#c-云端语音接入)维护。
+### 2026-10-16 板上短文件验证
+
+首次恢复时 ESP8266 部分线未接，AT 超时、RX 为零，TLS 预检没有进入鉴权或音频发送。用户接好四线后，停 USB DMA、重新下载同一程序并恢复显示/触摸，AT/GMR 正常；没有为接线问题修改软件。无 Key TLS 预检完成可信正例、错误身份拒绝、正例复测，见板上阶段内固定记录。
+
+使用 `--onboard-ui` 上传 9.025 秒公开英语文件，经 ESP8266 可信 TLS/WSS 调用 `qwen3.5-livetranslate-flash-realtime`。ARM 接收 91 条消息，原文/译文各两次定稿，实际提交两组字幕；115 帧发送 62419 B，接收 23502 B，UART 溢出与帧错误均为零。PS 调度发送用时 9036 ms、最大调度滞后 335 ms；电脑延后观察到完成的 14.75 秒不代表云端首字或翻译时延。预编码帧装载及回读另耗 29.219 秒，不计入实时发送。
+
+最后原文为 “We will leave a little time for questions after the presentation.”，中文为“我们会留一点时间在演讲结束后回答问题。”。用户核对实际 HDMI 中央文字及右侧定稿数 2，确认“显示正确，清楚稳定”。板上捕获与本机渲染比较 614400 像素零差异、零缺字和裁切。试验前主按钮/A+ 已获用户验收，结束后 CPU0 与常驻 USB Host 均运行；没有将此记录扩展为上传期间实际触摸按钮验收。
+
+本次实际栈写水位在 7408 B 栈底的 4096 B 标记区观测到 2860 B 未触及前缀，写入深度为 4548 B。本次收到 PING 为零，该观测不是所有调用路径的 SP 上界，也不替代长时压力验证。任务已释放 PS、关闭 TCP 并恢复 MUX0，最终真实译文保留在屏上。固定结果、像素图、栈观测和两项用户验收均由板上阶段清单路由并记录哈希。
+
+当前边界：电脑仍负责 TLS/WSS 初始化、预编码音频及控制掩码熵，340 字字库仅覆盖受控子集，部分 UI 状态文案仍为演示占位。当前阶段完成，不代表完整 ARM 云客户端、真实采音、30 分钟或独立启动完成。下一阶段建议先移入 ARM 建连与会话控制，明确设备凭据/熵来源和会话生命周期，再验证短文件，随后才测长时与真实采音；操作由 [RUNBOOK](../context/RUNBOOK.md#c-云端语音接入)维护。
 
 ## C2-PC 受控音频云端对照
 
