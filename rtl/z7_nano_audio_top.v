@@ -176,9 +176,20 @@ module z7_nano_audio_top (
         .text_pixels(overlay_pixels));
 
     // --- TMDS output (same transmitter and timing as the accepted design) --
+    // The overlay registers the RGB passthrough, so DE/HS/VS get the same
+    // one-pixel delay; otherwise the rightmost pixel of every line wraps.
+    reg video_de_d, video_hs_d, video_vs_d;
+    always @(posedge pixel_clk) begin
+        if (video_reset) begin
+            video_de_d <= 1'b0; video_hs_d <= 1'b0; video_vs_d <= 1'b0;
+        end else begin
+            video_de_d <= video_de; video_hs_d <= video_hs; video_vs_d <= video_vs;
+        end
+    end
+
     dvi_transmitter_top u_transmitter(.pclk(pixel_clk), .pclk_x5(serial_clk_5x),
-        .reset_n(sys_rst_n & locked), .video_in(video_rgb_overlay), .video_h_sync(video_hs),
-        .video_v_sync(video_vs), .video_de(video_de),
+        .reset_n(sys_rst_n & locked), .video_in(video_rgb_overlay), .video_h_sync(video_hs_d),
+        .video_v_sync(video_vs_d), .video_de(video_de_d),
         .tmds_clk_p(tmds_clk_p), .tmds_clk_n(tmds_clk_n),
         .tmds_data_p(tmds_data_p), .tmds_data_n(tmds_data_n), .tmds_oen());
 

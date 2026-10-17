@@ -59,9 +59,9 @@ module wm8731_init #(
 
     reg [3:0]  tstate;
     reg [4:0]  step;
+    reg [16:0] wait_cnt;
     reg [2:0]  attempts;
     reg [19:0] retry_cnt;
-    reg [16:0] wait_cnt;
     reg        start_issued;
 
     // --- I2C master ---------------------------------------------------------
@@ -176,7 +176,9 @@ module wm8731_init #(
                         start_issued <= 1'b1;
                     end else if (start_issued && i2c_done) begin
                         start_issued <= 1'b0;
-                        if (i2c_ack_error) begin
+                        // The software-reset write (R15) can legally lose its ACK because
+                        // the codec resets itself before acknowledging it.
+                        if (i2c_ack_error && step != 5'd0) begin
                             error  <= 1'b1;
                             tstate <= T_FAIL;
                         end else begin
