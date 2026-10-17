@@ -6,7 +6,7 @@ static wifi_write_fn reg_write;
 static char response[512];
 static uint32_t response_size,step,tx_pos,deadline;
 static const char *pending;
-static const char *const commands[]={"AT\r\n","ATE0\r\n","AT\r\n","AT+GMR\r\n"
+static const char *const commands[]={"\rAT\r\n","\rATE0\r\n","\rAT\r\n","\rAT+GMR\r\n"
 #ifdef Z7_UART_921600
     ,"AT+UART_CUR?\r\n"
 #endif
