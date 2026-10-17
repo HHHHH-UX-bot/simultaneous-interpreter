@@ -2,11 +2,13 @@
 #include "network.h"
 #include "stream_pilot.h"
 #include "cloud_live.h"
+#include "cloud_client.h"
 #include "../subtitle_ui/ui_demo.h"
 #include "../subtitle_ui/ui_render.h"
 static void render_service(void);
-static uint32_t uart_read(uint32_t offset) {return *(volatile uint32_t *)(0x43c20000u+offset);}
-static void uart_write(uint32_t offset,uint32_t value) {*(volatile uint32_t *)(0x43c20000u+offset)=value;}
+/* Combined audio + ESP platform: audio registers at 0x43c20000, ESP UART at 0x43c30000. */
+static uint32_t uart_read(uint32_t offset) {return *(volatile uint32_t *)(0x43c30000u+offset);}
+static void uart_write(uint32_t offset,uint32_t value) {*(volatile uint32_t *)(0x43c30000u+offset)=value;}
 __attribute__((section(".network_upload_control"),used)) volatile uint32_t network_upload_duration;
 static uint32_t service_ms,wifi_service_ms,upload_start,upload_sequence,upload_ready,upload_sent_ms;
 static uint8_t upload[1536];
@@ -36,6 +38,7 @@ static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_
     ui_demo_init(c,s,now);wifi_probe_init(uart_read,uart_write,now);network_init(uart_read,uart_write);
     stream_pilot_init((const uint8_t *)STREAM_PILOT_TX_ADDRESS,(uint8_t *)STREAM_PILOT_RX_ADDRESS);
     cloud_live_init(s);
+    cloud_client_init();
     service_ms=now-1u;wifi_service_ms=now-200u;network_upload_duration=upload_sequence=upload_ready=0;
     ui_render_set_service(render_service);
 #ifdef Z7_UART_921600
@@ -53,6 +56,8 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
     network_tick(s,now);
 #endif
     cloud_live_tick(now);
+    if(network_info.phase==8u) cloud_client_start();
+    cloud_client_tick(now);
     if(stream_pilot.request || stream_pilot.phase) stream_pilot_tick(now);else upload_tick(now);
 }
 static void network_demo_tick(struct ui_demo_clock *c,struct ui_state *s,uint32_t now) {

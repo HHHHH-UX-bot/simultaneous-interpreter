@@ -3,6 +3,7 @@
 #include "cloud_events.h"
 #include "network.h"
 #include "stream_pilot.h"
+#include "cloud_client.h"
 #include "protocol.h"
 #include <string.h>
 #define CLOUD_PAIRS 4u
@@ -69,7 +70,7 @@ static void cloud_commit(void) {
         ++cloud.live.committed;memset(p,0,sizeof(*p));
     }
 }
-static int cloud_message(const char *json,uint32_t size,void *user) {
+int cloud_live_message(const char *json,uint32_t size,void *user) {
     (void)user;
     struct cloud_event *e=&cloud.event;
     enum cloud_parse_code parsed=cloud_event_parse(json,size,e);
@@ -100,7 +101,7 @@ static int cloud_message(const char *json,uint32_t size,void *user) {
         if(p) {memcpy(p->source,e->text,sizeof(p->source));p->source_ready=1;}
         for(uint32_t i=0;i<8;++i) if(cloud_same(cloud.links[i].item,e->item_id)) cloud.links[i].item[0]=0;
     } else if(e->kind==CLOUD_TRANSLATION) {
-        ++cloud.live.translations;p=cloud_pair_find(e->item_id,1,0);
+        ++cloud.live.translations;cloud_client_translation(0);p=cloud_pair_find(e->item_id,1,0);
         if(!p) {
             for(uint32_t i=0;i<8;++i) if(cloud_same(cloud.links[i].item,e->item_id)) {
                 p=cloud_pair_find(cloud.links[i].previous,0,1);
@@ -131,7 +132,7 @@ void cloud_live_tick(uint32_t now) {
                 struct ui_state *model=cloud.model;memset(&cloud,0,sizeof(cloud));cloud.model=model;
                 cloud.live.magic=0x31564c43u;cloud.live.phase=1;cloud.live.ack=1;cloud.report_ms=now-200;
                 (void)ui_control(model,UI_CLEAR);(void)ui_control(model,UI_START);cloud.live.epoch=model->epoch;
-                memset((void *)&cloud_caption,0,sizeof(cloud_caption));cloud_wire_init(cloud_message,0);
+                memset((void *)&cloud_caption,0,sizeof(cloud_caption));cloud_wire_init(cloud_live_message,0);
                 stream_pilot_set_receiver(cloud_receive);
             } else if(request==2) {cloud.live.phase=0;cloud.live.error=0;cloud.live.ack=2;stream_pilot_set_receiver(0);}
         }

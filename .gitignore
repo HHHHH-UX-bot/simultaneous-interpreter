@@ -14,6 +14,11 @@
 *.zip
 *.7z
 
+# Simulator and Vivado scratch left behind by tools that use the working directory.
+xsim.dir/
+*.pb
+.Xil/
+
 # Credentials, licenses and private configuration.
 .env
 .env.*
