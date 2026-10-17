@@ -54,10 +54,11 @@ module i2s_master_loopback #(
     // keeps the FIFO two frames deep without counting a spurious overrun.
     wire       push_ok = (occ < DEPTH) || pop_ok;
 
-    // The bit to drive for the upcoming bit period. I2S left-justifies each
-    // sample one BCLK after its LRCLK transition, which the {sample, 16'b0}
-    // layout gives for free.
-    wire [63:0] tx_aligned = tx_frame >> (6'd63 - nxt);
+    // The bit to drive for the upcoming bit period. I2S puts the MSB of each
+    // sample one BCLK AFTER its LRCLK transition, so the frame is shifted by
+    // one extra bit (the leading zero is that mandatory delay bit).
+    wire [64:0] tx_shift = {tx_frame, 1'b0};
+    wire [64:0] tx_aligned = tx_shift >> (7'd64 - nxt);
 
     assign live = primed;
 

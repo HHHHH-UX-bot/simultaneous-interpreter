@@ -138,6 +138,22 @@ module z7_nano_audio_top (
         .codec_found(codec_found), .addr_sel(codec_addr_sel), .regs_written(regs_written),
         .scl_low(scl_low), .sda_low(sda_low), .sda_in(sda_in));
 
+    // Fixed 1 kHz test tone into the loopback: proves the codec DAC, the
+    // volume registers and the headphone path without relying on the microphone.
+    reg [15:0] tone_div;
+    reg        tone_bit;
+    always @(posedge pixel_clk) begin
+        if (!(sys_rst_n & locked)) begin
+            tone_div <= 16'd0;
+            tone_bit <= 1'b0;
+        end else if (tone_div == 16'd24999) begin
+            tone_div <= 16'd0;
+            tone_bit <= ~tone_bit;
+        end else begin
+            tone_div <= tone_div + 1'b1;
+        end
+    end
+
     // --- I2S master loopback ----------------------------------------------
     // The module supplies only MCLK from its own crystal, so the PL drives
     // BCLK and both LRCLKs: BCLK = 50 MHz / 16 = 3.125 MHz, 64 BCLK per frame
@@ -145,7 +161,8 @@ module z7_nano_audio_top (
     i2s_master_loopback #(.DIV(16), .SLOT(32), .DEPTH(2)) u_loopback(
         .clk(pixel_clk), .reset_n(sys_rst_n & locked),
         .enable(init_done & ~init_error),
-        .bclk(i2s_bclk), .lrclk(i2s_lrclk), .dacdat(i2s_dacdat), .adcdat(i2s_adcdat),
+        .bclk(i2s_bclk), .lrclk(i2s_lrclk), .dacdat(i2s_dacdat),
+        .adcdat(tone_bit),   // TEST TONE: replace with i2s_adcdat for the microphone
         .occ_frames(occ_frames), .latency_cycles(latency_cycles),
         .adc_frames(adc_frames), .dac_frames(dac_frames),
         .overruns(overruns), .underruns(underruns), .bclk_cycles(bclk_cycles),
