@@ -2,6 +2,7 @@
 #include "network.h"
 #include "stream_pilot.h"
 #include "cloud_live.h"
+#include "cloud_client.h"
 #include "../subtitle_ui/ui_demo.h"
 #include "../subtitle_ui/ui_render.h"
 static void render_service(void);
@@ -37,6 +38,7 @@ static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_
     ui_demo_init(c,s,now);wifi_probe_init(uart_read,uart_write,now);network_init(uart_read,uart_write);
     stream_pilot_init((const uint8_t *)STREAM_PILOT_TX_ADDRESS,(uint8_t *)STREAM_PILOT_RX_ADDRESS);
     cloud_live_init(s);
+    cloud_client_init();
     service_ms=now-1u;wifi_service_ms=now-200u;network_upload_duration=upload_sequence=upload_ready=0;
     ui_render_set_service(render_service);
 #ifdef Z7_UART_921600
@@ -54,6 +56,8 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
     network_tick(s,now);
 #endif
     cloud_live_tick(now);
+    if(network_info.phase==8u) cloud_client_start();
+    cloud_client_tick(now);
     if(stream_pilot.request || stream_pilot.phase) stream_pilot_tick(now);else upload_tick(now);
 }
 static void network_demo_tick(struct ui_demo_clock *c,struct ui_state *s,uint32_t now) {
