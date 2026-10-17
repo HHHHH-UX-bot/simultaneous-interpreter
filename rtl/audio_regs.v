@@ -12,8 +12,8 @@ module audio_regs #(
     parameter [8:0] DEF_R3 = 9'h079,   // right headphone volume, 0 dB
     parameter [8:0] DEF_R4 = 9'h008,   // analogue path: DAC to output, line input
     parameter [8:0] DEF_R5 = 9'h000,   // digital path: DAC unmuted
-    parameter [8:0] DEF_R7 = 9'h002,   // interface: I2S, 16-bit, codec is slave
-    parameter [8:0] DEF_R8 = 9'h000    // sampling: 256 fs, 48 kHz, normal
+    parameter [8:0] DEF_R7 = 9'h00E,   // interface: I2S, 32-bit word, codec is slave
+    parameter [8:0] DEF_R8 = 9'h001    // sampling: 256 fs, 48 kHz, normal
 ) (
     input  wire        clk,
     input  wire        reset_n,
