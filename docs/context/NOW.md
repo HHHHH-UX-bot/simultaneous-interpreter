@@ -112,3 +112,14 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 - 文档证据：[直接链接与职责入口检查](../../output/verification/documentation_validation.json)，范围为本次改动的 Markdown、评审记录、原型本地导航和直接引用目标，没有扩展审计同级工程或 NAS 内容。
 - Wi-Fi 文档补充：[本阶段直接链接检查](../../output/verification/wifi_documentation_validation.json)，检查九份改动文档及其直接目标，不扩展审计资料库。
 - 产品接续建档：[本次文档检查](../../output/verification/product_handoff_documentation_validation.json)，检查八份修改文档、沿用规则和直接链接；不包含业务实现、构建、烧录或业务测试。
+
+## 云端同传收尾清单（2026-10-17 深夜交接）
+
+已完成并验证：ESP8266@115200 `AT`→`OK`（分频 434）；百炼实时翻译协议电脑侧跑通（首字 2.19 s）；PL 麦克风 PCM 抽头 0x43C20080/84 与 UART 邮箱 0x43C30000 均由 PS 读写验通；`cloud_app.elf` 可构建、下载、运行；应用已带 `-DZ7_NETWORK_CAPABILITIES`、启动强制分频 434、跳过启动探针让网络通道独占 AT。
+
+遗留问题（按序处理）：
+1. `cloud_app.elf` 启动后显示报告停在 seq=1（应用卡死）。先修正链接布局：`.bss` 回 OCM（≤0x1D000）、`.cloud_runtime`/`.cloud_masks` 放字体（0x1800000+）之后的 DDR 空洞（如 0x1C00000），用 `--print-memory-usage` 核对无重叠，再烧录确认报告 seq 递增。
+2. 应用活化后写 `network_config`（0x1E180）：magic=0x3146434E、request_sequence=1、action=3、ssid_bytes=9、password_bytes=9、credentials[0..8]=SSID、credentials[33..41]=密码（注意密码在偏移 33，不在 SSID 之后）；确认 NETREP phase 前进、UART SENT 递增。
+3. TLS 就绪（phase 8）后由 `cloud_client` 发 WSS 握手 + session.update，开始麦克风 20 ms 打包上传；事件经 cloud_wire/events/live 上屏。
+4. overlay 改 `T1 nnnn ms` 传译延迟（audio_regs 0x88 已由云客户端写入）。
+5. 整机实屏验收与 30 min 稳定性。
