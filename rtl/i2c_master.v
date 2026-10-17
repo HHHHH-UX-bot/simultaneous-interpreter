@@ -26,9 +26,13 @@ module i2c_master #(
     output wire       busy,
     output reg        done,        // one-clock pulse
     output reg        ack_error,   // sticky until the next transaction
-    output reg        scl_low,     // 1 = pull SCL low (open drain)
-    output reg        sda_low,     // 1 = pull SDA low (open drain)
-    input  wire       sda_in
+    output wire       scl_low,     // 1 = pull SCL low (open drain)
+    output wire       sda_low,     // 1 = pull SDA low (open drain)
+    input  wire       sda_in,
+    // Bus recovery: a slave interrupted mid-transfer can hold SDA low, which
+    // blocks every later transaction until SCL is clocked nine times.
+    input  wire       recover,
+    output wire       recovery_busy
 );
     localparam [2:0]
         S_IDLE  = 3'd0,
@@ -49,6 +53,7 @@ module i2c_master #(
     reg [7:0]  sent;       // completed data bytes
     reg [7:0]  count;
     reg        nack;
+    reg        scl_low_i, sda_low_i;
 
     wire [3:0] bitpos   = sub[5:2];
     wire [1:0] k        = sub[1:0];
@@ -62,13 +67,13 @@ module i2c_master #(
         if (!reset_n) begin
             state <= S_IDLE; qn <= 2'd0; qphase <= 0; sub <= 0; shreg <= 0;
             sent <= 0; count <= 0; nack <= 0; tx_index <= 0;
-            done <= 0; ack_error <= 0; scl_low <= 0; sda_low <= 0;
+            done <= 0; ack_error <= 0; scl_low_i <= 0; sda_low_i <= 0;
         end else begin
             done <= 1'b0;
             case (state)
                 S_IDLE: begin
-                    scl_low <= 1'b0;
-                    sda_low <= 1'b0;
+                    scl_low_i <= 1'b0;
+                    sda_low_i <= 1'b0;
                     if (start) begin
                         count     <= tx_count;
                         sent      <= 8'd0;
@@ -83,9 +88,9 @@ module i2c_master #(
                 // START: SDA falls while SCL is high.
                 S_START: begin
                     case (qn)
-                        2'd0:    begin scl_low <= 1'b0; sda_low <= 1'b0; end
-                        2'd1:    begin scl_low <= 1'b0; sda_low <= 1'b1; end
-                        default: begin scl_low <= 1'b1; sda_low <= 1'b1; end
+                        2'd0:    begin scl_low_i <= 1'b0; sda_low_i <= 1'b0; end
+                        2'd1:    begin scl_low_i <= 1'b0; sda_low_i <= 1'b1; end
+                        default: begin scl_low_i <= 1'b1; sda_low_i <= 1'b1; end
                     endcase
                     if (qdone) begin
                         qphase <= 16'd0;
@@ -105,20 +110,20 @@ module i2c_master #(
                 S_BYTE: begin
                     case (k)
                         2'd0: begin
-                            scl_low <= 1'b1;
-                            sda_low <= is_ack ? 1'b0 : ~shreg[7];
+                            scl_low_i <= 1'b1;
+                            sda_low_i <= is_ack ? 1'b0 : ~shreg[7];
                         end
                         2'd1: begin
-                            scl_low <= 1'b0;
+                            scl_low_i <= 1'b0;
                             if (is_ack && qdone && sda_in) nack <= 1'b1;
                         end
                         2'd2: begin
-                            scl_low <= 1'b0;
+                            scl_low_i <= 1'b0;
                         end
                         default: begin
                             // Sample/prepare only; the shift happens at the end
                             // of this quarter, once per bit.
-                            scl_low <= 1'b1;
+                            scl_low_i <= 1'b1;
                         end
                     endcase
                     if (qdone) begin
@@ -145,9 +150,9 @@ module i2c_master #(
                 // STOP: SDA rises while SCL is high.
                 S_STOP: begin
                     case (qn)
-                        2'd0:    begin scl_low <= 1'b1; sda_low <= 1'b1; end
-                        2'd1:    begin scl_low <= 1'b0; sda_low <= 1'b1; end
-                        default: begin scl_low <= 1'b0; sda_low <= 1'b0; end
+                        2'd0:    begin scl_low_i <= 1'b1; sda_low_i <= 1'b1; end
+                        2'd1:    begin scl_low_i <= 1'b0; sda_low_i <= 1'b1; end
+                        default: begin scl_low_i <= 1'b0; sda_low_i <= 1'b0; end
                     endcase
                     if (qdone) begin
                         qphase <= 16'd0;
@@ -156,8 +161,8 @@ module i2c_master #(
                     end else qphase <= qphase + 1'b1;
                 end
                 S_GAP: begin
-                    scl_low <= 1'b0;
-                    sda_low <= 1'b0;
+                    scl_low_i <= 1'b0;
+                    sda_low_i <= 1'b0;
                     if (qdone) begin
                         qphase <= 16'd0;
                         done   <= 1'b1;
@@ -166,6 +171,36 @@ module i2c_master #(
                 end
                 default: state <= S_IDLE;
             endcase
+        end
+    end
+    // ---- bus recovery -----------------------------------------------------
+    // While recovering, SDA is released and SCL is clocked nine times so a
+    // slave that was interrupted mid-byte shifts out and frees the bus.
+    reg [3:0]  rec_cnt;
+    reg [15:0] rec_div;
+    reg        rec_active;
+
+    assign recovery_busy = rec_active;
+    assign scl_low = rec_active ? ~rec_cnt[0] : scl_low_i;
+    assign sda_low = rec_active ? 1'b0       : sda_low_i;
+
+    always @(posedge clk) begin
+        if (!reset_n) begin
+            rec_active <= 1'b0;
+            rec_cnt    <= 4'd0;
+            rec_div    <= 16'd0;
+        end else if (recover && !rec_active) begin
+            rec_active <= 1'b1;
+            rec_cnt    <= 4'd0;
+            rec_div    <= 16'd0;
+        end else if (rec_active) begin
+            if (rec_div == QW[15:0] - 1'b1) begin
+                rec_div <= 16'd0;
+                if (rec_cnt == 4'd17) rec_active <= 1'b0;   // 9 low + 9 high phases
+                else                  rec_cnt    <= rec_cnt + 1'b1;
+            end else begin
+                rec_div <= rec_div + 1'b1;
+            end
         end
     end
 endmodule

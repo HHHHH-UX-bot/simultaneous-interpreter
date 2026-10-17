@@ -12,7 +12,7 @@ module audio_regs #(
     parameter [8:0] DEF_R3 = 9'h079,   // right headphone volume, 0 dB
     parameter [8:0] DEF_R4 = 9'h010,   // analogue path: DAC to output, line input
     parameter [8:0] DEF_R5 = 9'h000,   // digital path: DAC unmuted
-    parameter [8:0] DEF_R7 = 9'h042,   // interface: master mode, I2S, 16-bit
+    parameter [8:0] DEF_R7 = 9'h002,   // interface: I2S, 16-bit, codec is slave
     parameter [8:0] DEF_R8 = 9'h000    // sampling: 256 fs, 48 kHz, normal
 ) (
     input  wire        clk,
@@ -46,6 +46,11 @@ module audio_regs #(
     input  wire [15:0] occ_frames,
     input  wire [15:0] latency_cycles,
     input  wire [31:0] bclk_hz,
+    // Pin activity counters (BCLK, ADCLRC, DADLRC, ADCDAT edges) for wiring checks.
+    input  wire [31:0] pin_count0,
+    input  wire [31:0] pin_count1,
+    input  wire [31:0] pin_count2,
+    input  wire [31:0] pin_count3,
     input  wire [31:0] adc_frames,
     input  wire [31:0] dac_frames,
     input  wire [15:0] overruns,
@@ -75,6 +80,7 @@ module audio_regs #(
     reg [31:0] w_data;
     reg [3:0]  w_strobe;
     reg [31:0] ctrl_shadow;
+    reg        ctrl_bit0_d;
 
     assign s_axi_awready = !aw_hold && !s_axi_bvalid;
     assign s_axi_wready  = !w_hold  && !s_axi_bvalid;
@@ -91,12 +97,16 @@ module audio_regs #(
             aw_hold <= 0; w_hold <= 0; aw_address <= 0; w_data <= 0; w_strobe <= 0;
             s_axi_bresp <= 0; s_axi_bvalid <= 0;
             s_axi_rdata <= 0; s_axi_rresp <= 0; s_axi_rvalid <= 0;
-            init_trigger <= 0; clear_extremes <= 0; freeze_display <= 0;
+            init_trigger <= 0; ctrl_bit0_d <= 0; clear_extremes <= 0; freeze_display <= 0;
             ctrl_shadow <= 32'h1;                 // run the codec init after reset
             cfg_r0 <= DEF_R0; cfg_r1 <= DEF_R1; cfg_r2 <= DEF_R2; cfg_r3 <= DEF_R3;
             cfg_r4 <= DEF_R4; cfg_r5 <= DEF_R5; cfg_r7 <= DEF_R7; cfg_r8 <= DEF_R8;
         end else begin
-            init_trigger  <= 1'b0;
+            // CTRL bit 0 is edge sensitive: the reset value 1 starts the codec
+            // initialisation without any software write, and clearing then
+            // setting the bit re-runs the sequence.
+            init_trigger   <= ctrl_shadow[0] && !ctrl_bit0_d;
+            ctrl_bit0_d    <= ctrl_shadow[0];
             clear_extremes <= 1'b0;
 
             if (s_axi_awvalid && s_axi_awready) begin aw_hold <= 1; aw_address <= s_axi_awaddr; end
@@ -116,7 +126,6 @@ module audio_regs #(
                     8'h4c: if (w_strobe[1:0] == 2'b11) cfg_r8 <= w_data[8:0];
                     8'h2c: begin
                         ctrl_shadow <= w_data;
-                        init_trigger   <= w_data[0];
                         clear_extremes <= w_data[1];
                         freeze_display <= w_data[2];
                     end
@@ -150,6 +159,10 @@ module audio_regs #(
                     8'h4c: s_axi_rdata <= {23'd0, cfg_r8};
                     8'h50: s_axi_rdata <= {16'd0, occ_frames};
                     8'h54: s_axi_rdata <= bclk_hz;
+                    8'h60: s_axi_rdata <= pin_count0;   // BCLK pin edges
+                    8'h64: s_axi_rdata <= pin_count1;   // ADCLRC pin edges
+                    8'h68: s_axi_rdata <= pin_count2;   // DADLRC pin edges
+                    8'h6c: s_axi_rdata <= pin_count3;   // ADCDAT pin edges
                     default: begin s_axi_rdata <= 32'd0; s_axi_rresp <= 2'b10; end
                 endcase
             end

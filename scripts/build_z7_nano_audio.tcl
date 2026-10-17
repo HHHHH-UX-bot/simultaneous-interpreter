@@ -10,24 +10,34 @@
 #
 # Usage: vivado -mode batch -source scripts/build_z7_nano_audio.tcl -tclargs build
 set root [file normalize [file join [file dirname [info script]] ..]]
-set out [file join $root output z7_nano audio]
-set config [file join $root output z7_nano config]
-source [file join $config board.tcl]
 set action [lindex $argv 0]
+# Optional second argument: output directory. Used to build in a scratch tree
+# while the main project is open in the GUI.
+set out [expr {[llength $argv] > 1 ? [lindex $argv 1] : [file join $root output z7_nano audio]}]
+set cfgdir [file join $root output z7_nano config]
+source [file join $cfgdir board.tcl]
 if {$action ni {design build}} {error "Expected design or build"}
 file mkdir [file join $out reports]
 set_param general.maxThreads 4
 create_project nano_audio [file join $out vivado] -part $board_part -force
 
 add_files [file join $root rtl framebuffer_video.v]
+add_files [file join $root rtl audio_regs.v]
 
 # ---------------------------------------------------------------------------
 # Block design
 # ---------------------------------------------------------------------------
 create_bd_design nano_audio
 set ps [create_bd_cell -type ip -vlnv xilinx.com:ip:processing_system7:5.5 ps7]
-source [file join $out ps7_config.tcl]
-configure_nano_audio_ps $ps
+source [file join $cfgdir ps7_config.tcl]
+configure_z7_nano_ps $ps
+# The board preset only carries DDR and clock values; the display interface also
+# needs the GP0 master and the 64-bit HP0 slave, and the PL supplies the clocks.
+set_property -dict [list CONFIG.PCW_USE_M_AXI_GP0 {1} CONFIG.PCW_USE_S_AXI_HP0 {1} \
+    CONFIG.PCW_S_AXI_HP0_DATA_WIDTH {64} CONFIG.PCW_EN_CLK0_PORT {0} \
+    CONFIG.PCW_EN_RST0_PORT {0} \
+    CONFIG.PCW_EN_USB0 {1} CONFIG.PCW_USB0_PERIPHERAL_ENABLE {1} \
+    CONFIG.PCW_USB0_USB0_IO {MIO 28 .. 39}] $ps
 if {[get_property CONFIG.PCW_UIPARAM_DDR_BUS_WIDTH $ps] ne {16 Bit} ||
     [get_property CONFIG.PCW_DDR_RAM_HIGHADDR $ps] ne {0x1FFFFFFF}} {error "Wrong DDR geometry"}
 make_bd_intf_pins_external [get_bd_intf_pins ps7/DDR]
@@ -46,12 +56,17 @@ set_property CONFIG.NUM_MI 3 $regs
 set memory [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 memory]
 set_property CONFIG.NUM_MI 1 $memory
 set reset [create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 reset]
-set_property -dict [list CONFIG.C_EXT_RESET_HIGH {1} CONFIG.C_AUX_RESET_HIGH {0}] $reset
+# C_EXT_RESET_HIGH is read-only on older Vivado, where the default is already
+# active-high; only the auxiliary polarity needs to be forced.
+catch {set_property CONFIG.C_EXT_RESET_HIGH {1} $reset}
+catch {set_property CONFIG.C_AUX_RESET_HIGH {0} $reset}
 set one [create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 one]
 set_property CONFIG.CONST_VAL 1 $one
 set zero [create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 zero]
 set_property CONFIG.CONST_VAL 0 $zero
-set clk [create_bd_port -dir I -type clk -freq_hz 50000000 pixel_clk]
+set clk [create_bd_port -dir I -type clk pixel_clk]
+# -freq_hz is not accepted by older create_bd_port; set the property instead.
+catch {set_property CONFIG.FREQ_HZ 50000000 $clk}
 set rst [create_bd_port -dir I -type rst pixel_reset]
 set_property CONFIG.POLARITY ACTIVE_HIGH $rst
 connect_bd_net $clk [get_bd_pins reset/slowest_sync_clk] [get_bd_pins video/clk] \
@@ -80,17 +95,36 @@ foreach pin {video_hs video_vs video_de video_rgb frame_count} {
     set_property name $pin $port
 }
 
-# Audio register file: exported as AXI4-Lite so the audio logic stays in the
-# top level (identical in simulation and synthesis).
-set audio_axi [make_bd_intf_pins_external [get_bd_intf_pins regs/M02_AXI]]
-if {[llength $audio_axi] != 1} {error "Audio AXI port missing"}
-set_property name S_AXI_AUDIO $audio_axi
+# Audio register file: instantiated inside the block design exactly like
+# framebuffer_video, so the PS address space has a real slave segment. The audio
+# chain stays in the top level; only its status and control scalars cross the
+# block-design boundary.
+set aregs [create_bd_cell -type module -reference audio_regs aregs]
+connect_bd_intf_net [get_bd_intf_pins regs/M02_AXI] [get_bd_intf_pins aregs/S_AXI]
+connect_bd_net $clk [get_bd_pins aregs/clk]
+connect_bd_net [get_bd_pins reset/peripheral_aresetn] [get_bd_pins aregs/reset_n]
+set bclk_hz [create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 bclk_hz]
+set_property -dict [list CONFIG.CONST_WIDTH {32} CONFIG.CONST_VAL {3072000}] $bclk_hz
+connect_bd_net [get_bd_pins bclk_hz/dout] [get_bd_pins aregs/bclk_hz]
+
+set audio_status_in {live codec_found codec_addr_sel init_busy init_done init_error \
+                     regs_written occ_frames latency_cycles adc_frames dac_frames \
+                     overruns underruns bclk_cycles latency_us min_us max_us max_valid \
+                     pin_count0 pin_count1 pin_count2 pin_count3}
+set audio_ctrl_out {init_trigger clear_extremes freeze_display cfg_r0 cfg_r1 cfg_r2 \
+                    cfg_r3 cfg_r4 cfg_r5 cfg_r7 cfg_r8}
+foreach pin [concat $audio_status_in $audio_ctrl_out] {
+    make_bd_pins_external [get_bd_pins aregs/$pin]
+    set port [get_bd_ports ${pin}_0]
+    if {[llength $port] != 1} {error "Missing audio port $pin"}
+    set_property name $pin $port
+}
 
 create_bd_addr_seg -range 0x10000 -offset 0x43c00000 [get_bd_addr_spaces ps7/Data] [get_bd_addr_segs vdma/S_AXI_LITE/Reg] SEG_VDMA
 set video_segment [get_bd_addr_segs -of_objects [get_bd_intf_pins video/S_AXI]]
 if {[llength $video_segment] != 1} {error "Video register segment missing"}
 create_bd_addr_seg -range 0x10000 -offset 0x43c10000 [get_bd_addr_spaces ps7/Data] $video_segment SEG_VIDEO
-set audio_segment [get_bd_addr_segs -of_objects [get_bd_intf_pins regs/M02_AXI]]
+set audio_segment [get_bd_addr_segs -of_objects [get_bd_intf_pins aregs/S_AXI]]
 if {[llength $audio_segment] != 1} {error "Audio register segment missing"}
 create_bd_addr_seg -range 0x10000 -offset 0x43c20000 [get_bd_addr_spaces ps7/Data] $audio_segment SEG_AUDIO
 assign_bd_address [get_bd_addr_segs ps7/S_AXI_HP0/HP0_DDR_LOWOCM]
@@ -104,32 +138,35 @@ save_bd_design
 set bd [get_files nano_audio.bd]
 set_property generate_synth_checkpoint false $bd
 generate_target all $bd
+# The wrapper ports are named after the exported BD pins: check the generated
+# wrapper source instead of get_ports, which needs an open (elaborated) design.
 set wrapper [make_wrapper -files $bd -top]
 add_files $wrapper
+set wrapper_path [file normalize [lindex $wrapper 0]]
+set fh [open $wrapper_path r]
+set wrapper_text [read $fh]
+close $fh
+foreach pin [concat $audio_status_in $audio_ctrl_out] {
+    if {![regexp "\\m${pin}\\M" $wrapper_text]} {error "Wrapper audio port $pin missing"}
+}
 write_bd_tcl -force [file join $out nano_audio_bd.tcl]
 
-# The wrapper port names are generated from the BD pin name: fail loudly here
-# instead of producing an unconnected audio interface.
-foreach suffix {awaddr awprot awvalid awready wdata wstrb wvalid wready bresp bvalid bready \
-                araddr arprot arvalid arready rdata rresp rvalid rready} {
-    if {[llength [get_ports S_AXI_AUDIO_$suffix]] != 1} {error "Wrapper port S_AXI_AUDIO_$suffix missing"}
-}
-
-if {$action eq "design"} {puts PASS_Z7_NANO_AUDIO_DESIGN; close_project; exit}
-
 # ---------------------------------------------------------------------------
-# Synthesis and implementation
+# Sources and constraints (added before the design exit so the GUI project is
+# complete as well), then synthesis and implementation.
 # ---------------------------------------------------------------------------
-foreach filename {z7_nano_audio_top.v i2c_master.v wm8731_init.v i2s_loopback.v \
-                  audio_latency.v audio_regs.v audio_overlay.v \
+foreach filename {z7_nano_audio_top.v i2c_master.v wm8731_init.v i2s_master_loopback.v \
+                  audio_latency.v audio_regs.v audio_overlay.v audio_pin_activity.v \
                   hdmi_clock.v async_rst_sync.v dvi_encoder.v dvi_transmitter_top.v \
                   serializer_10_to_1.v} {
     add_files [file join $root rtl $filename]
 }
-add_files -fileset constrs_1 [file join $config hdmi.xdc]
-add_files -fileset constrs_1 [file join $config audio.xdc]
+add_files -fileset constrs_1 [file join $cfgdir hdmi.xdc]
+add_files -fileset constrs_1 [file join $cfgdir audio.xdc]
 set_property top z7_nano_audio_top [get_filesets sources_1]
 update_compile_order -fileset sources_1
+
+if {$action eq "design"} {puts PASS_Z7_NANO_AUDIO_DESIGN; close_project; exit}
 synth_design -top z7_nano_audio_top -part $board_part
 opt_design
 place_design
@@ -154,8 +191,15 @@ foreach {pin period} {u_clock/u_mmcm/CLKOUT0 20.0 u_clock/u_mmcm/CLKOUT1 4.0} {
     set clock [get_clocks -of_objects [get_pins $pin]]
     if {[llength $clock] != 1 || abs([get_property PERIOD $clock]-$period)>0.001} {error "Clock mismatch: $pin"}
 }
+# In slave mode the I2S clock is an input clock and must match the module's
+# BCLK period; in master mode the PL drives it and the I/O paths are excluded
+# from timing analysis instead.
 set bclk [get_clocks -of_objects [get_ports i2s_bclk]]
-if {[llength $bclk] != 1 || abs([get_property PERIOD $bclk]-325.520)>0.01} {error "i2s_bclk period mismatch"}
+if {[llength $bclk] == 1} {
+    if {abs([get_property PERIOD $bclk]-325.520) > 0.01} {error "i2s_bclk period mismatch"}
+} else {
+    puts "INFO: i2s_bclk is driven by the PL (master mode); I/O paths excluded"
+}
 write_checkpoint -force [file join $out routed.dcp]
 write_bitstream -force [file join $out z7_nano_audio_top.bit]
 set f [open [file join $out implementation.json] w]

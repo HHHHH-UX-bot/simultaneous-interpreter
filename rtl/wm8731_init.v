@@ -13,9 +13,11 @@
 // against the Cirrus datasheet before hardware acceptance.
 module wm8731_init #(
     parameter CLK_HZ = 50000000,
-    parameter SCL_HZ = 100000,
+    parameter SCL_HZ = 50000,      // slower bus: more margin against power-up noise
     // Delay after the soft reset before the remaining writes (1 ms default).
-    parameter RESET_WAIT = CLK_HZ / 1000
+    parameter RESET_WAIT = CLK_HZ / 1000,
+    parameter RETRIES = 4,              // full-sequence retries on a NACK
+    parameter RETRY_WAIT = CLK_HZ / 100  // 10 ms between attempts
 ) (
     input  wire       clk,
     input  wire       reset_n,
@@ -29,6 +31,7 @@ module wm8731_init #(
     input  wire [8:0] cfg_r7,         // interface format (holds the master bit)
     input  wire [8:0] cfg_r8,         // sampling control
     output reg        busy,
+    output reg        recover,        // bus-recovery pulse before probing
     output reg        done,           // one-clock pulse
     output reg        error,          // no codec answered, or a write was NACKed
     output reg        codec_found,
@@ -47,13 +50,17 @@ module wm8731_init #(
         T_WRITE   = 4'd4,
         T_STEP    = 4'd5,
         T_DONE    = 4'd6,
-        T_FAIL    = 4'd7;
+        T_FAIL    = 4'd7,
+    T_RETRY   = 4'd8,
+    T_RECOVER = 4'd9;
 
     localparam [1:0] ADDR_1A = 2'd0, ADDR_1B = 2'd1;
     localparam [4:0] LAST_STEP = 5'd10;
 
     reg [3:0]  tstate;
     reg [4:0]  step;
+    reg [2:0]  attempts;
+    reg [19:0] retry_cnt;
     reg [16:0] wait_cnt;
     reg        start_issued;
 
@@ -115,6 +122,7 @@ module wm8731_init #(
     always @(posedge clk) begin
         if (!reset_n) begin
             tstate <= T_IDLE; step <= 5'd0; wait_cnt <= 17'd0; start_issued <= 1'b0;
+            attempts <= 3'd0; retry_cnt <= 20'd0;
             dev <= 7'h1A; tx_count <= 8'd0; i2c_start <= 1'b0;
             busy <= 1'b0; done <= 1'b0; error <= 1'b0; codec_found <= 1'b0;
             addr_sel <= ADDR_1A; regs_written <= 8'd0;

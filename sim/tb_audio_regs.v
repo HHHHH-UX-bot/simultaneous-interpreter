@@ -58,6 +58,8 @@ module tb_audio_regs;
         .adc_frames(adc_frames), .dac_frames(dac_frames),
         .overruns(overruns), .underruns(underruns), .bclk_cycles(bclk_cycles),
         .latency_us(latency_us), .min_us(min_us), .max_us(max_us), .max_valid(max_valid),
+        .pin_count0(32'd11), .pin_count1(32'd22),
+        .pin_count2(32'd33), .pin_count3(32'd44),
         .init_trigger(init_trigger), .clear_extremes(clear_extremes), .freeze_display(),
         .cfg_r0(cfg_r0), .cfg_r1(cfg_r1), .cfg_r2(cfg_r2), .cfg_r3(cfg_r3),
         .cfg_r4(cfg_r4), .cfg_r5(cfg_r5), .cfg_r7(cfg_r7), .cfg_r8(cfg_r8));
@@ -131,6 +133,10 @@ module tb_audio_regs;
         expect_read(8'h28, 32'd70,       "max_us");
         expect_read(8'h50, 32'd2,        "occupancy");
         expect_read(8'h54, 32'd3072000,  "bclk_hz");
+        expect_read(8'h60, 32'd11,       "bclk pin edges");
+        expect_read(8'h64, 32'd22,       "adclrc pin edges");
+        expect_read(8'h68, 32'd33,       "dadlrc pin edges");
+        expect_read(8'h6c, 32'd44,       "adcdat pin edges");
         expect_read(8'h2c, 32'd1,        "ctrl default");
 
         // Default shadows.
@@ -148,11 +154,17 @@ module tb_audio_regs;
         expect_read(8'h40, 32'h015, "r4 write");
 
         trig_seen = 0; clr_seen = 0;
+        // CTRL bit 0 is edge sensitive: clear it, then set it to pulse. The
+        // pulses last one clock, so watch every cycle instead of sampling once.
+        axi_write(8'h2c, 32'h0000_0000);
         fork
-            begin
-                repeat (6) @(negedge clk);
-                if (init_trigger) trig_seen = 1;
-                if (clear_extremes) clr_seen = 1;
+            begin : watch
+                integer n;
+                for (n = 0; n < 24; n = n + 1) begin
+                    @(negedge clk);
+                    if (init_trigger)  trig_seen = 1;
+                    if (clear_extremes) clr_seen = 1;
+                end
             end
             begin
                 axi_write(8'h2c, 32'h0000_0003);

@@ -30,7 +30,7 @@ module tb_audio_overlay;
     audio_overlay #(.H_ACTIVE(H_ACTIVE), .X_ORIGIN(X_ORIGIN), .Y_ORIGIN(Y_ORIGIN)) dut (
         .pixel_clk(pixel_clk), .reset_n(reset_n),
         .video_vs(video_vs), .video_de(video_de), .video_rgb_in(video_rgb_in),
-        .latency_us(latency_us), .live(live),
+        .latency_us(latency_us), .live(live), .freeze(1'b0),
         .video_rgb_out(video_rgb_out), .overlay_pixel(overlay_pixel),
         .text_pixels(text_pixels));
 

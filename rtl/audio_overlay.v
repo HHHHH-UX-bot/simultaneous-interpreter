@@ -21,6 +21,7 @@ module audio_overlay #(
     input  wire [23:0] video_rgb_in,
     input  wire [19:0] latency_us,
     input  wire        live,
+    input  wire        freeze,            // hold the last value (CTRL bit 2)
     output reg  [23:0] video_rgb_out,
     output reg         overlay_pixel,     // 1 while a text pixel is drawn
     output reg  [15:0] text_pixels        // drawn pixels in the current frame
@@ -41,17 +42,29 @@ module audio_overlay #(
 
     wire in_h = video_de && (x >= X_ORIGIN[10:0]) && (x < (X_ORIGIN + BOX_W));
     wire in_v = (y >= Y_ORIGIN[9:0]) && (y < (Y_ORIGIN + BOX_H));
-    wire [6:0] col_off = x[6:0] - X_ORIGIN[6:0];
-    wire [3:0] cell_ix = in_h ? (col_off / 7'd12) : 4'd0;
-    wire [3:0] cell_x  = in_h ? (col_off % 7'd12) : 4'd0;
     wire [3:0] row_off = y[3:0] - Y_ORIGIN[3:0];
 
-    // saturating display value
-    wire [19:0] value = (latency_us > MAX_SHOWN_US) ? MAX_SHOWN_US[19:0] : latency_us;
-    wire [3:0]  d3 = value / 20'd1000;
-    wire [3:0]  d2 = (value / 20'd100) % 10;
-    wire [3:0]  d1 = (value / 20'd10) % 10;
-    wire [3:0]  d0 = value % 10;
+    // Character cell position inside the box: counters instead of a division so
+    // no arithmetic sits in the pixel path.
+    reg [3:0] cell_ix;        // 0..9 character index
+    reg [3:0] cell_x;         // 0..11 column inside the character
+
+    // Digit extraction for the latched value: one digit per pixel clock. Both a
+    // divider and a four-stage comparator chain missed 50 MHz timing, so the
+    // digits come from a free-running four-step pass.
+    reg  [1:0]  dstep;
+    reg  [13:0] drem;
+    reg  [3:0]  rd3, rd2, rd1, rd0;
+
+    wire [13:0] shown_value = (shown_us > MAX_SHOWN_US) ? MAX_SHOWN_US[13:0] : shown_us[13:0];
+    wire [13:0] dh  = (dstep == 2'd0) ? 14'd1000 : (dstep == 2'd1) ? 14'd100 :
+                      (dstep == 2'd2) ? 14'd10 : 14'd1;
+    wire [13:0] m2  = dh << 1;
+    wire [13:0] m4  = dh << 2;
+    wire [13:0] m8  = dh << 3;
+    wire [3:0]  ddig_c = (drem >= m8 + dh) ? 4'd9 : (drem >= m8) ? 4'd8 : (drem >= m8 - dh) ? 4'd7 :
+                         (drem >= m4 + m2) ? 4'd6 : (drem >= m4 + dh) ? 4'd5 : (drem >= m4) ? 4'd4 :
+                         (drem >= m2 + dh) ? 4'd3 : (drem >= m2) ? 4'd2 : (drem >= dh) ? 4'd1 : 4'd0;
 
     reg [3:0] ch;
     always @* begin
@@ -59,10 +72,10 @@ module audio_overlay #(
             4'd0: ch = CH_L;
             4'd1: ch = CH_1;
             4'd2: ch = CH_SP;
-            4'd3: ch = shown_live ? d3 : CH_DASH;
-            4'd4: ch = shown_live ? d2 : CH_DASH;
-            4'd5: ch = shown_live ? d1 : CH_DASH;
-            4'd6: ch = shown_live ? d0 : CH_DASH;
+            4'd3: ch = shown_live ? rd3 : CH_DASH;
+            4'd4: ch = shown_live ? rd2 : CH_DASH;
+            4'd5: ch = shown_live ? rd1 : CH_DASH;
+            4'd6: ch = shown_live ? rd0 : CH_DASH;
             4'd7: ch = CH_SP;
             4'd8: ch = CH_U;
             4'd9: ch = CH_S;
@@ -179,18 +192,43 @@ module audio_overlay #(
         if (!reset_n) begin
             x <= 0; y <= 0; de_d <= 0; vs_d <= 0;
             shown_us <= 0; shown_live <= 0;
+            cell_ix <= 4'd0; cell_x <= 4'd0; dstep <= 2'd0; drem <= 14'd0;
+            rd3 <= 4'd0; rd2 <= 4'd0; rd1 <= 4'd0; rd0 <= 4'd0;
             video_rgb_out <= 0; overlay_pixel <= 0; text_pixels <= 0;
         end else begin
             de_d <= video_de;
             vs_d <= video_vs;
 
+            // Digits follow the latched value, so freeze freezes them too.
+            // One digit per clock: the pass restarts after the units digit.
+            if (dstep == 2'd3) drem <= shown_value;
+            else               drem <= drem - (ddig_c * dh);
+            case (dstep)
+                2'd0:    rd3 <= ddig_c;
+                2'd1:    rd2 <= ddig_c;
+                2'd2:    rd1 <= ddig_c;
+                default: rd0 <= ddig_c;
+            endcase
+            dstep <= dstep + 1'b1;
+
             if (!video_de) x <= 0;
             else           x <= x + 1'b1;
 
+            // Character cells advance with the pixels of the box, so the cell
+            // counters describe the pixel being sampled at the next edge.
+            if (!video_de || x == X_ORIGIN[10:0]) begin
+                cell_ix <= 4'd0; cell_x <= 4'd0;
+            end else if (in_h) begin
+                if (cell_x == 4'd11) begin cell_x <= 4'd0; cell_ix <= cell_ix + 1'b1; end
+                else                      cell_x <= cell_x + 1'b1;
+            end
+
             if (video_vs && !vs_d) begin
                 y <= 0;
-                shown_us    <= latency_us;     // latch once per frame
-                shown_live  <= live;
+                if (!freeze) begin
+                    shown_us    <= latency_us;     // latch once per frame
+                    shown_live  <= live;
+                end
                 text_pixels <= 0;
             end else if (de_d && !video_de) begin
                 y <= y + 1'b1;
