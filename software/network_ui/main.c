@@ -36,6 +36,9 @@ static uint32_t uart_accepted;
 #endif
 static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_t now) {
     ui_demo_init(c,s,now);wifi_probe_init(uart_read,uart_write,now);network_init(uart_read,uart_write);
+    /* The network channel owns the AT link; mark the boot probe as done so
+       configuration() accepts requests without waiting for its own probe. */
+    wifi_info.phase=2;
     stream_pilot_init((const uint8_t *)STREAM_PILOT_TX_ADDRESS,(uint8_t *)STREAM_PILOT_RX_ADDRESS);
     cloud_live_init(s);
     cloud_client_init();
