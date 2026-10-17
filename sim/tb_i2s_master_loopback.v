@@ -18,7 +18,7 @@ module tb_i2s_master_loopback;
     wire live;
 
     i2s_master_loopback #(.DIV(DIV), .SLOT(SLOT), .DEPTH(2)) dut (
-        .clk(clk), .reset_n(reset_n),
+        .clk(clk), .reset_n(reset_n), .enable(1'b1),
         .bclk(bclk), .lrclk(lrclk), .dacdat(dacdat), .adcdat(adcdat),
         .occ_frames(occ), .latency_cycles(lat),
         .adc_frames(adc), .dac_frames(dac),

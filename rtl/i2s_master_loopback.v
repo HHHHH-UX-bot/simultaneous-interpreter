@@ -17,6 +17,7 @@ module i2s_master_loopback #(
 ) (
     input  wire        clk,
     input  wire        reset_n,
+    input  wire        enable,   // 0 = hold the clocks while the codec is configured
     output reg         bclk,            // to the codec
     output reg         lrclk,           // to the codec (both LRCLK pins)
     output reg         dacdat,          // to the codec
@@ -69,6 +70,11 @@ module i2s_master_loopback #(
             adc_frames <= 32'd0; dac_frames <= 32'd0;
             overruns <= 16'd0; underruns <= 16'd0; bclk_cycles <= 32'd0;
         end else begin
+            if (!enable) begin
+                // Quiet bus during codec initialisation: no I2S clocks means no
+                // return-current noise coupling into the I2C lines.
+                cyc <= 4'd0; bitpos <= 6'd0; bclk <= 1'b0; lrclk <= 1'b0; dacdat <= 1'b0;
+            end else begin
             cyc  <= cyc + 1'b1;
             bclk <= (cyc < HALF);
 
@@ -89,7 +95,7 @@ module i2s_master_loopback #(
                 cycle_cnt   <= cycle_cnt + 1'b1;
                 bclk_cycles <= bclk_cycles + 1'b1;
 
-                if (nxt == 6'd0) begin
+                if (nxt == 6'd0 && enable) begin
                     // Frame boundary: one frame is captured and one is played,
                     // so the occupancy only changes by the difference.
                     if (push_ok) begin
@@ -113,6 +119,7 @@ module i2s_master_loopback #(
                     occ_frames <= {14'd0, occ + (push_ok ? 1'b1 : 1'b0) - (pop_ok ? 1'b1 : 1'b0)};
                     adc_frames <= adc_frames + 1'b1;
                 end
+            end
             end
         end
     end
