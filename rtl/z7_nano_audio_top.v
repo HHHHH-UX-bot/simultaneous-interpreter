@@ -209,33 +209,26 @@ module z7_nano_audio_top (
         .count0(pin_count0), .count1(pin_count1),
         .count2(pin_count2), .count3(pin_count3));
 
-    // --- cloud translation-latency readout over the existing picture ------
-    // The L1 loopback delay measured by audio_latency stays readable at 0x08;
-    // the corner readout now shows the cloud translation latency that the PS
-    // cloud client writes to 0x88, because the acceptance for this stage is an
-    // English utterance producing Chinese subtitles plus that latency.
+    // --- latency readout over the existing picture -------------------------
+    // The overlay registers RGB and DE/HS/VS together, so the serialiser sees
+    // the same aligned timing as the accepted framebuffer path.
+    wire video_hs_overlay, video_vs_overlay, video_de_overlay;
     audio_overlay u_overlay(
         .pixel_clk(pixel_clk), .reset_n(sys_rst_n & locked),
-        .video_vs(video_vs), .video_de(video_de), .video_rgb_in(video_rgb),
-        .latency_ms(translation_ms), .live(translation_valid), .freeze(freeze_display),
-        .video_rgb_out(video_rgb_overlay), .overlay_pixel(overlay_pixel),
-        .text_pixels(overlay_pixels));
+        .video_hs(video_hs), .video_vs(video_vs), .video_de(video_de),
+        .video_rgb_in(video_rgb),
+        .latency_us(latency_us), .live_us(audio_live),
+        .latency_ms(translation_ms), .live_ms(translation_valid),
+        .freeze(freeze_display),
+        .video_rgb_out(video_rgb_overlay),
+        .video_hs_out(video_hs_overlay), .video_vs_out(video_vs_overlay),
+        .video_de_out(video_de_overlay),
+        .overlay_pixel(overlay_pixel), .text_pixels(overlay_pixels));
 
     // --- TMDS output (same transmitter and timing as the accepted design) --
-    // The overlay registers the RGB passthrough, so DE/HS/VS get the same
-    // one-pixel delay; otherwise every line would shift by one pixel.
-    reg video_de_d, video_hs_d, video_vs_d;
-    always @(posedge pixel_clk) begin
-        if (video_reset) begin
-            video_de_d <= 1'b0; video_hs_d <= 1'b0; video_vs_d <= 1'b0;
-        end else begin
-            video_de_d <= video_de; video_hs_d <= video_hs; video_vs_d <= video_vs;
-        end
-    end
-
     dvi_transmitter_top u_transmitter(.pclk(pixel_clk), .pclk_x5(serial_clk_5x),
-        .reset_n(sys_rst_n & locked), .video_in(video_rgb_overlay), .video_h_sync(video_hs_d),
-        .video_v_sync(video_vs_d), .video_de(video_de_d),
+        .reset_n(sys_rst_n & locked), .video_in(video_rgb_overlay), .video_h_sync(video_hs_overlay),
+        .video_v_sync(video_vs_overlay), .video_de(video_de_overlay),
         .tmds_clk_p(tmds_clk_p), .tmds_clk_n(tmds_clk_n),
         .tmds_data_p(tmds_data_p), .tmds_data_n(tmds_data_n), .tmds_oen());
 

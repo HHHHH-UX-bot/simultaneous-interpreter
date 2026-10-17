@@ -1,38 +1,45 @@
 `timescale 1ns/1ps
 // Self-checking testbench for audio_overlay.
 //
-// A reduced raster (24 active lines are enough to cover the box) drives the
-// block and checks:
+// A reduced raster (48 active lines are enough to cover the two-line box)
+// drives the block and checks:
 //   * every pixel outside the box passes through unchanged,
 //   * drawn pixels only ever appear inside the box,
-//   * a known value draws a stable number of pixels, and a different value or
-//     live = 0 changes that pattern (digits and dashes are actually rendered).
+//   * both lines ("L1 nnnn us" and "T1 nnnn ms") draw text, changing a value
+//     changes the pattern, and live = 0 draws dashes instead of digits.
 module tb_audio_overlay;
     localparam integer H_ACTIVE = 1024;
-    localparam integer LINES    = 24;
+    localparam integer LINES    = 48;
     localparam integer X_ORIGIN = 896;
     localparam integer Y_ORIGIN = 8;
     localparam integer BOX_W    = 120;
-    localparam integer BOX_H    = 16;
+    localparam integer BOX_H    = 32;
 
     reg pixel_clk = 0;
     always #10 pixel_clk = ~pixel_clk;
 
     reg         reset_n = 0;
-    reg         video_vs = 0, video_de = 0;
+    reg         video_hs = 0, video_vs = 0, video_de = 0;
     reg  [23:0] video_rgb_in = 24'h123456;
-    reg  [15:0] latency_ms = 16'd321;
-    reg         live = 1;
+    reg  [19:0] latency_us = 20'd321;
+    reg         live_us = 1;
+    reg  [15:0] latency_ms = 16'd9876;
+    reg         live_ms = 1;
     wire [23:0] video_rgb_out;
+    wire        video_hs_out, video_vs_out, video_de_out;
     wire        overlay_pixel;
     wire [15:0] text_pixels;
 
     audio_overlay #(.H_ACTIVE(H_ACTIVE), .X_ORIGIN(X_ORIGIN), .Y_ORIGIN(Y_ORIGIN)) dut (
         .pixel_clk(pixel_clk), .reset_n(reset_n),
-        .video_vs(video_vs), .video_de(video_de), .video_rgb_in(video_rgb_in),
-        .latency_ms(latency_ms), .live(live), .freeze(1'b0),
-        .video_rgb_out(video_rgb_out), .overlay_pixel(overlay_pixel),
-        .text_pixels(text_pixels));
+        .video_hs(video_hs), .video_vs(video_vs), .video_de(video_de),
+        .video_rgb_in(video_rgb_in),
+        .latency_us(latency_us), .live_us(live_us),
+        .latency_ms(latency_ms), .live_ms(live_ms), .freeze(1'b0),
+        .video_rgb_out(video_rgb_out),
+        .video_hs_out(video_hs_out), .video_vs_out(video_vs_out),
+        .video_de_out(video_de_out),
+        .overlay_pixel(overlay_pixel), .text_pixels(text_pixels));
 
     integer errors = 0;
     integer drawn_inside, outside_bad, inside_bad;
@@ -108,21 +115,22 @@ module tb_audio_overlay;
         repeat (5) @(negedge pixel_clk);
         reset_n = 1;
 
-        // Frame 1: value 321 while live.
+        // Frame 1: "L1 0321 us" and "T1 9876 ms" while both values are live.
         run_frame_checked;
         drawn_live = drawn_inside;
         if (outside_bad != 0) begin
             $display("FAIL overlay: %0d pixels outside the box were modified", outside_bad);
             errors = errors + 1;
         end
-        if (drawn_inside < 60) begin
-            $display("FAIL overlay: only %0d text pixels drawn for '321'", drawn_inside);
+        if (drawn_inside < 120) begin
+            $display("FAIL overlay: only %0d text pixels drawn for both lines", drawn_inside);
             errors = errors + 1;
         end
-        $display("INFO overlay: 'T1 0321 ms' drawn with %0d pixels", drawn_live);
+        $display("INFO overlay: 'L1 0321 us' + 'T1 9876 ms' drawn with %0d pixels", drawn_live);
 
-        // Frame 2: another value must produce a different pattern.
-        latency_ms = 16'd9876;
+        // Frame 2: both values change -> a different pattern.
+        latency_us = 20'd1234;
+        latency_ms = 16'd4321;
         run_frame_checked;
         drawn_other = drawn_inside;
         if (drawn_other == drawn_live) begin
@@ -130,35 +138,41 @@ module tb_audio_overlay;
                      drawn_other);
             errors = errors + 1;
         end
-        if (drawn_other < 60) begin
-            $display("FAIL overlay: only %0d text pixels drawn for '9876'", drawn_other);
+        if (drawn_other < 120) begin
+            $display("FAIL overlay: only %0d text pixels drawn for '1234'/'4321'", drawn_other);
             errors = errors + 1;
         end
 
-        // Frame 3: live = 0 must draw dashes instead of digits.
-        live = 0;
-        latency_ms = 16'd321;
+        // Frame 3: both invalid must draw dashes on both lines.
+        live_us = 0;
+        live_ms = 0;
+        latency_us = 20'd321;
+        latency_ms = 16'd9876;
         run_frame_checked;
         drawn_notlive = drawn_inside;
         if (drawn_notlive == drawn_live) begin
-            $display("FAIL overlay: live=0 pattern identical to the live pattern (%0d)",
+            $display("FAIL overlay: dashes pattern identical to the live pattern (%0d)",
                      drawn_notlive);
             errors = errors + 1;
         end
-        if (drawn_notlive < 30) begin
-            $display("FAIL overlay: only %0d pixels drawn when not live", drawn_notlive);
+        if (drawn_notlive < 60) begin
+            $display("FAIL overlay: only %0d pixels drawn when both values are invalid",
+                     drawn_notlive);
             errors = errors + 1;
         end
-        $display("INFO overlay: dashes drawn with %0d pixels", drawn_notlive);
+        $display("INFO overlay: two dash lines drawn with %0d pixels", drawn_notlive);
 
-        // Frame 4: value above the display range saturates (same as 9999).
-        live = 1;
+        // Frame 4: values above the display range saturate (same as 9999).
+        live_us = 1;
+        live_ms = 1;
+        latency_us = 20'd12345;
         latency_ms = 16'd12345;
         run_frame;
+        latency_us = 20'd9999;
         latency_ms = 16'd9999;
         run_frame_checked;
-        if (drawn_inside !== drawn_other && drawn_inside < 60) begin
-            $display("FAIL overlay: saturated value drew only %0d pixels", drawn_inside);
+        if (drawn_inside < 120) begin
+            $display("FAIL overlay: saturated values drew only %0d pixels", drawn_inside);
             errors = errors + 1;
         end
 

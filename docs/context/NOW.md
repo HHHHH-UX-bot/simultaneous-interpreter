@@ -123,7 +123,7 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 - 启动把 ESP8266 从 115200 协商到 921600（分频 54）并校验；115200 无法承载约 45.7 kB/s 的 16 kHz PCM/Base64。
 - 板上 WSS 跑通：`network_stream_attach` 允许 TLS phase 8 接管，握手、session.created→session.update→session.updated、45 ms PCM append 流式发送均无协议错误（cloud phase=1、error=0）。
 - 真实语音一次端到端提交：`asr_final=1/translations=1/committed=1`，中文定稿「不好意思，」进入 UI，HDMI 抓帧见 [screen.png](../../output/cloud_app/capture/screen.png)；UI 已默认关闭“原文”行，只显示中文译文。
-- overlay 改为右上角 `T1 nnnn ms`（0x88，bit16 有效），延迟从服务端 speech_started 到首个 response.text.delta；一次读数 4299 ms（0x000110CB）。
+- overlay 改为右上角两行读数：`L1 nnnn us`（回环时延）与 `T1 nnnn ms`（云传译时延，0x88 bit16 有效），无效画横线；RGB 与 DE/HS/VS 在 overlay 内同一级寄存器对齐后送 TMDS，修正此前顶层分别延迟的像素错位。云传译延迟从服务端 speech_started 到首个 response.text.delta；一次读数 4299 ms（0x000110CB）。
 
 遗留（热点打开后继续）：
 1. 吞吐：UART 实测约 14.1 kB/s，仅为 16 kHz PCM 实时所需约 45.7 kB/s 的三分之一；ESP TLS 单次 CIPSEND 往返约 143 ms/1991 B。候选方案：ESP 原始透传（CIPMODE=1，历史有载荷损坏证据，需重验）、更高波特率、与服务协商更低采样/格式，或改变发送所有权；1024 样本 FIFO 长时读取出现 0x94=3767 溢出。
