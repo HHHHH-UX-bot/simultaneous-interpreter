@@ -166,9 +166,9 @@ def build(vivado, xsim_bin):
                  "-log", LOGS / "build.log", "-journal", work / "build.jou", "-tclargs", "build"],
         LOGS / "build_console.log", "PASS_Z7_NANO_AUDIO_BUILD", work)
     check(logic, BUILD_INPUTS)
-    result = json.loads((ROOT / "output/z7_nano/audio/z7_nano_audio/implementation.json")
+    result = json.loads((ROOT / "output/z7_nano/audio/implementation.json")
                         .read_text(encoding="utf-8"))
-    bitstream = ROOT / "output/z7_nano/audio/z7_nano_audio/z7_nano_audio_top.bit"
+    bitstream = ROOT / "output/z7_nano/audio/z7_nano_audio_top.bit"
     result.update(Status="passed", LogicHashes=logic,
                   BitstreamSHA256=sha(bitstream.relative_to(ROOT).as_posix()),
                   VerifiedAtUTC=datetime.now(timezone.utc).isoformat())
