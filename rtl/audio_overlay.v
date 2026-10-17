@@ -1,17 +1,22 @@
 `timescale 1ns/1ps
-// Latency readout drawn on top of the existing picture.
+// Cloud translation-latency readout drawn on top of the existing picture.
 //
 // The accepted display chain (VDMA -> framebuffer_video -> DVI) is untouched:
 // this block only replaces pixels inside a fixed box in the top-right corner of
-// the 1024x600 active area, drawing "L1 nnnn us" in a 5x7 font scaled 2x
+// the 1024x600 active area, drawing "T1 nnnn ms" in a 5x7 font scaled 2x
 // (10 cells * 12 px = 120 px wide, 16 px tall). Pixels outside the box pass
 // through unchanged, so the existing picture and controls keep working
-// (see docs/design/UI_SPEC.md#时延读数).
+// (see docs/design/UI_SPEC.md#时延读数 and docs/design/CLOUD_SPEECH.md).
+//
+// The value is the PS cloud client's measured time from the first uploaded
+// microphone packet of an utterance to the first Chinese translation event,
+// written to audio_regs 0x88; bit 16 there is the "valid" flag and draws dashes
+// until the first translation arrives.
 module audio_overlay #(
     parameter H_ACTIVE     = 1024,
     parameter X_ORIGIN     = 896,      // H_ACTIVE - 8 - 120
     parameter Y_ORIGIN     = 8,
-    parameter MAX_SHOWN_US = 9999,
+    parameter MAX_SHOWN_MS = 9999,
     // The subtitle UI is a light theme (white paper / pale canvas), so the readout
     // must be dark ink; white-on-white was invisible on the real screen.
     parameter [23:0] TEXT_RGB = 24'h172A38
@@ -21,8 +26,8 @@ module audio_overlay #(
     input  wire        video_vs,
     input  wire        video_de,
     input  wire [23:0] video_rgb_in,
-    input  wire [19:0] latency_us,
-    input  wire        live,
+    input  wire [15:0] latency_ms,
+    input  wire        live,              // translation latency is valid
     input  wire        freeze,            // hold the last value (CTRL bit 2)
     output reg  [23:0] video_rgb_out,
     output reg         overlay_pixel,     // 1 while a text pixel is drawn
@@ -33,13 +38,13 @@ module audio_overlay #(
     localparam integer BOX_H  = 16;
 
     // character codes
-    localparam [3:0] CH_L = 4'd10, CH_1 = 4'd11, CH_U = 4'd12, CH_S = 4'd13,
+    localparam [3:0] CH_T = 4'd10, CH_1 = 4'd11, CH_M = 4'd12, CH_S = 4'd13,
                      CH_DASH = 4'd14, CH_SP = 4'd15;
 
     reg [10:0] x;                 // active pixel index in the line
     reg [9:0]  y;                 // active line index in the frame
     reg        de_d, vs_d;
-    reg [19:0] shown_us;
+    reg [15:0] shown_ms;
     reg        shown_live;
 
     wire in_h = video_de && (x >= X_ORIGIN[10:0]) && (x < (X_ORIGIN + BOX_W));
@@ -58,7 +63,7 @@ module audio_overlay #(
     reg  [13:0] drem;
     reg  [3:0]  rd3, rd2, rd1, rd0;
 
-    wire [13:0] shown_value = (shown_us > MAX_SHOWN_US) ? MAX_SHOWN_US[13:0] : shown_us[13:0];
+    wire [13:0] shown_value = (shown_ms > MAX_SHOWN_MS) ? MAX_SHOWN_MS[13:0] : shown_ms[13:0];
     wire [13:0] dh  = (dstep == 2'd0) ? 14'd1000 : (dstep == 2'd1) ? 14'd100 :
                       (dstep == 2'd2) ? 14'd10 : 14'd1;
     wire [13:0] m2  = dh << 1;
@@ -71,7 +76,7 @@ module audio_overlay #(
     reg [3:0] ch;
     always @* begin
         case (cell_ix)
-            4'd0: ch = CH_L;
+            4'd0: ch = CH_T;
             4'd1: ch = CH_1;
             4'd2: ch = CH_SP;
             4'd3: ch = shown_live ? rd3 : CH_DASH;
@@ -79,7 +84,7 @@ module audio_overlay #(
             4'd5: ch = shown_live ? rd1 : CH_DASH;
             4'd6: ch = shown_live ? rd0 : CH_DASH;
             4'd7: ch = CH_SP;
-            4'd8: ch = CH_U;
+            4'd8: ch = CH_M;
             4'd9: ch = CH_S;
             default: ch = CH_SP;
         endcase
@@ -91,11 +96,11 @@ module audio_overlay #(
         input [2:0] r;
         begin
             case (c)
-                CH_L: case (r)
-                    3'd0: glyph_row = 5'b10000; 3'd1: glyph_row = 5'b10000;
-                    3'd2: glyph_row = 5'b10000; 3'd3: glyph_row = 5'b10000;
-                    3'd4: glyph_row = 5'b10000; 3'd5: glyph_row = 5'b10000;
-                    default: glyph_row = 5'b11111;
+                CH_T: case (r)
+                    3'd0: glyph_row = 5'b11111; 3'd1: glyph_row = 5'b00100;
+                    3'd2: glyph_row = 5'b00100; 3'd3: glyph_row = 5'b00100;
+                    3'd4: glyph_row = 5'b00100; 3'd5: glyph_row = 5'b00100;
+                    default: glyph_row = 5'b00100;
                 endcase
                 CH_1: case (r)
                     3'd0: glyph_row = 5'b00100; 3'd1: glyph_row = 5'b01100;
@@ -103,11 +108,11 @@ module audio_overlay #(
                     3'd4: glyph_row = 5'b00100; 3'd5: glyph_row = 5'b00100;
                     default: glyph_row = 5'b01110;
                 endcase
-                CH_U: case (r)
-                    3'd0: glyph_row = 5'b10001; 3'd1: glyph_row = 5'b10001;
-                    3'd2: glyph_row = 5'b10001; 3'd3: glyph_row = 5'b10001;
-                    3'd4: glyph_row = 5'b10001; 3'd5: glyph_row = 5'b10001;
-                    default: glyph_row = 5'b01110;
+                CH_M: case (r)
+                    3'd0: glyph_row = 5'b00000; 3'd1: glyph_row = 5'b11011;
+                    3'd2: glyph_row = 5'b10101; 3'd3: glyph_row = 5'b10101;
+                    3'd4: glyph_row = 5'b10101; 3'd5: glyph_row = 5'b10101;
+                    default: glyph_row = 5'b00000;
                 endcase
                 CH_S: case (r)
                     3'd0: glyph_row = 5'b01111; 3'd1: glyph_row = 5'b10000;
@@ -193,7 +198,7 @@ module audio_overlay #(
     always @(posedge pixel_clk) begin
         if (!reset_n) begin
             x <= 0; y <= 0; de_d <= 0; vs_d <= 0;
-            shown_us <= 0; shown_live <= 0;
+            shown_ms <= 0; shown_live <= 0;
             cell_ix <= 4'd0; cell_x <= 4'd0; dstep <= 2'd0; drem <= 14'd0;
             rd3 <= 4'd0; rd2 <= 4'd0; rd1 <= 4'd0; rd0 <= 4'd0;
             video_rgb_out <= 0; overlay_pixel <= 0; text_pixels <= 0;
@@ -228,7 +233,7 @@ module audio_overlay #(
             if (video_vs && !vs_d) begin
                 y <= 0;
                 if (!freeze) begin
-                    shown_us    <= latency_us;     // latch once per frame
+                    shown_ms    <= latency_ms;     // latch once per frame
                     shown_live  <= live;
                 end
                 text_pixels <= 0;

@@ -21,7 +21,7 @@ module tb_audio_overlay;
     reg         reset_n = 0;
     reg         video_vs = 0, video_de = 0;
     reg  [23:0] video_rgb_in = 24'h123456;
-    reg  [19:0] latency_us = 20'd321;
+    reg  [15:0] latency_ms = 16'd321;
     reg         live = 1;
     wire [23:0] video_rgb_out;
     wire        overlay_pixel;
@@ -30,7 +30,7 @@ module tb_audio_overlay;
     audio_overlay #(.H_ACTIVE(H_ACTIVE), .X_ORIGIN(X_ORIGIN), .Y_ORIGIN(Y_ORIGIN)) dut (
         .pixel_clk(pixel_clk), .reset_n(reset_n),
         .video_vs(video_vs), .video_de(video_de), .video_rgb_in(video_rgb_in),
-        .latency_us(latency_us), .live(live), .freeze(1'b0),
+        .latency_ms(latency_ms), .live(live), .freeze(1'b0),
         .video_rgb_out(video_rgb_out), .overlay_pixel(overlay_pixel),
         .text_pixels(text_pixels));
 
@@ -119,10 +119,10 @@ module tb_audio_overlay;
             $display("FAIL overlay: only %0d text pixels drawn for '321'", drawn_inside);
             errors = errors + 1;
         end
-        $display("INFO overlay: 'L1 0321 us' drawn with %0d pixels", drawn_live);
+        $display("INFO overlay: 'T1 0321 ms' drawn with %0d pixels", drawn_live);
 
         // Frame 2: another value must produce a different pattern.
-        latency_us = 20'd9876;
+        latency_ms = 16'd9876;
         run_frame_checked;
         drawn_other = drawn_inside;
         if (drawn_other == drawn_live) begin
@@ -137,7 +137,7 @@ module tb_audio_overlay;
 
         // Frame 3: live = 0 must draw dashes instead of digits.
         live = 0;
-        latency_us = 20'd321;
+        latency_ms = 16'd321;
         run_frame_checked;
         drawn_notlive = drawn_inside;
         if (drawn_notlive == drawn_live) begin
@@ -153,9 +153,9 @@ module tb_audio_overlay;
 
         // Frame 4: value above the display range saturates (same as 9999).
         live = 1;
-        latency_us = 20'd12345;
+        latency_ms = 16'd12345;
         run_frame;
-        latency_us = 20'd9999;
+        latency_ms = 16'd9999;
         run_frame_checked;
         if (drawn_inside !== drawn_other && drawn_inside < 60) begin
             $display("FAIL overlay: saturated value drew only %0d pixels", drawn_inside);

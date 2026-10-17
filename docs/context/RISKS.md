@@ -26,6 +26,8 @@
 | R21 音频模块供电/共地文档错误（已发现） | 2026-10-17 复核厂商文档与原理图：模块 J3-1=GND、2=VCC5V、37/38=GND、39/40=D3V3；开发板 JP2 11=VCC_5V、29=VCC_3V3、12/30=GND。旧文档把 J3 1/2 都记为 VCC5V、把 JP2 12/30 记为电源针，可能误导实际接线 | 已更正 [audio_module.json](../../hardware/z7_nano/audio_module.json)、[MAP](MAP.md#音频模块连接) 与 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#2-接口事实)；接线前必须按更正后的针号核对，GND 必须共地，否则 codec 可寄生取电（I2C 应答）但晶振/BCLK 不启动 |
 | R22 显示启动的单次格式错误（随供电改善消失） | 2026-10-17 在 4.3 V 5 V 供电下，两次运行出现 `format_errors=1` 触发应用 `fail(21)`；换成充电宝稳定 5 V 后同一位置流运行 `format_errors=0`、整帧 614400、`display_ok=1` | 已不再复现；若换回弱供电/整机长期运行再出现，按 VDMA/fsync 与供电两条线分别定位 |
 | R23 模块供电余量不足（已确认并解决） | 开发板 USB 5 V 被屏幕负载拖到 4.3 V（拔屏 4.6 V），低于 LT1117-3.3 正常压差需求；codec 能应答 I2C 但晶振不启动，四路音频引脚零跳变。用户改用充电宝主供电 + 排针 5 V 直供模块 J3-2 后，`bclk_alive=1`、回环 62 µs、显示 `format_errors=0`（此前的显示格式错误也一并消失，说明是供电噪声） | 后续整机若再回到单 USB 供电，需确认 5 V 不低于约 4.6 V 或给模块单独稳压；模块 J3-39/40 的 D3V3 与 codec 的 VCC3V3 不是同一网络，不能靠接 3.3 V 给它供电 |
+| R24 板端实时 PCM 上行带宽不足（未解决） | 2026-10-17 板上 921600 UART + ESP TLS 实测约 14.1 kB/s；16 kHz 16-bit PCM 经 Base64 约需 45.7 kB/s，客户端忙碌时丢帧，只有约 1/3 实时音频到云。ESP TLS 单次 CIPSEND 往返约 143 ms/1991 B；1024 样本 FIFO 长时读取出现 0x94=3767 溢出 | 不把“WSS 已建连”当作实时同传可用。候选：ESP 原始透传（CIPMODE=1，历史有载荷损坏证据须重验）、更高波特率、与服务协商更低采样/压缩格式或改变发送所有权；每方案先做短对照，见 [云端板端阶段](../../output/cloud_app/status.json) |
+| R25 云端 VAD 收段未在板上出现（未解决） | 板端英文话语只产生 `response.text.delta` 与一次 4299 ms 延迟读数，10 分钟后仍无 `speech_stopped`/`transcription.completed`/`response.text.done`，因此没有提交第二句；PC 以“连续语音+静音”能稳定收到完整收段事件（speech_stopped→transcription.completed→response.text.done→response.done） | 先解决 R24 的音频断续再复测收段；若仍不收段，再考虑 session.update 的 turn_detection 参数或显式分段。未收段前不计整机实时同传验收 |
 
 方案和模拟 UI 可独立使用；硬件阶段按对应放行条件推进，不通过假数据宣称解决任何硬件或模型缺口。
 

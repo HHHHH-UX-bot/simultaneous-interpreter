@@ -79,8 +79,18 @@ static enum cloud_parse_code cloud_json_text(const char *s,const jsmntok_t *t,in
     }
     out[n]=0;return n?CLOUD_OK:CLOUD_SCHEMA;
 }
-static enum cloud_parse_code cloud_json_identifier(const char *s,const jsmntok_t *t,int token,char *out) {
+static enum cloud_parse_code cloud_json_ascii(const char *s,const jsmntok_t *t,int token,char *out) {
     if(token<0 || t[token].type!=JSMN_STRING) return CLOUD_SCHEMA;
+    int at=t[token].start;uint32_t n=0;
+    while(at<t[token].end) {
+        uint32_t cp;
+        if(n==CLOUD_ID_BYTES-1) return CLOUD_LIMIT;
+        if(!cloud_json_scalar(s,t[token].end,&at,&cp) || cp<0x20u || cp>0x7eu) return CLOUD_SCHEMA;
+        out[n++]=(char)cp;
+    }
+    out[n]=0;return n?CLOUD_OK:CLOUD_SCHEMA;
+}
+static enum cloud_parse_code cloud_json_identifier(const char *s,const jsmntok_t *t,int token,char *out) {    if(token<0 || t[token].type!=JSMN_STRING) return CLOUD_SCHEMA;
     int at=t[token].start;uint32_t n=0;
     while(at<t[token].end) {
         uint32_t cp;
@@ -117,6 +127,7 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
         return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,"transcript"),event->text);
     }
+    if(cloud_json_equal(s,tokens+type,"response.text.delta")) {event->kind=CLOUD_TRANSLATION_DELTA;return CLOUD_OK;}
     if(cloud_json_equal(s,tokens+type,"response.text.done")) {
         event->kind=CLOUD_TRANSLATION;
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"response_id"),event->response_id);if(code) return code;
@@ -130,10 +141,15 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         if(value<0 || tokens[value].type!=JSMN_STRING) return CLOUD_SCHEMA;
         event->completed=(uint32_t)cloud_json_equal(s,tokens+value,"completed");return CLOUD_OK;
     }
+    if(cloud_json_equal(s,tokens+type,"input_audio_buffer.speech_started")) {event->kind=CLOUD_SPEECH_STARTED;return CLOUD_OK;}
+    if(cloud_json_equal(s,tokens+type,"session.created")) {event->kind=CLOUD_SESSION_CREATED;return CLOUD_OK;}
+    if(cloud_json_equal(s,tokens+type,"session.updated")) {event->kind=CLOUD_SESSION_UPDATED;return CLOUD_OK;}
     if(cloud_json_equal(s,tokens+type,"session.finished")) {event->kind=CLOUD_FINISHED;return CLOUD_OK;}
     if(cloud_json_equal(s,tokens+type,"error") || cloud_json_equal(s,tokens+type,"conversation.item.input_audio_transcription.failed")) {
         event->kind=CLOUD_ERROR;int error=cloud_json_member(s,tokens,count,0,"error");
-        return cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,error,"code"),event->error_code);
+        code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,error,"code"),event->error_code);
+        if(code) return code;
+        return cloud_json_ascii(s,tokens,cloud_json_member(s,tokens,count,error,"message"),event->error_message);
     }
     return CLOUD_OK;
 }

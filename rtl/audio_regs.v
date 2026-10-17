@@ -86,6 +86,10 @@ module audio_regs #(
     output reg         init_trigger,
     output reg         clear_extremes,
     output reg         freeze_display,
+    // Cloud translation latency written by the PS cloud client:
+    // [15:0] milliseconds, [16] valid (set once a translation event arrived).
+    output reg [15:0]  translation_ms,
+    output reg         translation_valid,
     output reg  [8:0]  cfg_r0,
     output reg  [8:0]  cfg_r1,
     output reg  [8:0]  cfg_r2,
@@ -104,6 +108,25 @@ module audio_regs #(
     reg [31:0] ctrl_shadow;
     reg        ctrl_bit0_d;
 
+    // Microphone PCM FIFO. The codec captures at 48 kHz but the cloud client
+    // needs 16 kHz; the PL decimates 3:1 and buffers the samples so the PS can
+    // drain them in bursts while it renders (a 1 ms polling loop cannot keep
+    // up with 48 kHz, and the raw tap only holds the latest sample).
+    localparam integer PCM_FIFO_DEPTH = 1024;
+    reg [15:0] pcm_fifo [0:PCM_FIFO_DEPTH-1];
+    reg [10:0] pcm_wr, pcm_rd;
+    reg [11:0] pcm_count;
+    reg [15:0] pcm_overflows;
+    reg [1:0]  pcm_decimate;
+    reg        sample_toggle_d;
+    reg        pcm_clear_overflow;
+    wire pcm_sample_edge = (sample_toggle != sample_toggle_d);
+    wire pcm_push = pcm_sample_edge && (pcm_decimate == 2'd2) && (pcm_count != PCM_FIFO_DEPTH);
+    wire pcm_drop = pcm_sample_edge && (pcm_decimate == 2'd2) && (pcm_count == PCM_FIFO_DEPTH);
+    // An AXI read of 0x8c consumes one sample in the same cycle, so the count
+    // observed by the next read is already consistent.
+    wire pcm_read = s_axi_arvalid && s_axi_arready && (s_axi_araddr == 8'h8c) && (pcm_count != 0);
+
     assign s_axi_awready = !aw_hold && !s_axi_bvalid;
     assign s_axi_wready  = !w_hold  && !s_axi_bvalid;
     assign s_axi_arready = !s_axi_rvalid;
@@ -121,6 +144,8 @@ module audio_regs #(
             s_axi_bresp <= 0; s_axi_bvalid <= 0;
             s_axi_rdata <= 0; s_axi_rresp <= 0; s_axi_rvalid <= 0;
             init_trigger <= 0; ctrl_bit0_d <= 0; clear_extremes <= 0; freeze_display <= 0;
+            translation_ms <= 16'd0; translation_valid <= 1'b0;
+            pcm_clear_overflow <= 1'b0;
             ctrl_shadow <= 32'h1;                 // run the codec init after reset
             cfg_r0 <= DEF_R0; cfg_r1 <= DEF_R1; cfg_r2 <= DEF_R2; cfg_r3 <= DEF_R3;
             cfg_r4 <= DEF_R4; cfg_r5 <= DEF_R5; cfg_r7 <= DEF_R7; cfg_r8 <= DEF_R8;
@@ -131,6 +156,7 @@ module audio_regs #(
             init_trigger   <= ctrl_shadow[0] && !ctrl_bit0_d;
             ctrl_bit0_d    <= ctrl_shadow[0];
             clear_extremes <= 1'b0;
+            pcm_clear_overflow <= 1'b0;
 
             if (s_axi_awvalid && s_axi_awready) begin aw_hold <= 1; aw_address <= s_axi_awaddr; end
             if (s_axi_wvalid && s_axi_wready)   begin w_hold  <= 1; w_data <= s_axi_wdata; w_strobe <= s_axi_wstrb; end
@@ -152,6 +178,16 @@ module audio_regs #(
                         clear_extremes <= w_data[1];
                         freeze_display <= w_data[2];
                     end
+                    // Cloud translation latency: [15:0] ms, [16] valid. This is
+                    // a register the PS cloud client writes after each Chinese
+                    // translation event; 0x88 was previously an invalid address
+                    // whose SLVERR response aborted the ARM core.
+                    8'h88: if (w_strobe[1:0] == 2'b11) begin
+                        translation_ms    <= w_data[15:0];
+                        translation_valid <= w_data[16];
+                    end
+                    // Writing any value to 0x94 clears the FIFO-overflow counter.
+                    8'h94: pcm_clear_overflow <= 1'b1;
                     default: s_axi_bresp <= 2'b10;
                 endcase
             end
@@ -194,9 +230,45 @@ module audio_regs #(
                     // [15:0] is the latest left sample (signed 16-bit).
                     8'h80: s_axi_rdata <= {15'd0, sample_toggle, sample_data[15:0]};
                     8'h84: s_axi_rdata <= sample_count;
+                    // 0x88: cloud translation latency for the overlay, written
+                    // by the PS cloud client: [15:0] ms, [16] valid.
+                    8'h88: s_axi_rdata <= {15'd0, translation_valid, translation_ms};
+                    // 0x8c: next 16 kHz PCM sample (reading pops it).
+                    // 0x90: samples available. 0x94: dropped-at-full counter.
+                    8'h8c: begin
+                        if (pcm_count != 0) begin
+                            s_axi_rdata <= {16'd0, pcm_fifo[pcm_rd]};
+                        end else s_axi_rdata <= 32'd0;
+                    end
+                    8'h90: s_axi_rdata <= {20'd0, pcm_count};
+                    8'h94: s_axi_rdata <= {16'd0, pcm_overflows};
                     default: begin s_axi_rdata <= 32'd0; s_axi_rresp <= 2'b10; end
                 endcase
             end
+        end
+    end
+
+    // 48 kHz sample toggle -> every third sample into the FIFO (16 kHz).
+    // Pushes and AXI pops update the count together so a simultaneous push and
+    // pop leaves the occupancy unchanged.
+    always @(posedge clk) begin
+        if (!reset_n) begin
+            pcm_wr <= 11'd0; pcm_rd <= 11'd0; pcm_count <= 12'd0;
+            pcm_overflows <= 16'd0; pcm_decimate <= 2'd0; sample_toggle_d <= 1'b0;
+        end else begin
+            if (pcm_sample_edge) begin
+                sample_toggle_d <= sample_toggle;
+                pcm_decimate <= (pcm_decimate == 2'd2) ? 2'd0 : pcm_decimate + 1'b1;
+                if (pcm_push) begin
+                    pcm_fifo[pcm_wr] <= sample_data;
+                    pcm_wr <= pcm_wr + 1'b1;
+                end
+            end
+            if (pcm_clear_overflow) pcm_overflows <= 16'd0;
+            else if (pcm_drop && pcm_overflows != 16'hffff) pcm_overflows <= pcm_overflows + 1'b1;
+            if (pcm_read) pcm_rd <= pcm_rd + 1'b1;
+            if (pcm_push && !pcm_read) pcm_count <= pcm_count + 1'b1;
+            else if (!pcm_push && pcm_read) pcm_count <= pcm_count - 1'b1;
         end
     end
 endmodule

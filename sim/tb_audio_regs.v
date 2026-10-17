@@ -49,6 +49,8 @@ module tb_audio_regs;
 
     wire        init_trigger, clear_extremes;
     wire [8:0]  cfg_r0, cfg_r1, cfg_r2, cfg_r3, cfg_r4, cfg_r5, cfg_r7, cfg_r8;
+    wire [15:0] translation_ms;
+    wire        translation_valid;
 
     audio_regs dut (
         .clk(clk), .reset_n(reset_n),
@@ -70,6 +72,7 @@ module tb_audio_regs;
         .rb_valid(rb_valid), .sda_idle(sda_idle), .scl_idle(scl_idle),
         .sample_data(sample_data), .sample_toggle(sample_toggle), .sample_count(sample_count),
         .init_trigger(init_trigger), .clear_extremes(clear_extremes), .freeze_display(),
+        .translation_ms(translation_ms), .translation_valid(translation_valid),
         .cfg_r0(cfg_r0), .cfg_r1(cfg_r1), .cfg_r2(cfg_r2), .cfg_r3(cfg_r3),
         .cfg_r4(cfg_r4), .cfg_r5(cfg_r5), .cfg_r7(cfg_r7), .cfg_r8(cfg_r8));
 
@@ -98,8 +101,11 @@ module tb_audio_regs;
         begin
             @(negedge clk);
             araddr = addr; arvalid = 1; rready = 1;
-            @(negedge clk);
-            while (!arready) @(negedge clk);
+            // Hold ARVALID only until the slave accepts exactly once: the FIFO
+            // data register pops on each qualified read, so a second accidental
+            // transaction would consume the next sample.
+            @(posedge clk);
+            while (!arready) @(posedge clk);
             @(negedge clk);
             arvalid = 0;
             while (!rvalid) @(negedge clk);
@@ -160,6 +166,31 @@ module tb_audio_regs;
         // Microphone tap: [16] toggle, [15:0] signed sample; 0x84 frame count.
         expect_read(8'h80, 32'h0001_BEEF, "mic sample");
         expect_read(8'h84, 32'd123456, "mic sample count");
+        // Cloud translation latency: 0x88, [15:0] ms + [16] valid.
+        expect_read(8'h88, 32'd0, "translation default");
+        axi_write(8'h88, 32'h0001_2345);
+        expect_read(8'h88, 32'h0001_2345, "translation latency write");
+        if (translation_ms !== 16'h2345 || translation_valid !== 1'b1) begin
+            $display("FAIL translation outputs: ms=%04h valid=%0b", translation_ms, translation_valid);
+            errors = errors + 1;
+        end
+
+        // PCM FIFO: 48 kHz toggles are decimated 3:1 into 16 kHz samples that
+        // the PS drains one read at a time. Align the decimator first (the
+        // reset toggle counts as an edge), then check one push per 3 toggles.
+        sample_toggle = 0;
+        repeat (6) begin @(negedge clk); sample_toggle = ~sample_toggle; end
+        axi_read(8'h90, rd);
+        while (rd != 0) begin axi_read(8'h8c, rd); axi_read(8'h90, rd); end
+        sample_data = 16'h1234;
+        repeat (3) begin @(negedge clk); sample_toggle = ~sample_toggle; end
+        expect_read(8'h90, 32'd1, "pcm fifo count");
+        expect_read(8'h8c, 32'h0000_1234, "pcm fifo data");
+        expect_read(8'h90, 32'd0, "pcm fifo drained");
+        sample_data = 16'h5678;
+        repeat (3) begin @(negedge clk); sample_toggle = ~sample_toggle; end
+        expect_read(8'h8c, 32'h0000_5678, "pcm fifo second sample");
+        expect_read(8'h90, 32'd0, "pcm fifo drained again");
 
         // Status word: [7:0] flags (live, codec_found, addr_sel[1:0], init_busy,
         // init_done, init_error, max_valid), [10:8] scl_idle/sda_idle/rb_valid

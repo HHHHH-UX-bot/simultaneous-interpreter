@@ -9,6 +9,9 @@ struct cloud_caption {uint32_t sequence,source[UI_MAX_TEXT],translated[UI_MAX_TE
 extern volatile struct cloud_status cloud_report;
 extern volatile struct cloud_caption cloud_caption;
 void cloud_live_init(struct ui_state *model);
+/* Enter the live cloud session from the board's own TLS/WSS client: reset the
+   event/pair state, start the model session and initialise the wire mapper. */
+void cloud_live_begin(uint32_t now);
 void cloud_live_tick(uint32_t now);
 int cloud_live_owns_ui(void);
 #endif

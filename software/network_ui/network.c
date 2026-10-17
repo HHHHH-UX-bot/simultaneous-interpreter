@@ -108,7 +108,10 @@ int network_send(const uint8_t *data,uint32_t size) {
     return 1;
 }
 int network_stream_attach(void (*receive)(uint8_t)) {
-    if(!receive || network_info.phase || network_config.request_sequence!=network_info.config_ack ||
+    /* phase 0: pilot attaches before the TCP client connects; phase 8: the
+       trusted cloud TLS link is already up and the cloud client adopts it. */
+    if(!receive || (network_info.phase!=0 && network_info.phase!=8) ||
+       network_config.request_sequence!=network_info.config_ack ||
        command_phase || ack_pending || raw_state || stream_receive) return 0;
     stream_receive=receive;network_info.phase=4;network_info.client=0;
     return 1;

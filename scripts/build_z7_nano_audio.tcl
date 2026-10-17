@@ -118,7 +118,8 @@ set audio_status_in {live codec_found codec_addr_sel init_busy init_done init_er
                      pin_count0 pin_count1 pin_count2 pin_count3 \
                      rb_r4 rb_r7 rb_r8 rb_r9 rb_valid sda_idle scl_idle \
                      sample_data sample_toggle sample_count}
-set audio_ctrl_out {init_trigger clear_extremes freeze_display cfg_r0 cfg_r1 cfg_r2 \
+set audio_ctrl_out {init_trigger clear_extremes freeze_display translation_ms translation_valid \
+                    cfg_r0 cfg_r1 cfg_r2 \
                     cfg_r3 cfg_r4 cfg_r5 cfg_r7 cfg_r8}
 foreach pin [concat $audio_status_in $audio_ctrl_out] {
     make_bd_pins_external [get_bd_pins aregs/$pin]

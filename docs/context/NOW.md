@@ -113,13 +113,20 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 - Wi-Fi 文档补充：[本阶段直接链接检查](../../output/verification/wifi_documentation_validation.json)，检查九份改动文档及其直接目标，不扩展审计资料库。
 - 产品接续建档：[本次文档检查](../../output/verification/product_handoff_documentation_validation.json)，检查八份修改文档、沿用规则和直接链接；不包含业务实现、构建、烧录或业务测试。
 
-## 云端同传收尾清单（2026-10-17 深夜交接）
+## 云端同传收尾清单（2026-10-17 夜状态）
 
-已完成并验证：ESP8266@115200 `AT`→`OK`（分频 434）；百炼实时翻译协议电脑侧跑通（首字 2.19 s）；PL 麦克风 PCM 抽头 0x43C20080/84 与 UART 邮箱 0x43C30000 均由 PS 读写验通；`cloud_app.elf` 可构建、下载、运行；应用已带 `-DZ7_NETWORK_CAPABILITIES`、启动强制分频 434、跳过启动探针让网络通道独占 AT。
+2026-10-17 夜已打通板端链路并完成最终烧录，热点随后由用户关闭，整机实屏验收改到下次（热点重开后）。统一证据 [云端板端阶段](../../output/cloud_app/status.json)；构建记录 [build.json](../../output/cloud_app/build.json)，烧录记录 [program.json](../../output/cloud_app/program.json)（`display_ok=1`、整帧 614400、L1=62 µs、over/under=0）。
 
-遗留问题（按序处理）：
-1. `cloud_app.elf` 启动后显示报告停在 seq=1（应用卡死）。先修正链接布局：`.bss` 回 OCM（≤0x1D000）、`.cloud_runtime`/`.cloud_masks` 放字体（0x1800000+）之后的 DDR 空洞（如 0x1C00000），用 `--print-memory-usage` 核对无重叠，再烧录确认报告 seq 递增。
-2. 应用活化后写 `network_config`（0x1E180）：magic=0x3146434E、request_sequence=1、action=3、ssid_bytes=9、password_bytes=9、credentials[0..8]=SSID、credentials[33..41]=密码（注意密码在偏移 33，不在 SSID 之后）；确认 NETREP phase 前进、UART SENT 递增。
-3. TLS 就绪（phase 8）后由 `cloud_client` 发 WSS 握手 + session.update，开始麦克风 20 ms 打包上传；事件经 cloud_wire/events/live 上屏。
-4. overlay 改 `T1 nnnn ms` 传译延迟（audio_regs 0x88 已由云客户端写入）。
-5. 整机实屏验收与 30 min 稳定性。
+已完成并验证：
+- `cloud_app.elf` 停在 seq=1 的根因不是链接布局（原映射无重叠）；实际是初始化写未实现的 `audio_regs 0x88` 触发 data abort（PC=`0x10078`、LR_ABT=`0x16814`）。PL 新增 0x88 传译延迟后应用恢复，显示 seq/flips 递增、视频零错误。布局仍为 `.bss`→DDR `0x1A80000`、`.cloud_runtime` 随后、字体 `0x1800000` 起，`--print-memory-usage` 通过。
+- PL 新增 16 kHz 麦克风 FIFO：0x8c 读样本（读即弹出）、0x90 计数、0x94 溢出（写清零），48 kHz 3:1 抽取，1024 样本/64 ms。PS 不再按 1 ms 轮询 48 kHz 原始抽头（会漏采）。
+- 启动把 ESP8266 从 115200 协商到 921600（分频 54）并校验；115200 无法承载约 45.7 kB/s 的 16 kHz PCM/Base64。
+- 板上 WSS 跑通：`network_stream_attach` 允许 TLS phase 8 接管，握手、session.created→session.update→session.updated、45 ms PCM append 流式发送均无协议错误（cloud phase=1、error=0）。
+- 真实语音一次端到端提交：`asr_final=1/translations=1/committed=1`，中文定稿「不好意思，」进入 UI，HDMI 抓帧见 [screen.png](../../output/cloud_app/capture/screen.png)；UI 已默认关闭“原文”行，只显示中文译文。
+- overlay 改为右上角 `T1 nnnn ms`（0x88，bit16 有效），延迟从服务端 speech_started 到首个 response.text.delta；一次读数 4299 ms（0x000110CB）。
+
+遗留（热点打开后继续）：
+1. 吞吐：UART 实测约 14.1 kB/s，仅为 16 kHz PCM 实时所需约 45.7 kB/s 的三分之一；ESP TLS 单次 CIPSEND 往返约 143 ms/1991 B。候选方案：ESP 原始透传（CIPMODE=1，历史有载荷损坏证据，需重验）、更高波特率、与服务协商更低采样/格式，或改变发送所有权；1024 样本 FIFO 长时读取出现 0x94=3767 溢出。
+2. VAD 收段：板上英文话语只有 response.text.delta 与 4299 ms 延迟，没有 speech_stopped/transcription.completed/response.text.done，未提交第二句；PC 在“连续语音+静音”下可稳定收段，推断与约 1/3 音频的断续有关。
+3. 以上未解决前不宣告实时同传验收；30 min 稳定性、耳机听感、实屏 `T1` 读数需用户在场。
+4. API Key 仍只在运行期经 JTAG 写入 `.cloud_config`（0x1E200），未入库；凭据写入脚本在 `tmp/cloud/`（Git 忽略）。

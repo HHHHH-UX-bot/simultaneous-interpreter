@@ -58,6 +58,10 @@ module z7_nano_audio_top (
     wire [1:0]  codec_addr_sel;
     wire [7:0]  regs_written;
     wire        init_trigger, clear_extremes, freeze_display;
+    // Cloud translation latency (written by the PS cloud client at 0x88):
+    // [15:0] ms, [16] valid. The overlay shows "T1 nnnn ms" from this register.
+    wire [15:0] translation_ms;
+    wire        translation_valid;
     wire [8:0]  cfg_r0, cfg_r1, cfg_r2, cfg_r3, cfg_r4, cfg_r5, cfg_r7, cfg_r8;
     wire [15:0] occ_frames, latency_cycles;
     wire [31:0] adc_frames, dac_frames, bclk_cycles;
@@ -125,6 +129,7 @@ module z7_nano_audio_top (
         .rb_valid(rb_valid), .sda_idle(sda_idle), .scl_idle(scl_idle),
         .init_trigger(init_trigger), .clear_extremes(clear_extremes),
         .freeze_display(freeze_display),
+        .translation_ms(translation_ms), .translation_valid(translation_valid),
         .cfg_r0(cfg_r0), .cfg_r1(cfg_r1), .cfg_r2(cfg_r2), .cfg_r3(cfg_r3),
         .cfg_r4(cfg_r4), .cfg_r5(cfg_r5), .cfg_r7(cfg_r7), .cfg_r8(cfg_r8));
 
@@ -204,11 +209,15 @@ module z7_nano_audio_top (
         .count0(pin_count0), .count1(pin_count1),
         .count2(pin_count2), .count3(pin_count3));
 
-    // --- latency readout over the existing picture -------------------------
+    // --- cloud translation-latency readout over the existing picture ------
+    // The L1 loopback delay measured by audio_latency stays readable at 0x08;
+    // the corner readout now shows the cloud translation latency that the PS
+    // cloud client writes to 0x88, because the acceptance for this stage is an
+    // English utterance producing Chinese subtitles plus that latency.
     audio_overlay u_overlay(
         .pixel_clk(pixel_clk), .reset_n(sys_rst_n & locked),
         .video_vs(video_vs), .video_de(video_de), .video_rgb_in(video_rgb),
-        .latency_us(latency_us), .live(audio_live), .freeze(freeze_display),
+        .latency_ms(translation_ms), .live(translation_valid), .freeze(freeze_display),
         .video_rgb_out(video_rgb_overlay), .overlay_pixel(overlay_pixel),
         .text_pixels(overlay_pixels));
 

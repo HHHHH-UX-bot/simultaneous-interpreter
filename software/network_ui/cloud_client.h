@@ -13,18 +13,29 @@ struct cloud_client_config {
 extern volatile struct cloud_client_config cloud_client_config;
 
 struct cloud_client_state {
-    uint32_t phase, session_sent, response_used, sample_toggle, decimate, pcm_bytes;
-    uint32_t utterance_started, utterance_ms, last_tick, latency_ms, mask_sequence;
-    uint8_t pcm[640];
+    uint32_t phase, session_sent, update_pending, response_used, sample_toggle, decimate, pcm_bytes;
+    uint32_t utterance_started, utterance_reported, utterance_ms, now_ms, latency_ms, mask_sequence, event_sequence;
+    /* Diagnostics visible to the host: the last append's JSON size and head. */
+    uint32_t tx_len, tx_frames;
+    char tx_head[40];
+    uint8_t pcm[1440];
     char response[512];
 };
 
-enum { CLOUD_IDLE, CLOUD_HANDSHAKE, CLOUD_WAITING_SESSION, CLOUD_STREAMING };
+enum { CLOUD_IDLE, CLOUD_HANDSHAKE, CLOUD_WAITING_SESSION, CLOUD_WAITING_UPDATE, CLOUD_STREAMING };
 
 void cloud_client_init(void);
-void cloud_client_start(void);
+void cloud_client_start(uint32_t now);
+/* Called from the cloud event mapper: session.created arrives first, then the
+   session.update is acknowledged by session.updated, and only then may audio be
+   appended (matching the verified host-side sequence). */
+void cloud_client_session_created(void);
+void cloud_client_session_updated(void);
+void cloud_client_speech_started(void);
+void cloud_client_stop(void);
 void cloud_client_receive(uint8_t byte);
 void cloud_client_tick(uint32_t now);
 void cloud_client_translation(uint32_t now);
+void cloud_client_response_done(void);
 
 #endif

@@ -78,7 +78,11 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
     ++cloud.live.messages;
     if(cloud.live.phase!=1) {cloud_fail(2);return 1;}
     if(e->kind==CLOUD_IGNORE) return 0;
-    if(e->kind==CLOUD_ERROR) {cloud_fail(3);return 1;}
+    if(e->kind==CLOUD_SESSION_CREATED) {cloud_client_session_created();return 0;}
+    if(e->kind==CLOUD_SESSION_UPDATED) {cloud_client_session_updated();return 0;}
+    if(e->kind==CLOUD_SPEECH_STARTED) {cloud_client_speech_started();return 0;}
+    if(e->kind==CLOUD_TRANSLATION_DELTA) {cloud_client_translation(0);return 0;}
+    if(e->kind==CLOUD_ERROR) {cloud_client_stop();cloud_fail(3);return 1;}
     for(uint32_t i=0;i<CLOUD_PAIRS;++i) {
         const struct cloud_recent *recent=cloud.recent+i;
         if((e->response_id[0] && cloud_same(e->response_id,recent->response)) ||
@@ -114,6 +118,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
         for(uint32_t i=0;i<CLOUD_PAIRS;++i) if(cloud.pairs[i].order && cloud_same(cloud.pairs[i].response_id,e->response_id)) {p=cloud.pairs+i;break;}
         if(!e->completed) {cloud_fail(6);return 1;}
         if(p) p->complete=1;
+        cloud_client_response_done();
     }
     if(!p) {cloud_fail(7);return 1;}
     cloud_commit();return cloud.live.error!=0;
@@ -123,6 +128,22 @@ void cloud_live_init(struct ui_state *model) {
     memset(&cloud,0,sizeof(cloud));cloud.model=model;cloud.live.magic=0x31564c43u;
     memset((void *)&cloud_report,0,sizeof(cloud_report));memset((void *)&cloud_caption,0,sizeof(cloud_caption));
     cloud.report_ms=(uint32_t)-200;
+}
+/* The board's cloud client owns the link and calls this once when the TLS
+   session is ready, so the model/session state normally set by the host's
+   cloud_report.request=1 path is entered here instead. */
+void cloud_live_begin(uint32_t now) {
+    struct ui_state *model=cloud.model;
+    memset(&cloud,0,sizeof(cloud));cloud.model=model;
+    cloud.live.magic=0x31564c43u;cloud.live.phase=1;cloud.live.ack=1;
+    cloud.report_ms=now-200u;
+    (void)ui_control(model,UI_CLEAR);(void)ui_control(model,UI_START);
+    /* The product shows only the Chinese translation; the ASR source line is
+       off unless the user turns it on with the original-text button. */
+    if(model->show_source) (void)ui_control(model,UI_TOGGLE_SOURCE);
+    cloud.live.epoch=model->epoch;
+    memset((void *)&cloud_caption,0,sizeof(cloud_caption));
+    cloud_wire_init(cloud_live_message,0);
 }
 void cloud_live_tick(uint32_t now) {
     if(cloud_report.request!=cloud.live.ack) {
@@ -140,8 +161,8 @@ void cloud_live_tick(uint32_t now) {
     if(cloud.live.phase==1 || cloud.live.phase==2) {
         const struct cloud_wire_stats *wire=cloud_wire_status();cloud.live.pings=wire->pings;
         cloud.live.closed=wire->closed;cloud.live.mask_used=wire->mask_used;
-        if(wire->error) cloud_fail(200u+wire->error);
-        if(wire->closed && cloud.live.phase==1) cloud_fail(8);
+        if(wire->error) {cloud_client_stop();cloud_fail(200u+wire->error);}
+        if(wire->closed && cloud.live.phase==1) {cloud_client_stop();cloud_fail(8);}
         uint32_t bytes;const uint8_t *reply=cloud_wire_reply(&bytes);
         if(bytes && network_info.phase==4 && network_send(reply,bytes)) cloud_wire_reply_sent();
     }

@@ -112,8 +112,8 @@ JP2 电源针（同页核对）：第 11/12 针 = `VCC_5V`，第 29/30 针 = `VC
 | [wm8731_init.v](../../rtl/wm8731_init.v) | WM8731 初始化：先探测 0x1A、失败回退 0x1B；按 RESET→R8→R7（主模式）→R6→R4/R5→R0..R3→R9（ACTIVE）写入；九路 9 位寄存器值可由 AXI 影子寄存器改写后重发 |
 | [i2s_loopback.v](../../rtl/i2s_loopback.v) | I2S 从机收发（posedge 采 ADCDAT，negedge 出 DACDAT，即 I2S 的一 bit 延迟）+ 2 帧 FIFO + 预填充门控 + 溢出/欠载计数 + L1 时间戳；BCLK 域与 50 MHz 域用 req/ack 握手快照跨域 |
 | [audio_latency.v](../../rtl/audio_latency.v) | L1 的 BCLK 周期→微秒换算（Q8 定点乘加 + 饱和）与 min/max 记录 |
-| [audio_regs.v](../../rtl/audio_regs.v) | AXI4-Lite 寄存器文件（基址 `0x43c20000`）：状态、L1、计数、影子寄存器与触发位 |
-| [audio_overlay.v](../../rtl/audio_overlay.v) | 在既有画面右上角叠加 `L1 nnnn us`（5×7 字体 2× 放大），只改框内像素 |
+| [audio_regs.v](../../rtl/audio_regs.v) | AXI4-Lite 寄存器文件（基址 `0x43c20000`）：状态、L1、计数、影子寄存器与触发位；0x80/0x84 麦克风原始抽头；0x88 云端传译延迟；0x8c/0x90/0x94 16 kHz 麦克风 PCM FIFO |
+| [audio_overlay.v](../../rtl/audio_overlay.v) | 在既有画面右上角叠加 `T1 nnnn ms`（云端传译延迟），只改框内像素；L1 回环读数的寄存器仍在 0x08，但不再绘制 |
 | [z7_nano_audio_top.v](../../rtl/z7_nano_audio_top.v) | 顶层：沿用已验收的显示 BD，插入叠加与音频链路；I2C 走 IOBUF 开漏 |
 | [build_z7_nano_audio.tcl](../../scripts/build_z7_nano_audio.tcl) | BD（PS7+VDMA+视频+音频第三 AXI 口）+ 综合实现位流，含引脚/时钟/DRC/时序检查 |
 | [audio_synth_ooc.tcl](../../scripts/audio_synth_ooc.tcl) | 不依赖 BD 的逐模块 OOC 综合检查 |
@@ -134,6 +134,13 @@ JP2 电源针（同页核对）：第 11/12 针 = `VCC_5V`，第 29/30 针 = `VC
 | 0x2c | CTRL | bit0 重发初始化、bit1 清 min/max、bit2 冻结屏显；上电默认 bit0=1 |
 | 0x30..0x4c | R0,R1,R2,R3,R4,R5,R7,R8 | 9 位寄存器影子值（默认 R7=0x042 主模式、R4=0x010、R2/R3=0x079、R0/R1=0x017、R5/R8=0x000） |
 | 0x50 / 0x54 | OCCUPANCY / BCLK_HZ | FIFO 占用帧数与名义 BCLK 频率（3072000） |
+| 0x80 / 0x84 | MIC_SAMPLE / MIC_COUNT | 最新 48 kHz ADC 左声道样本（[16] 翻转、[15:0] s16）与 48 kHz 帧计数；只用于诊断 |
+| 0x88 | TRANSLATION_MS | 云客户端写入：[15:0] 毫秒、[16] 有效；overlay 画 `T1 nnnn ms` |
+| 0x8c | PCM_DATA | 16 kHz 麦克风样本，读一次弹出一个（s16 低 16 位） |
+| 0x90 | PCM_COUNT | FIFO 中可读样本数（0..1024） |
+| 0x94 | PCM_OVERFLOWS | FIFO 满时丢弃计数；写任意值清零 |
+
+2026-10-17 夜为云端实时同传补了 16 kHz PCM 通路：`audio_sample_tap` 的 48 kHz 翻转在 `audio_regs.v` 内 3:1 抽取后写入 1024×16 bit FIFO（64 ms 缓冲），PS 按 0x90 计数突发读取 0x8c，避免 1 ms 软件轮询漏采 48 kHz 样本。同一版新增 0x88 传译延迟寄存器，overlay 文本由 `L1 nnnn us` 改为 `T1 nnnn ms`；改动后的仿真、位流构建与整机烧录见 [云端板端阶段](../../output/cloud_app/status.json)。
 
 L1 定义（已实现）：每个立体声帧在**采集起点**取 BCLK 周期时间戳，播出时相减，得到"采集→播出"的真实延迟；它不是 FIFO 占用量的近似。仿真测得回环延迟 3 帧、L1 = 192 个 BCLK 周期，在 3.072 MHz 下为 62.5 µs。
 
@@ -144,8 +151,8 @@ L1 定义（已实现）：每个立体声帧在**采集起点**取 BCLK 周期�
 | tb_i2c_wm8731 | I2C 位序与 ACK、0x1A 探测、0x1B 回退、无应答报错、11 条寄存器写入的内容与顺序（含 R7=0x042、R9=0x001 最后） | 通过 |
 | tb_i2s_loopback | I2S 从机位对齐、位精确回环、恒定 3 帧延迟、占用=2、零溢出/欠载、L1=192 周期 | 通过 |
 | tb_audio_latency | 周期→微秒换算（20/41/62/996/21247 µs）、live 门控、min/max 与清零 | 通过 |
-| tb_audio_regs | ID、影子寄存器读写、CTRL 触发脉冲、状态字、只读寄存器、非法地址错误响应 | 通过 |
-| tb_audio_overlay | 框外像素零改动、绘制像素仅在框内、数值变化改变图案、未测量时画横线 | 通过（"L1 0321 us" 552 像素） |
+| tb_audio_regs | ID、影子寄存器读写、CTRL 触发脉冲、状态字、只读寄存器、非法地址错误响应、0x88 传译延迟写读、16 kHz PCM FIFO 的 3:1 抽取与弹出 | 通过 |
+| tb_audio_overlay | 框外像素零改动、绘制像素仅在框内、数值变化改变图案、未测量时画横线 | 通过（"T1 0321 ms" 绘制像素） |
 
 已执行的综合检查：逐模块 OOC 综合（本机 Vivado 2018.3，[audio_synth_ooc.tcl](../../scripts/audio_synth_ooc.tcl)）——六个模块 i2c_master / wm8731_init / audio_latency / i2s_loopback / audio_regs / audio_overlay 全部 0 error，报告在 `output/z7_nano/audio_ooc/reports/`，证据 [synthesis.json](../../output/z7_nano/audio_loopback/synthesis.json)。该检查不含 BD，不能替代完整构建。
 
