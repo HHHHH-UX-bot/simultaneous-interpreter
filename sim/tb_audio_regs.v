@@ -141,7 +141,7 @@ module tb_audio_regs;
 
         // Default shadows.
         expect_read(8'h40, 32'h010, "default r4");
-        expect_read(8'h48, 32'h042, "default r7 (master)");
+        expect_read(8'h48, 32'h002, "default r7 (i2s slave)");
         expect_read(8'h4c, 32'h000, "default r8");
 
         // Status word: [7:0] flags (live, codec_found, addr_sel[1:0], init_busy,
