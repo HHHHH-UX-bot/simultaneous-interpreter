@@ -21,7 +21,8 @@
 | R16 重新下载后的 PS 调试事务错误 | 高速 UART 首次实测通过后，一次重新配置后的启动在 CPU 初始化前报告 DAP AHB 事务错误；完整断电后恢复，屏幕断开时的冷启动和暖重载均通过，随后屏幕/常驻触摸恢复正常 | 根因仍未定位，不归因于波特率或宣布永久修复；CPU 目标不可见时不跳过身份保护，当前证据见 [NOW](NOW.md) |
 | R15 长时连续音频尚未放行 | 一分钟延后 JTAG 观测的 Opus/TLS 收发通过且 UART 零错误；中途观测的一轮发生 RX 溢出，根因未完全确定；30 分钟未验证，旧透传损坏保持未放行 | 两轮证据与范围由 [一分钟持续对照](../design/CLOUD_SPEECH.md#一分钟持续对照)维护；C1-6 已通过 ARM 边消费的短文件，仍须另测长时及控制回复路径，不绕过错误或用单轮结果宣布长期修复 |
 | R17 引脚冲突（已核对，不成立） | 2026-10-16 曾据 [hdmi.xdc](../../constraints/hdmi.xdc)（标注 ZYNQ_MINI_REVB，旧板）判断音频球号与已验收 HDMI 重叠；按 [source.json](../../hardware/z7_nano/source.json) 与 Z7-NANO_R21.pdf 核对后确认：当前板 TMDS 在 Bank34（U18/U19、V20/W20、T20/U20、N20/P20），音频 7 个信号在 Bank35 的 JP2，**不重叠** | 结论已写回 [audio_module.json](../../hardware/z7_nano/audio_module.json)。教训：不得把旧板 xdc 当作当前板引脚事实；换板后引脚以 source.json 为唯一板级记录 |
-| R18 模块时钟已解决，I2C 配置成为前置 | 模块原理图 AN831.pdf 核对：U11 = WM8731SEFL，Y3 = **12.288 MHz 晶振**（不需要 FPGA 供 MCLK）；但 WM8731 的 BCLK/LRCLK 只在 R7 的 MS 位置为主模式后由模块输出，且 R9 ACTIVE 必须置 1，复位默认不使能接口。模块没有引出 MCLK/CLKOUT | 上板第一步先经 I2C 配置（R7 主模式、R8 采样率、R6 上电、R4/R5 通路、R2/R3 音量、R9 使能），再用示波器/ILA 确认 BCLK 出现；I2C 从地址 0x1A/0x1B 待实测。未确认 BCLK 前不得把“无声”归因于接线或电平。依据见 [SOURCES](../design/SOURCES.md) 与 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md) |
+| R18 模块时钟已解决，I2C 配置已实现 | 模块自带 12.288 MHz 晶振（不需要 FPGA 供 MCLK）；PL 侧已实现 I2C 初始化（0x1A/0x1B 探测 + 11 条寄存器写入）与 I2S 从机回环，五个自检 testbench 通过；但 BCLK 是否真的出现、耳机是否出声、L1 实测值均未在板上验证 | 上板顺序：先确认 I2C ACK 与寄存器回写（状态字 [7:0] 的 codec_found/addr_sel/regs_written），再确认 BCLK/LRCLK 存在（BCLK_CYCLES 递增），再看 ADCDAT→DACDAT 回环与听感，最后读屏与 L1；任一步失败先定位该步。证据见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#7-已实现2026-10-17) |
+| R19 音频位流尚未构建与下载 | 引脚、时钟与寄存器映射已由仿真覆盖，但 `scripts/build_z7_nano_audio.tcl` 沿用项目 2026.1 的 BD/IP 版本，本机（2018.3）只完成逐模块 OOC 综合；BD 端口命名、地址段、时序/DRC 都需真实构建验证 | 构建脚本对 `S_AXI_AUDIO_*` 端口、七根音频引脚、i2s_bclk 周期、DRC 与时序做显式检查，失败即报错；构建、下载、听感与实屏分别记录，不用仿真结果代替板级验收 |
 
 方案和模拟 UI 可独立使用；硬件阶段按对应放行条件推进，不通过假数据宣称解决任何硬件或模型缺口。
 

@@ -180,7 +180,14 @@ python -B scripts/run_z7_nano_usb_live.py stop
 
 构建与运行入口在 A1–A3 建立后回填本节；本轮不虚构脚本名或命令。
 
-放行：耳机可听到实时回环且无爆音/断音；L1/L2 数值可重复并与采样率一致；屏幕读数标明层级与测量点，未测得时显示“未测量”；至少 30 分钟无未解释溢出；用户实屏确认既有画面未变并确认回环可用。仿真、约束/构建、下载、听感与延迟数值分别记录，不能互相替代。
+构建与运行入口（2026-10-17 起可用）：
+
+- `python -B scripts/run_audio_loopback.py simulate --xsim-bin <Vivado>/bin` — 已执行（2026-10-17，本机 xsim：五个自检 testbench 全通过，位精确回环延迟 3 帧 = 192 BCLK）。证据：`output/z7_nano/audio_loopback/simulation.json`。
+- `vivado -mode batch -source scripts/audio_synth_ooc.tcl` — 已执行（逐模块 OOC 综合检查，不需要 BD）。证据：`output/z7_nano/audio_ooc/`。
+- `python -B scripts/run_audio_loopback.py build --vivado <Vivado 2026.1>/vivado.bat` — **未执行**：本机只有 Vivado 2018.3，而 `scripts/build_z7_nano_audio.tcl` 沿用项目 2026.1 的 BD/IP 版本路径。构建会做引脚/时钟/DRC/时序检查并核对 audio.xdc 的七根引脚。
+- 位流下载与实屏验收沿用既有显示流程（`scripts/run_z7_nano_display.py` 的 program/capture 入口）；音频侧的 I2C 探测、BCLK 存在性与耳机出声必须分步取证，见下方操作。
+
+放行：耳机可听到实时回环且无爆音/断音；L1 数值可重复并与采样率一致；屏幕读数标明层级与测量点，未测得时显示“未测量”；至少 30 分钟无未解释溢出；用户实屏确认既有画面未变并确认回环可用。仿真、约束/构建、下载、听感与延迟数值分别记录，不能互相替代。
 
 ## P4 音频采样（模块到货后）
 

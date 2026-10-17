@@ -29,6 +29,7 @@
 | `software/network_ui/cloud_frame.c`、`cloud_wire.*`、`cloud_live.*`、`third_party/wslay/`、`output/z7_nano/cloud_live/` | 帧重组、原译 ID 配对、字幕消费与离线/板上阶段证据 | [C1-6](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)维护内存分区、栈与边界；C1-6 固定 ELF 的短文件云译上屏已验收 |
 | `software/network_ui/network.c`、`scripts/probe_z7_nano_tls_boot.py`、`output/z7_nano/tls_boot/` | ARM 非阻塞 TLS、私有 Wi-Fi 配置与身份对照工具 | [C1-7a](../design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)维护状态/边界；network_tick 进入既有 DDR 云代码区，修正版 TLS 板测待重跑 |
 | `hardware/z7_nano/`、`output/z7_nano/` | 新板权威配置、独立构建/下载与 PS 验证产物 | 2026-10-13 建立；方法见 BOARD_MIGRATION，当前验收见 NOW |
+| `rtl/i2c_master.v`、`rtl/wm8731_init.v`、`rtl/i2s_loopback.v`、`rtl/audio_latency.v`、`rtl/audio_regs.v`、`rtl/audio_overlay.v`、`rtl/z7_nano_audio_top.v`、`scripts/build_z7_nano_audio.tcl`、`scripts/audio_synth_ooc.tcl`、`scripts/run_audio_loopback.py`、`output/z7_nano/audio_loopback/`、`output/z7_nano/audio_ooc/` | 音频回环 RTL（I2C 初始化、I2S 从机回环、L1 时延、屏幕读数叠加）、BD/位流构建、OOC 综合检查与仿真/构建证据 | 2026-10-17 建立；寄存器映射 AXI `0x43c20000`、验收边界见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#7-已实现2026-10-17)；位流与实屏证据未产生 |
 | `tmp/` | 必要中间脚本与选定原理图页 | 已建立，不作为长期规则来源 |
 
 最小 PS 源码入口见 [PS_BRINGUP](../design/PS_BRINGUP.md)；电脑模型试验见 [MODEL_BACKEND](../design/MODEL_BACKEND.md)，当前云语音计划见 [CLOUD_SPEECH](../design/CLOUD_SPEECH.md)。真实音频尚未接入，已验收的新板 USB 触摸入口由迁移专题路由。静态入口为 [static_ui_top](../../rtl/static_ui_top.v)、[static_ui_video](../../rtl/static_ui_video.v) 和 [run_static_ui](../../scripts/run_static_ui.ps1)。

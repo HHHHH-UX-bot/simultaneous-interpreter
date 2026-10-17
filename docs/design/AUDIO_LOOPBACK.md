@@ -93,29 +93,80 @@ JP2 电源针（同页核对）：第 11/12 针 = `VCC_5V`，第 29/30 针 = `VC
 | 阶段 | 内容 | 前置 | 验收 | 状态 |
 |---|---|---|---|---|
 | A0 资料与引脚核对 | 板卡与模块原理图、逐针映射、时钟、供电、电平、引脚占用 | 用户提供两份原理图 | 可引用的接线结论落到 `hardware/z7_nano/audio_module.json` | **已完成**（2026-10-16；I2C 地址与 GND 针位待实测） |
-| A1 约束核对 | BCLK 作输入时钟、MRCC、IOSTANDARD、驱动；不动现有显示约束 | A0 | 约束报告、DRC、时序无未约束路径 | 未执行 |
-| A2 I2C 初始化 | PL/PS I2C 主机写 WM8731 寄存器；先用 ILA/示波器确认 BCLK 出现 | A1 | BCLK/LRCLK 实际存在，寄存器回读正确 | 未执行 |
-| A3 PL 采集 | I2S 从机接收：位序、LRCLK 相位、位宽/槽宽；样本计数与溢出统计 | A2 | 仿真逐位对照；实采与已知输入比对 | 未执行 |
-| A4 PL 回环 | ADCDAT → FIFO/寄存器 → DACDAT 直通 | A3 | ILA 观测，无掉样、无持续削波；耳机可听回环 | 未执行 |
-| A5 时延计数 | PL 内 L1 计数与寄存器暴露；需要时的 L2 打点 | A4 | 延迟可重复，数值与采样率一致 | 未执行 |
-| A6 屏显 | 复用现有渲染器新增只读读数元素，不改变既有布局/按钮 | A5 | 整帧比对 + 用户实屏确认"已有画面未变" | 未执行 |
+| A1 约束核对 | BCLK 作输入时钟、MRCC、IOSTANDARD、驱动；不动现有显示约束 | A0 | 约束报告、DRC、时序无未约束路径 | 已实现（`hardware/z7_nano/source.json` 的 `AudioPins` → `output/z7_nano/config/audio.xdc`：`create_clock` 325.52 ns、输入/输出延迟、I2C false path、BCLK 与 MMCM 异步组）；**约束实际通过需构建验证** |
+| A2 I2C 初始化 | PL 软 I2C 主机写 WM8731 寄存器；再用 ILA/示波器确认 BCLK 出现 | A1 | BCLK/LRCLK 实际存在，寄存器回读正确 | 已实现并仿真通过（探测 0x1A/回退 0x1B、11 条寄存器写入与顺序有断言）；板级未验证 |
+| A3 PL 采集 | I2S 从机接收：位序、LRCLK 相位、位宽/槽宽；样本计数与溢出统计 | A2 | 仿真逐位对照；实采与已知输入比对 | 已实现并仿真通过（位精确，零溢出）；板级未验证 |
+| A4 PL 回环 | ADCDAT → FIFO → DACDAT 直通 | A3 | ILA 观测，无掉样、无持续削波；耳机可听回环 | 已实现并仿真通过（位精确、零欠载、恒定 3 帧延迟）；耳机听感未验证 |
+| A5 时延计数 | L1 时间戳与寄存器暴露 | A4 | 延迟可重复，数值与采样率一致 | 已实现并仿真通过（192 BCLK 周期）；板上实测未做 |
+| A6 屏显 | 在既有画面上叠加只读读数，不改变既有布局/按钮 | A5 | 框外全帧比对 + 用户实屏确认 | 已实现并仿真通过（框外零改动、552 绘制像素）；实屏未验收 |
 | A7 联调与验收 | 持续运行、耳机听感、L3 声学测量 | A6 | 用户确认可听回环与延迟读数可信；≥30 分钟无未解释溢出 | 未执行 |
 
 操作步骤与前置条件的权威入口是 [RUNBOOK](../context/RUNBOOK.md#a-音频实时回环与时延显示后续)；本文不复制命令。
 
-## 7. 证据与放行（尚未产生）
+## 7. 已实现（2026-10-17）
 
-- 计划证据目录（尚未产生，均为计划，不是当前证据）：`output/z7_nano/audio_loopback/`。
+本轮把 A1–A5 的 PL 实现写入代码并在本机仿真通过；构建位流、下载、接线、真实出声与实屏验收**均未执行**。
+
+| 文件 | 职责 |
+|---|---|
+| [i2c_master.v](../../rtl/i2c_master.v) | 字节级 I2C 主机：100 kHz、开漏、START/STOP、逐字节 ACK 采样与 NACK 报错 |
+| [wm8731_init.v](../../rtl/wm8731_init.v) | WM8731 初始化：先探测 0x1A、失败回退 0x1B；按 RESET→R8→R7（主模式）→R6→R4/R5→R0..R3→R9（ACTIVE）写入；九路 9 位寄存器值可由 AXI 影子寄存器改写后重发 |
+| [i2s_loopback.v](../../rtl/i2s_loopback.v) | I2S 从机收发（posedge 采 ADCDAT，negedge 出 DACDAT，即 I2S 的一 bit 延迟）+ 2 帧 FIFO + 预填充门控 + 溢出/欠载计数 + L1 时间戳；BCLK 域与 50 MHz 域用 req/ack 握手快照跨域 |
+| [audio_latency.v](../../rtl/audio_latency.v) | L1 的 BCLK 周期→微秒换算（Q8 定点乘加 + 饱和）与 min/max 记录 |
+| [audio_regs.v](../../rtl/audio_regs.v) | AXI4-Lite 寄存器文件（基址 `0x43c20000`）：状态、L1、计数、影子寄存器与触发位 |
+| [audio_overlay.v](../../rtl/audio_overlay.v) | 在既有画面右上角叠加 `L1 nnnn us`（5×7 字体 2× 放大），只改框内像素 |
+| [z7_nano_audio_top.v](../../rtl/z7_nano_audio_top.v) | 顶层：沿用已验收的显示 BD，插入叠加与音频链路；I2C 走 IOBUF 开漏 |
+| [build_z7_nano_audio.tcl](../../scripts/build_z7_nano_audio.tcl) | BD（PS7+VDMA+视频+音频第三 AXI 口）+ 综合实现位流，含引脚/时钟/DRC/时序检查 |
+| [audio_synth_ooc.tcl](../../scripts/audio_synth_ooc.tcl) | 不依赖 BD 的逐模块 OOC 综合检查 |
+| [run_audio_loopback.py](../../scripts/run_audio_loopback.py) | simulate/build 运行器与证据落盘 |
+
+寄存器映射（AXI4-Lite，基址 `0x43c20000`）：
+
+| 偏移 | 名称 | 说明 |
+|---|---|---|
+| 0x00 | ID | `0x41554431`（"AUD1"） |
+| 0x04 | STATUS | [7:0] live / codec_found / addr_sel / init_busy / init_done / init_error / max_valid；[31:24] 已写寄存器数 |
+| 0x08 | LATENCY_US | L1 微秒（未测到显示 0） |
+| 0x0c | LATENCY_CYCLES | L1 原始 BCLK 周期数 |
+| 0x10 / 0x14 | ADC_FRAMES / DAC_FRAMES | 采集/播出立体声帧计数 |
+| 0x18 / 0x1c | OVERRUNS / UNDERRUNS | 溢出与欠载计数 |
+| 0x20 | BCLK_CYCLES | BCLK 自由计数（可用于判断模块时钟是否存在） |
+| 0x24 / 0x28 | MIN_US / MAX_US | 最小/最大 L1（`0xFFFFFFFF` 表示尚未测到） |
+| 0x2c | CTRL | bit0 重发初始化、bit1 清 min/max、bit2 冻结屏显；上电默认 bit0=1 |
+| 0x30..0x4c | R0,R1,R2,R3,R4,R5,R7,R8 | 9 位寄存器影子值（默认 R7=0x042 主模式、R4=0x010、R2/R3=0x079、R0/R1=0x017、R5/R8=0x000） |
+| 0x50 / 0x54 | OCCUPANCY / BCLK_HZ | FIFO 占用帧数与名义 BCLK 频率（3072000） |
+
+L1 定义（已实现）：每个立体声帧在**采集起点**取 BCLK 周期时间戳，播出时相减，得到"采集→播出"的真实延迟；它不是 FIFO 占用量的近似。仿真测得回环延迟 3 帧、L1 = 192 个 BCLK 周期，在 3.072 MHz 下为 62.5 µs。
+
+仿真证据（[simulation.json](../../output/z7_nano/audio_loopback/simulation.json)，2026-10-17，本机 xsim）：
+
+| 用例 | 覆盖 | 结果 |
+|---|---|---|
+| tb_i2c_wm8731 | I2C 位序与 ACK、0x1A 探测、0x1B 回退、无应答报错、11 条寄存器写入的内容与顺序（含 R7=0x042、R9=0x001 最后） | 通过 |
+| tb_i2s_loopback | I2S 从机位对齐、位精确回环、恒定 3 帧延迟、占用=2、零溢出/欠载、L1=192 周期 | 通过 |
+| tb_audio_latency | 周期→微秒换算（20/41/62/996/21247 µs）、live 门控、min/max 与清零 | 通过 |
+| tb_audio_regs | ID、影子寄存器读写、CTRL 触发脉冲、状态字、只读寄存器、非法地址错误响应 | 通过 |
+| tb_audio_overlay | 框外像素零改动、绘制像素仅在框内、数值变化改变图案、未测量时画横线 | 通过（"L1 0321 us" 552 像素） |
+
+已执行的综合检查：逐模块 OOC 综合（本机 Vivado 2018.3，[audio_synth_ooc.tcl](../../scripts/audio_synth_ooc.tcl)）——六个模块 i2c_master / wm8731_init / audio_latency / i2s_loopback / audio_regs / audio_overlay 全部 0 error，报告在 `output/z7_nano/audio_ooc/reports/`，证据 [synthesis.json](../../output/z7_nano/audio_loopback/synthesis.json)。该检查不含 BD，不能替代完整构建。
+
+仍未执行：含 BD 的完整综合/实现/位流（`build_z7_nano_audio.tcl` 按项目 2026.1 的 BD/IP 版本编写，见 [RUNBOOK](../context/RUNBOOK.md#a-音频实时回环与时延显示后续)）、下载到板、接线、真实 I2C 探测与出声、实屏验收与 L3 声学测量。
+
+## 8. 证据与放行（板级尚未产生）
+
+- 已有证据：`output/z7_nano/audio_loopback/{simulation.json,synthesis.json}`（仿真与 OOC 综合）与 `output/z7_nano/audio_ooc/`（综合日志与利用率报告）；板级证据尚未产生。
 - 仿真通过、约束通过、构建通过、下载通过、I2C 配置成功、BCLK 实测、实际回环、听感验收和延迟数值分别记录，不能互相替代（[AGENTS](../../AGENTS.md#分阶段执行与验证)）。
 - 只有取得 L1/L2 实测值后，才允许在屏幕或文档中出现具体延迟数字；L3 需要用户以听觉或仪器确认。
 
-## 8. 待核实清单
+## 9. 待核实清单（板级）
 
-- 模块 I2C 从地址（0x1A / 0x1B）与 MODE/CSB 的实际接法；是否需要完整初始化序列（R4/R5 通路）才能做直通。
+- 模块 I2C 从地址（0x1A / 0x1B）与 MODE/CSB 的实际接法：代码会先探测 0x1A、失败回退 0x1B，实际结果要按板上 I2C ACK 记录。
+- 是否需要写 R4/R5 之外的通路寄存器才能让麦克风出声；默认值（R4=0x010 线路输入）可能不适用于麦克风输入，必要时用 CTRL 影子寄存器改写后重发。
 - 模块供电电流与 5 V 需求、GND 针位（原理图中以接地符号绘制）。
-- 实际采样率与位宽（12.288 MHz 与 R8 档位；待实测）。
+- 实际采样率与位宽（12.288 MHz 与 R8 档位）；若格式变化，audio.xdc 的 BCLK 周期与 `audio_latency` 的 BCLK_HZ 必须同步修改。
 - 麦克风偏置/增益与耳机驱动能力；最大音量下的失真与削波。
-- 读数的具体像素坐标（位置策略已定，见 [UI_SPEC](UI_SPEC.md#时延读数)）。
+- 读数在屏上的最终像素位置（实现为右上角 `L1 nnnn us`）与冻结显示观感，见 [UI_SPEC](UI_SPEC.md#时延读数)。
+- 位流构建（需项目许可的 Vivado）与 BD 端口命名：`build_z7_nano_audio.tcl` 已对 `S_AXI_AUDIO_*` 端口名做显式检查，首次构建即是该检查的验证。
 
 ## 相关入口
 

@@ -45,6 +45,17 @@
     "tmds_data_p[2]": "N20",
     "tmds_data_n[2]": "P20"
   },
+  "AudioPins": {
+    "i2s_bclk": "H16",
+    "i2s_dadlrc": "H17",
+    "i2s_adclrc": "D19",
+    "i2s_adcdat": "B20",
+    "i2s_dacdat": "C20",
+    "i2c_scl": "B19",
+    "i2c_sda": "A20"
+  },
+  "AudioBclkPeriodNs": 325.520,
+  "AudioPinsNote": "Audio module wired to JP2 (GPIO2) pins 13-19 on Bank35; per-pin mapping, module schematic and checks live in hardware/z7_nano/audio_module.json. BCLK is 64 x Fs = 3.072 MHz for 48 kHz with 16-bit slots; re-derive the period if the codec format changes.",
   "USB": {
     "Controller": "USB0",
     "BaseAddress": "0xE0002000",

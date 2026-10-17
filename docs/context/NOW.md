@@ -69,7 +69,9 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 
 ## 下一步
 
-音频回环主线（用户 2026-10-16 指定）：先完成 [A 阶段](RUNBOOK.md#a-音频实时回环与时延显示后续)的 A0 门禁——核对模块型号/电平/供电、JP2 实物针序，并确认接线表球号与当前 HDMI 实际球号不重叠；门禁通过后才建约束与实现。本轮未执行其中任何一步，文档里的步骤不构成执行授权。
+- 音频回环已实现并仿真通过（2026-10-17）：PL 软 I2C + WM8731 初始化（0x1A/0x1B 自适应）、I2S 从机收发、2 帧 FIFO 与预填充门控、L1 时间戳、右上角 `L1 nnnn us` 叠加；五个自检 testbench 全通过，位精确回环延迟 3 帧 = 192 BCLK（3.072 MHz 下 62.5 µs），证据见 [simulation.json](../../output/z7_nano/audio_loopback/simulation.json)。**未执行**：Vivado 综合/位流、下载、接线、真实出声与实际时延、实屏验收。文件清单与寄存器映射见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#7-已实现2026-10-17)。
+
+音频回环主线（用户 2026-10-16 指定）：下一步是用项目许可的 Vivado 跑 [A 阶段](../context/RUNBOOK.md#a-音频实时回环与时延显示后续)的构建（`scripts/run_audio_loopback.py build`），再按模块接线并依次确认 I2C ACK、BCLK 出现、耳机出声、屏上读数；A0 的剩余核对（模块 I2C 地址、供电/GND、丝印方向）在接线时完成。文档里的步骤不构成执行授权。
 
 接续云端主线先核对实际板卡/程序状态，按 [C1-7a](../design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)重跑 ARM TLS 正确/错误/正确身份及关闭对照；本版显示与触摸已经用户确认。TLS 通过后再做 ARM WSS Upgrade 与会话配置，并接回同一程序的预装文件发送/云事件消费；随后分别验证长时、真实采音、完整字库和独立启动。音频模块的型号与逐针映射已核对（引脚与当前板显示不重叠），MCLK 来源、电平与 JP2 丝印方向待确认，见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)；精简实现要求见 [AGENTS](../../AGENTS.md#实现与换板约定)。
 

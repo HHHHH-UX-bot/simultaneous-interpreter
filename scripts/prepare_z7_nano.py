@@ -30,6 +30,33 @@ def main():
         "# Generated from hardware/z7_nano/source.json.\n"
         "proc configure_z7_nano_ps {cell} {\n    set_property -dict [list \\\n"
         + pairs + "\n    ] $cell\n}\n", encoding="utf-8")
+
+    # Audio loopback constraints. Kept in a separate file so the accepted
+    # display build inputs (hdmi.xdc, board.tcl) stay byte-identical.
+    audio = board["AudioPins"]
+    bclk_period = board["AudioBclkPeriodNs"]
+    axdc = ["# Generated from hardware/z7_nano/source.json (AudioPins).",
+            "# JP2 (GPIO2) pins 13-19; mapping and evidence: hardware/z7_nano/audio_module.json",
+            f"create_clock -name i2s_bclk -period {bclk_period} [get_ports i2s_bclk]"]
+    for port, pin in audio.items():
+        axdc.append(f"set_property PACKAGE_PIN {pin} [get_ports {{{port}}}]")
+    axdc += [
+        f"set_property IOSTANDARD LVCMOS33 [get_ports {{{' '.join(audio.keys())}}}]",
+        "set_property PULLUP true [get_ports {i2c_scl i2c_sda}]",
+        "# The module drives ADCDAT/LRCLKs from its own BCLK; these are conservative",
+        "# board estimates until the wiring is measured.",
+        "set_input_delay -clock i2s_bclk -max 20.000 [get_ports {i2s_adcdat i2s_adclrc i2s_dadlrc}]",
+        "set_input_delay -clock i2s_bclk -min 2.000 [get_ports {i2s_adcdat i2s_adclrc i2s_dadlrc}]",
+        "set_output_delay -clock i2s_bclk -max 20.000 [get_ports i2s_dacdat]",
+        "set_output_delay -clock i2s_bclk -min 2.000 [get_ports i2s_dacdat]",
+        "# I2C is a 100 kHz open-drain bus: no meaningful setup/hold relationship.",
+        "set_false_path -from [get_ports {i2c_scl i2c_sda}]",
+        "set_false_path -to [get_ports {i2c_scl i2c_sda}]",
+        "# BCLK comes from the module crystal, so it is asynchronous to the PL MMCM.",
+        "set_clock_groups -asynchronous -group {i2s_bclk} \\",
+        "    -group [get_clocks -of_objects [get_pins u_clock/u_mmcm/CLKOUT0]]",
+    ]
+    (OUT / "audio.xdc").write_text("\n".join(axdc) + "\n", encoding="utf-8")
     print("PASS_Z7_NANO_PREPARE")
 
 
