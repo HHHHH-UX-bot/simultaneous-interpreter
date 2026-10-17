@@ -1,19 +1,55 @@
 {
   "status": "user_confirmed_wiring",
-  "wiring_confirmation": {"date": "2026-10-13", "source": "user", "reply": "已按图接好并恢复连接", "electrical_measurement": "not performed"},
+  "wiring_confirmation": {
+    "date": "2026-10-13",
+    "source": "user",
+    "reply": "已按图接好并恢复连接",
+    "electrical_measurement": "not performed"
+  },
   "board": "Z7-Nano R2.0 / xc7z010clg400-1",
   "module": "ATK-MW8266D / ESP8266",
   "header": "JP1 / GPIO1, 2x20",
   "schematic_sha256": "f977123c8a9a8a8d2c09b962d62626f1600e4427e156d0751a8ad51a5fd0ce45",
-  "schematic_pages": [5, 13],
+  "schematic_pages": [
+    5,
+    13
+  ],
   "signals": [
-    {"header_pin": 1, "net": "GPIO1_0P", "package_pin": "N17", "board_role": "UART TX", "module_pin": "RXD"},
-    {"header_pin": 2, "net": "GPIO1_0N", "package_pin": "P18", "board_role": "UART RX", "module_pin": "TXD"},
-    {"header_pin": 29, "net": "VCC_3V3", "board_role": "3.3 V supply", "module_pin": "VCC"},
-    {"header_pin": 30, "net": "GND", "board_role": "common ground", "module_pin": "GND"}
+    {
+      "header_pin": 1,
+      "net": "GPIO1_0P",
+      "package_pin": "N17",
+      "board_role": "UART TX",
+      "module_pin": "RXD"
+    },
+    {
+      "header_pin": 2,
+      "net": "GPIO1_0N",
+      "package_pin": "P18",
+      "board_role": "UART RX",
+      "module_pin": "TXD"
+    },
+    {
+      "header_pin": 29,
+      "net": "VCC_3V3",
+      "board_role": "3.3 V supply",
+      "module_pin": "VCC"
+    },
+    {
+      "header_pin": 30,
+      "net": "GND",
+      "board_role": "common ground",
+      "module_pin": "GND"
+    }
   ],
   "io_standard": "LVCMOS33 / Bank34",
   "header_pin_11": "5 V, not the selected VCC pin",
   "physical_header_orientation": "Locate board pin-1 mark before counting; schematic symbol is not a physical photo",
-  "firmware": "New-board UART not implemented or driven yet"
+  "firmware": "New-board UART not implemented or driven yet",
+  "baud_rate": {
+    "measured": 115200,
+    "divider": 434,
+    "checked": "2026-10-17",
+    "note": "AT 返回 OK；921600 下为乱码"
+  }
 }

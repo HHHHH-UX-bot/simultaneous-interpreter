@@ -70,7 +70,7 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 
 ## 云端同声传译（进行中）
 
-用户 2026-10-17 给出百炼云工作空间端点与 Key，要求板端麦克风实时同传、HDMI 只显示中文译文、右上角显示传译延迟。电脑侧已按仓库既有协议验证通过（见 [pc_protocol.json](../../output/cloud_speech/pc_protocol.json)）：`wss://ws-zckg39zhbiii3yrv.cn-beijing.maas.aliyuncs.com/api-ws/v1/realtime?model=qwen3.8-livetranslate-flash-realtime`，`session.update` 设 `translation.zh` + 纯文本，20 ms 16 kHz PCM `input_audio_buffer.append`，中文首字 2.19 s、全文 13.27 s，事件类型齐全。PL 侧新增 ESP8266 UART 邮箱（0x43c30000，ID 0x57494631 已由 PS 读通）与麦克风 PCM 抽头（0x43c20080/0x43c20084，48 kHz 计数已验证）；**ESP 模块在多个波特率下均不回 AT**（FPGA 发送计数递增、RX 空闲为高），需确认模块引脚/供电/固件状态后继续移植 ARM 云端客户端。
+用户 2026-10-17 给出百炼云工作空间端点与 Key，要求板端麦克风实时同传、HDMI 只显示中文译文、右上角显示传译延迟。电脑侧已按仓库既有协议验证通过（见 [pc_protocol.json](../../output/cloud_speech/pc_protocol.json)）：`wss://ws-zckg39zhbiii3yrv.cn-beijing.maas.aliyuncs.com/api-ws/v1/realtime?model=qwen3.8-livetranslate-flash-realtime`，`session.update` 设 `translation.zh` + 纯文本，20 ms 16 kHz PCM `input_audio_buffer.append`，中文首字 2.19 s、全文 13.27 s，事件类型齐全。PL 侧新增 ESP8266 UART 邮箱（0x43c30000，ID 0x57494631 已由 PS 读通）与麦克风 PCM 抽头（0x43c20080/0x43c20084，48 kHz 计数已验证）；**ESP 模块已实测打通（2026-10-17 21:20）**：真实波特率 **115200**（分频 434），`AT` 返回 `OK`；此前误判是因为读串口寄存器时有效位应为 bit31（写成了 bit8）且按 921600 采样。预热一个哑字节后首字符不再损坏。下一步：按 115200 配置应用、写入热点 OnePlus12、跑通联网/TLS/WSS。
 
 ## 下一步
 
