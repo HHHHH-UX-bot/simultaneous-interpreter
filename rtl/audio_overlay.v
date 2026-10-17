@@ -16,7 +16,7 @@
 module audio_overlay #(
     parameter H_ACTIVE     = 1024,
     parameter X_ORIGIN     = 896,      // H_ACTIVE - 8 - 120
-    parameter Y_ORIGIN     = 8,
+    parameter Y_ORIGIN     = 48,
     parameter MAX_SHOWN    = 9999,
     // The subtitle UI is a light theme (white paper / pale canvas), so the readout
     // must be dark ink; white-on-white was invisible on the real screen.
@@ -61,7 +61,7 @@ module audio_overlay #(
 
     wire in_h = video_de && (x >= X_ORIGIN[10:0]) && (x < (X_ORIGIN + BOX_W));
     wire in_v = (y >= Y_ORIGIN[9:0]) && (y < (Y_ORIGIN + BOX_H));
-    wire [4:0] row_off = y[4:0] - Y_ORIGIN[4:0];
+    wire [5:0] row_off = y[5:0] - Y_ORIGIN[5:0];
     wire       line2   = row_off[4];
     wire [2:0] grow    = row_off[3:1];     // 0..7 row inside the 16 px line
     wire [2:0] gcol    = cell_x[3:1];      // 0..5 glyph column

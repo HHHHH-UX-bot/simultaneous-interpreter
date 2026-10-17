@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 // Self-checking testbench for audio_overlay.
 //
-// A reduced raster (48 active lines are enough to cover the two-line box)
+// A reduced raster (96 active lines are enough to cover the two-line box)
 // drives the block and checks:
 //   * every pixel outside the box passes through unchanged,
 //   * drawn pixels only ever appear inside the box,
@@ -9,9 +9,9 @@
 //     changes the pattern, and live = 0 draws dashes instead of digits.
 module tb_audio_overlay;
     localparam integer H_ACTIVE = 1024;
-    localparam integer LINES    = 48;
+    localparam integer LINES    = 96;
     localparam integer X_ORIGIN = 896;
-    localparam integer Y_ORIGIN = 8;
+    localparam integer Y_ORIGIN = 48;
     localparam integer BOX_W    = 120;
     localparam integer BOX_H    = 32;
 
