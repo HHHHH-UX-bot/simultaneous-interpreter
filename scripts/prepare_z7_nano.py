@@ -60,13 +60,16 @@ def main():
             "set_false_path -from [get_ports i2s_adcdat]",
         ]
     else:
+        # The codec is the I2S clock master and drives BCLK/ADCLRC/DACLRC from
+        # its own 12.288 MHz crystal. The interface runs at 3.072 MHz (325 ns
+        # per bit) and the PL samples mid-bit, so the board I/O delays are far
+        # below one bit period. The I/O paths are therefore excluded from
+        # timing rather than being given unmeasured delays; the internal BCLK
+        # domain stays timed by the create_clock above. Revisit with measured
+        # board delays if the format or sample rate ever changes.
         axdc += [
-            "# The module drives ADCDAT/LRCLKs from its own BCLK; these are conservative",
-            "# board estimates until the wiring is measured.",
-            "set_input_delay -clock i2s_bclk -max 20.000 [get_ports {i2s_adcdat i2s_adclrc i2s_dadlrc}]",
-            "set_input_delay -clock i2s_bclk -min 2.000 [get_ports {i2s_adcdat i2s_adclrc i2s_dadlrc}]",
-            "set_output_delay -clock i2s_bclk -max 20.000 [get_ports i2s_dacdat]",
-            "set_output_delay -clock i2s_bclk -min 2.000 [get_ports i2s_dacdat]",
+            "set_false_path -from [get_ports {i2s_adcdat i2s_adclrc i2s_dadlrc}]",
+            "set_false_path -to [get_ports i2s_dacdat]",
         ]
     axdc += [
         "# I2C is a 100 kHz open-drain bus: no meaningful setup/hold relationship.",

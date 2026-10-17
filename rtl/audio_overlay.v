@@ -12,7 +12,9 @@ module audio_overlay #(
     parameter X_ORIGIN     = 896,      // H_ACTIVE - 8 - 120
     parameter Y_ORIGIN     = 8,
     parameter MAX_SHOWN_US = 9999,
-    parameter [23:0] TEXT_RGB = 24'hFFFFFF
+    // The subtitle UI is a light theme (white paper / pale canvas), so the readout
+    // must be dark ink; white-on-white was invisible on the real screen.
+    parameter [23:0] TEXT_RGB = 24'h172A38
 ) (
     input  wire        pixel_clk,
     input  wire        reset_n,

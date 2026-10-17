@@ -164,9 +164,9 @@ python -B scripts/run_z7_nano_usb_live.py stop
 
 ## A 音频实时回环与时延显示（后续）
 
-状态：2026-10-16 只有需求与接线记录；接线、约束、构建、下载、测量和屏显改动均**未执行**。接口推断、时延分层定义与门禁见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)。
+状态（2026-10-17）：PL 实现、仿真、Vivado 2018.3 构建、下载、寄存器读取与**板级回环**均已执行。根因是 5 V 供电余量：开发板 USB 5 V 被屏幕拖到 4.3 V，模块板上 LT1117-3.3 掉出稳压区，codec 应答 I2C 但晶振不启动。用户改用充电宝主供电 + 排针 5V 直供模块后：`live=1`、BCLK 3.072 MHz、`L1=192 BCLK=62 µs`、`over/under=0`、显示 `format_errors=0`。仍待耳机听感、实屏读数确认和 ≥30 min 持续运行。**屏幕供电**：HDMI 屏由开发板 PS USB0 主机端口的 VBUS 供电（TPS2051B 开关，由 PORTSC1.PP 使能）；`ps7_init` 只配置 PHY/MIO 不开端口电源，因此仅烧 PL+启动字幕应用时屏幕会是黑的。`scripts/z7_nano_audio.tcl run` 现在会在 PS 初始化后复刻 `usb_board_init()` 的寄存器序列自动打开端口电源（打印 `USB0_PORT_POWER ... PP=1`），无需再单独跑 CPU1 触摸主程序；需要触摸时仍需按 USB 专题加载 CPU1 host 固件。接口推断、时延分层定义与门禁见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)。
 
-前置：A0 已完成（型号 WM8731、板卡与模块逐针映射、引脚占用、模块自带 12.288 MHz 晶振、JP2 与 J3 的电源针，结论见 [audio_module.json](../../hardware/z7_nano/audio_module.json)）。仍需实测确认：模块 I2C 从地址（0x1A/0x1B）与 MODE/CSB 接法、供电电流与 GND 针位。**注意**：模块的 BCLK/LRCLK 要先用 I2C 配置 R7 主模式与 R9 使能后才输出，未配置前“没有时钟”不是接线故障。
+前置：A0 已完成（型号 WM8731、板卡与模块逐针映射、引脚占用、模块自带 12.288 MHz 晶振，结论见 [audio_module.json](../../hardware/z7_nano/audio_module.json)）。**2026-10-17 更正电源/地针**：模块 J3-1=GND、J3-2=VCC5V、J3-37/38=GND、J3-39/40=D3V3；开发板 JP2-11=VCC_5V、JP2-29=VCC_3V3、JP2-12/30=GND。正确接线：J3-2→JP2-11、J3-39/40→JP2-29、J3-1/37/38→JP2-12 或 30；**GND 必须共地**。I2C 地址实测为 0x1A（CSB=0）。**注意**：模块的 BCLK/LRCLK 要先用 I2C 配置 R7 主模式与 R9 使能后才输出；但“I2C 应答正常、四路引脚零跳变”说明模块没有时钟，优先查供电/共地，不要改软件。
 
 操作（每步取得证据后再进入下一步；本轮均未执行）：
 
@@ -184,8 +184,8 @@ python -B scripts/run_z7_nano_usb_live.py stop
 
 - `python -B scripts/run_audio_loopback.py simulate --xsim-bin <Vivado>/bin` — 已执行（2026-10-17，本机 xsim：五个自检 testbench 全通过，位精确回环延迟 3 帧 = 192 BCLK）。证据：`output/z7_nano/audio_loopback/simulation.json`。
 - `vivado -mode batch -source scripts/audio_synth_ooc.tcl` — 已执行（逐模块 OOC 综合检查，不需要 BD）。证据：`output/z7_nano/audio_ooc/`。
-- `python -B scripts/run_audio_loopback.py build --vivado <Vivado 2026.1>/vivado.bat` — **未执行**：本机只有 Vivado 2018.3，而 `scripts/build_z7_nano_audio.tcl` 沿用项目 2026.1 的 BD/IP 版本路径。构建会做引脚/时钟/DRC/时序检查并核对 audio.xdc 的七根引脚。
-- 位流下载与实屏验收沿用既有显示流程（`scripts/run_z7_nano_display.py` 的 program/capture 入口）；音频侧的 I2C 探测、BCLK 存在性与耳机出声必须分步取证，见下方操作。
+- `python -B scripts/run_audio_loopback.py build --vivado C:/Xilinx/Vivado/2018.3/bin/vivado.bat` — **已执行**（2026-10-17，Vivado 2018.3 完整 BD + 综合/实现/位流通过，setup/hold = 7.289/0.044 ns）。产物 `output/z7_nano/audio/z7_nano_audio_top.bit` 与 `implementation.json`；`build.json` 需在输入文件不再变动后重跑一次生成（首次运行期间改了文档 JSON，哈希校验中止）。
+- 位流下载、PS7 初始化、字幕应用启动与音频寄存器读取：`xsdb scripts/z7_nano_audio.tcl run 210241277120 <bit> <record.json> <ps7_init.tcl> output/display/subtitle_ui.elf` — **已执行**（2026-10-17）。读出的 `AUDIO_*` 行给出 I2C/时钟/引脚计数/L1：`AUDIO_PINS` 四路计数应随时间增大，`bclk_alive=1`，`live=1`，`L1 us≈62`。**当前结果**：`codec_found=1`、`regs_written=11`，但 `AUDIO_PINS` 全 0、`live=0` → 模块无时钟，先修供电/共地。
 
 放行：耳机可听到实时回环且无爆音/断音；L1 数值可重复并与采样率一致；屏幕读数标明层级与测量点，未测得时显示“未测量”；至少 30 分钟无未解释溢出；用户实屏确认既有画面未变并确认回环可用。仿真、约束/构建、下载、听感与延迟数值分别记录，不能互相替代。
 

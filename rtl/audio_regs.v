@@ -10,10 +10,20 @@ module audio_regs #(
     parameter [8:0] DEF_R1 = 9'h017,   // right line input volume, 0 dB
     parameter [8:0] DEF_R2 = 9'h079,   // left headphone volume, 0 dB
     parameter [8:0] DEF_R3 = 9'h079,   // right headphone volume, 0 dB
-    parameter [8:0] DEF_R4 = 9'h009,   // DACSEL=1 (DAC to LINE OUT) + INSEL=1 (microphone)
-    parameter [8:0] DEF_R5 = 9'h000,   // digital path: DAC unmuted
-    parameter [8:0] DEF_R7 = 9'h00E,   // interface: I2S, 32-bit word, codec is slave
-    parameter [8:0] DEF_R8 = 9'h001    // sampling: 256 fs, 48 kHz, normal
+    // R4 bits (datasheet Table 30): [0] MICBOOST, [1] MUTEMIC, [2] INSEL
+    // (1 = microphone to ADC), [3] BYPASS, [4] DACSEL (1 = DAC to the outputs).
+    // 0x015 = MICBOOST + microphone input + DAC selected: the DAC drives LINE OUT
+    // and HP OUT, and the ADC digitises the microphone (same value as the AN831
+    // demo configuration, R4 = 0x15).
+    parameter [8:0] DEF_R4 = 9'h015,
+    parameter [8:0] DEF_R5 = 9'h000,   // digital path: DAC unmuted, de-emphasis off
+    // R7 bits: [1:0] FORMAT (10 = I2S), [3:2] IWL (00 = 16 bit), [6] MS
+    // (1 = the codec is the clock master and drives BCLK/ADCLRC/DACLRC from its
+    // own 12.288 MHz crystal), [7] BCLKINV.
+    parameter [8:0] DEF_R7 = 9'h042,
+    // R8: [0] USB/NORMAL (0 = normal), [1] BOSR (0 = 256 fs), [5:2] SR
+    // (0000 = 48 kHz with a 12.288 MHz MCLK), [6] CLKIDIV2, [7] CLKODIV2.
+    parameter [8:0] DEF_R8 = 9'h000
 ) (
     input  wire        clk,
     input  wire        reset_n,
@@ -60,6 +70,14 @@ module audio_regs #(
     input  wire [19:0] min_us,
     input  wire [19:0] max_us,
     input  wire        max_valid,
+    // Codec control-port readback and live bus levels (diagnostics).
+    input  wire [8:0]  rb_r4,
+    input  wire [8:0]  rb_r7,
+    input  wire [8:0]  rb_r8,
+    input  wire [8:0]  rb_r9,
+    input  wire        rb_valid,
+    input  wire        sda_idle,
+    input  wire        scl_idle,
     // Controls out
     output reg         init_trigger,
     output reg         clear_extremes,
@@ -86,9 +104,10 @@ module audio_regs #(
     assign s_axi_wready  = !w_hold  && !s_axi_bvalid;
     assign s_axi_arready = !s_axi_rvalid;
 
-    // [31:24] registers written, [15:8] reserved, [7:0] status flags.
-    // Bit count: 8 + 16 + 1+1+1+1+2+1+1 = 32.
-    wire [31:0] status = {regs_written, 16'd0,
+    // [31:24] registers written, [23:11] reserved, [10] scl_idle, [9] sda_idle,
+    // [8] readback valid, [7] max_valid, [6] init_error, [5] init_done,
+    // [4] init_busy, [3:2] addr_sel, [1] codec_found, [0] live.
+    wire [31:0] status = {regs_written, 13'd0, scl_idle, sda_idle, rb_valid,
                           max_valid, init_error, init_done, init_busy,
                           codec_addr_sel, codec_found, live};
 
@@ -163,6 +182,10 @@ module audio_regs #(
                     8'h64: s_axi_rdata <= pin_count1;   // ADCLRC pin edges
                     8'h68: s_axi_rdata <= pin_count2;   // DADLRC pin edges
                     8'h6c: s_axi_rdata <= pin_count3;   // ADCDAT pin edges
+                    8'h70: s_axi_rdata <= {23'd0, rb_r4};   // codec R4 readback
+                    8'h74: s_axi_rdata <= {23'd0, rb_r7};   // codec R7 readback
+                    8'h78: s_axi_rdata <= {23'd0, rb_r8};   // codec R8 readback
+                    8'h7c: s_axi_rdata <= {23'd0, rb_r9};   // codec R9 readback
                     default: begin s_axi_rdata <= 32'd0; s_axi_rresp <= 2'b10; end
                 endcase
             end

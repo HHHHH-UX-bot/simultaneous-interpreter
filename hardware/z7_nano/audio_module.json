@@ -31,10 +31,12 @@
         {"j3_pin": 9, "net": "VM_ADCLRC"}
       ],
       "j3_power": [
-        {"j3_pin": "1/2", "net": "VCC5V", "note": "5 V 输入；模块板载 LT1117-3.3"},
-        {"j3_pin": "39/40", "net": "D3V3", "note": "3.3 V 网络"},
-        {"j3_pin": "其他", "net": "GND", "note": "接地以接地符号绘制、无文字标注，针号需实物/目视确认"}
+        {"j3_pin": 1, "net": "GND", "note": "2026-10-17 按 AN831.pdf 原理图与黑金模块实验文档第 5 页复核：第 1 针接接地符号；此前误记为 VCC5V"},
+        {"j3_pin": 2, "net": "VCC5V", "note": "5 V 输入；模块板载 LT1117-3.3"},
+        {"j3_pin": "37/38", "net": "GND", "note": "第 37、38 针均为接地（同页文档表格与原理图一致）"},
+        {"j3_pin": "39/40", "net": "D3V3", "note": "3.3 V 网络"}
       ],
+      "j3_power_correction": "2026-10-17 更正：J3 第 1 针是 GND、第 2 针是 5V（此前把 1/2 针都记为 VCC5V 是错误的）；GND 还可用 37/38 针。正确接法：J3-2 → JP2-11(VCC_5V)；J3-1/37/38 → JP2-12 或 30(GND)。【重要】J3-39/40 的 D3V3 在 AN831 原理图中与 codec 的 VCC3V3 是**两个不同网络**（D3V3 未连到 codec）：codec 的 3.3 V 只由板上 U8(LT1117-3.3) 从 J3-2 的 5 V 产生。因此 J3-39/40 接 3.3 V 并不给 codec 供电；判断 codec 是否上电必须测 U8 的 OUT/TAP 或 C39 正端（VCC3V3），不是测 J3-39/40。",
       "note": "J3 与开发板 JP2 为同一 2x20 规格；本次为逻辑针号核对，物理方向由用户 2026-10-16 确认已查看"
     },
     "electrical_measurement": "not performed"
@@ -92,11 +94,12 @@
     {"board_pin": 20, "note": "GPIO2_8N = D20，本表未使用；与其 P 端 D19 构成一对，可作备用"}
   ],
   "header_power": [
-    {"header_pin": 11, "net": "VCC_5V"},
-    {"header_pin": 12, "net": "VCC_5V"},
-    {"header_pin": 29, "net": "VCC_3V3"},
-    {"header_pin": 30, "net": "VCC_3V3"}
+    {"header_pin": 11, "net": "VCC_5V", "note": "2026-10-17 复核 Z7-NANO_R21.pdf 第 13 页：第 11 针为 VCC_5V"},
+    {"header_pin": 12, "net": "GND", "note": "2026-10-17 复核：第 12 针接接地符号（此前误记为 VCC_5V），可作模块接地点"},
+    {"header_pin": 29, "net": "VCC_3V3", "note": "第 29 针为 VCC_3V3"},
+    {"header_pin": 30, "net": "GND", "note": "2026-10-17 复核：第 30 针接接地符号（此前误记为 VCC_3V3），可作模块接地点"}
   ],
+  "header_power_correction": "2026-10-17 按 Z7-NANO_R21.pdf 第 13 页（GPIO 接口）复核：JP2 供电针只有 11=VCC_5V、29=VCC_3V3，12/30 是 GND。模块 J3-2(5V)→JP2-11、J3-1/37/38(GND)→JP2-12/30。注意 J3-39/40(D3V3) 与 codec 的 VCC3V3 不是同一网络，接它不给 codec 供电。",
   "conflict_check": {
     "hdmi_tmds": {
       "result": "no_overlap_on_current_board",

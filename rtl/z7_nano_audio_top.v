@@ -9,6 +9,11 @@
 //   * the I2S slave loopback (ADCDAT -> DACDAT) with its L1 frame timestamps,
 //   * a small readout drawn over the top-right corner of the existing picture.
 //
+// The AN831 module carries the WM8731's 12.288 MHz crystal and is configured as
+// the I2S clock master, exactly like the vendor demo: BCLK (64 x Fs = 3.072 MHz)
+// and both LRCLKs are FPGA inputs, so the audio runs at exactly 48 kHz and is
+// asynchronous to the 50 MHz display clock.
+//
 // Audio pins come from hardware/z7_nano/source.json ("AudioPins") and are
 // generated into output/z7_nano/config/audio.xdc by scripts/prepare_z7_nano.py.
 module z7_nano_audio_top (
@@ -25,11 +30,12 @@ module z7_nano_audio_top (
     input  wire sys_clk, sys_rst_n,
     output wire led_n, tmds_clk_p, tmds_clk_n,
     output wire [2:0] tmds_data_p, tmds_data_n,
-    // Audio module (PL is the I2S master: the module supplies only MCLK from
-    // its own crystal; I2C pads are open drain)
-    output wire i2s_bclk,
-    output wire i2s_dadlrc,
-    output wire i2s_adclrc,
+    // Audio module (PL is the I2S slave: the codec drives BCLK and both LRCLKs
+    // from its own crystal; only DACDAT is driven by the PL. I2C pads are open
+    // drain.)
+    input  wire i2s_bclk,
+    input  wire i2s_dadlrc,
+    input  wire i2s_adclrc,
     input  wire i2s_adcdat,
     output wire i2s_dacdat,
     inout  wire i2c_scl,
@@ -53,12 +59,12 @@ module z7_nano_audio_top (
     wire [31:0] adc_frames, dac_frames, bclk_cycles;
     wire [15:0] overruns, underruns;
     wire        audio_live;
-    wire        i2s_lrclk;
-    assign i2s_dadlrc = i2s_lrclk;
-    assign i2s_adclrc = i2s_lrclk;
     wire [19:0] latency_us, min_us, max_us;
     wire        max_valid;
     wire [31:0] pin_count0, pin_count1, pin_count2, pin_count3;
+    // Codec control-port readback (proves the I2C writes landed) and bus levels.
+    wire [8:0]  rb_r4, rb_r7, rb_r8, rb_r9;
+    wire        rb_valid, sda_idle, scl_idle;
 
     // --- I2C open-drain pads ----------------------------------------------
     wire scl_low, sda_low, sda_raw, sda_in;
@@ -100,6 +106,8 @@ module z7_nano_audio_top (
         .latency_us(latency_us), .min_us(min_us), .max_us(max_us), .max_valid(max_valid),
         .pin_count0(pin_count0), .pin_count1(pin_count1),
         .pin_count2(pin_count2), .pin_count3(pin_count3),
+        .rb_r4(rb_r4), .rb_r7(rb_r7), .rb_r8(rb_r8), .rb_r9(rb_r9),
+        .rb_valid(rb_valid), .sda_idle(sda_idle), .scl_idle(scl_idle),
         .init_trigger(init_trigger), .clear_extremes(clear_extremes),
         .freeze_display(freeze_display),
         .cfg_r0(cfg_r0), .cfg_r1(cfg_r1), .cfg_r2(cfg_r2), .cfg_r3(cfg_r3),
@@ -136,43 +144,28 @@ module z7_nano_audio_top (
         .cfg_r4(cfg_r4), .cfg_r5(cfg_r5), .cfg_r7(cfg_r7), .cfg_r8(cfg_r8),
         .busy(init_busy), .done(init_done), .error(init_error),
         .codec_found(codec_found), .addr_sel(codec_addr_sel), .regs_written(regs_written),
+        .rb_r4(rb_r4), .rb_r7(rb_r7), .rb_r8(rb_r8), .rb_r9(rb_r9), .rb_valid(rb_valid),
+        .sda_idle(sda_idle), .scl_idle(scl_idle),
         .scl_low(scl_low), .sda_low(sda_low), .sda_in(sda_in));
 
-    // Fixed 1 kHz test tone into the loopback: proves the codec DAC, the
-    // volume registers and the headphone path without relying on the microphone.
-    reg [15:0] tone_div;
-    reg        tone_bit;
-    always @(posedge pixel_clk) begin
-        if (!(sys_rst_n & locked)) begin
-            tone_div <= 16'd0;
-            tone_bit <= 1'b0;
-        end else if (tone_div == 16'd24999) begin
-            tone_div <= 16'd0;
-            tone_bit <= ~tone_bit;
-        end else begin
-            tone_div <= tone_div + 1'b1;
-        end
-    end
-
-    // --- I2S master loopback ----------------------------------------------
-    // The module supplies only MCLK from its own crystal, so the PL drives
-    // BCLK and both LRCLKs: BCLK = 50 MHz / 16 = 3.125 MHz, 64 BCLK per frame
-    // (48.83 kHz).
-    i2s_master_loopback #(.DIV(16), .SLOT(32), .DEPTH(2)) u_loopback(
-        .clk(pixel_clk), .reset_n(sys_rst_n & locked),
-        .enable(init_done & ~init_error),
-        .bclk(i2s_bclk), .lrclk(i2s_lrclk), .dacdat(i2s_dacdat),
-        .adcdat(tone_bit),   // TEST TONE: replace with i2s_adcdat for the microphone
+    // --- I2S slave loopback ------------------------------------------------
+    // The codec is the clock master (R7.MS = 1): BCLK = 3.072 MHz, 64 BCLK per
+    // stereo frame = 48 kHz, derived from the module's own 12.288 MHz crystal.
+    // The loopback FIFO buffers two frames; the measured L1 latency is three
+    // frames = 192 BCLK = 62.5 us.
+    i2s_loopback #(.FIFO_DEPTH(2), .AW(1)) u_loopback(
+        .clk_sys(pixel_clk), .reset_n_sys(sys_rst_n & locked),
+        .bclk(i2s_bclk), .adclrc(i2s_adclrc), .dadlrc(i2s_dadlrc),
+        .adcdat(i2s_adcdat), .dacdat(i2s_dacdat),
         .occ_frames(occ_frames), .latency_cycles(latency_cycles),
         .adc_frames(adc_frames), .dac_frames(dac_frames),
         .overruns(overruns), .underruns(underruns), .bclk_cycles(bclk_cycles),
         .live(audio_live));
 
     // --- L1 latency presentation -------------------------------------------
-    // Nominal BCLK is 64 x Fs = 3.072 MHz for 48 kHz with 16-bit slots; the
-    // measured cycles come from the loopback itself, so only the unit
-    // conversion depends on this constant.
-    audio_latency #(.BCLK_HZ(3125000)) u_latency(
+    // The measured cycles come from the loopback itself, so only the unit
+    // conversion depends on this constant (3.072 MHz for 48 kHz / 64 BCLK).
+    audio_latency #(.BCLK_HZ(3072000)) u_latency(
         .clk(pixel_clk), .reset_n(sys_rst_n & locked),
         .live(audio_live), .cycles(latency_cycles), .clear_extremes(clear_extremes),
         .latency_us(latency_us), .min_us(min_us), .max_us(max_us), .max_valid(max_valid));
@@ -194,9 +187,20 @@ module z7_nano_audio_top (
         .text_pixels(overlay_pixels));
 
     // --- TMDS output (same transmitter and timing as the accepted design) --
+    // The overlay registers the RGB passthrough, so DE/HS/VS get the same
+    // one-pixel delay; otherwise every line would shift by one pixel.
+    reg video_de_d, video_hs_d, video_vs_d;
+    always @(posedge pixel_clk) begin
+        if (video_reset) begin
+            video_de_d <= 1'b0; video_hs_d <= 1'b0; video_vs_d <= 1'b0;
+        end else begin
+            video_de_d <= video_de; video_hs_d <= video_hs; video_vs_d <= video_vs;
+        end
+    end
+
     dvi_transmitter_top u_transmitter(.pclk(pixel_clk), .pclk_x5(serial_clk_5x),
-        .reset_n(sys_rst_n & locked), .video_in(video_rgb_overlay), .video_h_sync(video_hs),
-        .video_v_sync(video_vs), .video_de(video_de),
+        .reset_n(sys_rst_n & locked), .video_in(video_rgb_overlay), .video_h_sync(video_hs_d),
+        .video_v_sync(video_vs_d), .video_de(video_de_d),
         .tmds_clk_p(tmds_clk_p), .tmds_clk_n(tmds_clk_n),
         .tmds_data_p(tmds_data_p), .tmds_data_n(tmds_data_n), .tmds_oen());
 

@@ -20,6 +20,8 @@ module tb_i2c_wm8731;
     wire [7:0] regs_written;
     wire       scl_low, sda_low;
     wire       sda_in;
+    wire [8:0] rb_r4, rb_r7, rb_r8, rb_r9;
+    wire       rb_valid, sda_idle, scl_idle;
 
     // ---- wired-AND bus with pull-ups -------------------------------------
     reg  slave_low = 0;
@@ -58,8 +60,10 @@ module tb_i2c_wm8731;
             active <= 1'b1;
             bitc   <= 4'd0;
             bytec  <= 0;
+
         end
     end
+
 
     // STOP: SDA rises while SCL is high.
     always @(posedge sda) begin
@@ -67,6 +71,7 @@ module tb_i2c_wm8731;
     end
 
     always @(posedge scl) begin
+
         if (active) begin
             if (bitc < 4'd8) begin
                 sh   <= {sh[6:0], sda};
@@ -101,12 +106,15 @@ module tb_i2c_wm8731;
     end
 
     // ---- DUT --------------------------------------------------------------
-    wm8731_init #(.CLK_HZ(CLK_HZ), .SCL_HZ(SCL_HZ), .RESET_WAIT(2000)) dut (
+    wm8731_init #(.CLK_HZ(CLK_HZ), .SCL_HZ(SCL_HZ), .RESET_WAIT(2000),
+                  .DO_READBACK(0)) dut (
         .clk(clk), .reset_n(reset_n), .trigger(trigger),
         .cfg_r0(cfg_r0), .cfg_r1(cfg_r1), .cfg_r2(cfg_r2), .cfg_r3(cfg_r3),
         .cfg_r4(cfg_r4), .cfg_r5(cfg_r5), .cfg_r7(cfg_r7), .cfg_r8(cfg_r8),
         .busy(busy), .done(done), .error(error), .codec_found(codec_found),
         .addr_sel(addr_sel), .regs_written(regs_written),
+        .rb_r4(rb_r4), .rb_r7(rb_r7), .rb_r8(rb_r8), .rb_r9(rb_r9),
+        .rb_valid(rb_valid), .sda_idle(sda_idle), .scl_idle(scl_idle),
         .scl_low(scl_low), .sda_low(sda_low), .sda_in(sda_in));
 
     integer errors = 0;

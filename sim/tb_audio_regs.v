@@ -40,6 +40,9 @@ module tb_audio_regs;
     reg  [31:0] bclk_cycles = 32'h00010000;
     reg  [19:0] latency_us = 20'd62, min_us = 20'd62, max_us = 20'd70;
     reg         max_valid = 1;
+    reg  [8:0]  rb_r4 = 9'h015, rb_r7 = 9'h042, rb_r8 = 9'h000, rb_r9 = 9'h001;
+    reg         rb_valid = 1;
+    reg         sda_idle = 1, scl_idle = 1;
 
     wire        init_trigger, clear_extremes;
     wire [8:0]  cfg_r0, cfg_r1, cfg_r2, cfg_r3, cfg_r4, cfg_r5, cfg_r7, cfg_r8;
@@ -60,6 +63,8 @@ module tb_audio_regs;
         .latency_us(latency_us), .min_us(min_us), .max_us(max_us), .max_valid(max_valid),
         .pin_count0(32'd11), .pin_count1(32'd22),
         .pin_count2(32'd33), .pin_count3(32'd44),
+        .rb_r4(rb_r4), .rb_r7(rb_r7), .rb_r8(rb_r8), .rb_r9(rb_r9),
+        .rb_valid(rb_valid), .sda_idle(sda_idle), .scl_idle(scl_idle),
         .init_trigger(init_trigger), .clear_extremes(clear_extremes), .freeze_display(),
         .cfg_r0(cfg_r0), .cfg_r1(cfg_r1), .cfg_r2(cfg_r2), .cfg_r3(cfg_r3),
         .cfg_r4(cfg_r4), .cfg_r5(cfg_r5), .cfg_r7(cfg_r7), .cfg_r8(cfg_r8));
@@ -140,18 +145,25 @@ module tb_audio_regs;
         expect_read(8'h2c, 32'd1,        "ctrl default");
 
         // Default shadows.
-        expect_read(8'h40, 32'h010, "default r4");
-        expect_read(8'h48, 32'h002, "default r7 (i2s slave)");
+        expect_read(8'h40, 32'h015, "default r4 (mic + DAC selected)");
+        expect_read(8'h48, 32'h042, "default r7 (i2s clock master)");
         expect_read(8'h4c, 32'h000, "default r8");
+        // Codec register readback values.
+        expect_read(8'h70, 32'h015, "readback r4");
+        expect_read(8'h74, 32'h042, "readback r7");
+        expect_read(8'h78, 32'h000, "readback r8");
+        expect_read(8'h7c, 32'h001, "readback r9");
 
         // Status word: [7:0] flags (live, codec_found, addr_sel[1:0], init_busy,
-        // init_done, init_error, max_valid) and [31:24] regs_written.
-        // live=1 codec_found=1 addr_sel=1 init_done=1 max_valid=1 -> 0xA7
-        expect_read(8'h04, 32'h0B00_00A7, "status");
+        // init_done, init_error, max_valid), [10:8] scl_idle/sda_idle/rb_valid
+        // and [31:24] regs_written.
+        // live=1 codec_found=1 addr_sel=1 init_done=1 max_valid=1 -> 0x00A7;
+        // scl_idle=1 (bit10), sda_idle=1 (bit9), rb_valid=1 (bit8) -> 0x07A7.
+        expect_read(8'h04, 32'h0B00_07A7, "status");
 
         // Shadow write/read-back plus the control pulses.
-        axi_write(8'h40, 32'h015);
-        expect_read(8'h40, 32'h015, "r4 write");
+        axi_write(8'h40, 32'h011);
+        expect_read(8'h40, 32'h011, "r4 write");
 
         trig_seen = 0; clr_seen = 0;
         // CTRL bit 0 is edge sensitive: clear it, then set it to pulse. The
@@ -174,9 +186,9 @@ module tb_audio_regs;
         if (!clr_seen)  begin $display("FAIL clear_extremes not pulsed"); errors = errors + 1; end
 
         // Unknown address must answer with a slave error on both channels.
-        axi_read(8'h7c, rd);
+        axi_read(8'hdc, rd);
         if (rresp !== 2'b10) begin $display("FAIL read error response: %0b", rresp); errors = errors + 1; end
-        axi_write(8'h7c, 32'd0);
+        axi_write(8'hdc, 32'd0);
         if (bresp !== 2'b10) begin $display("FAIL write error response: %0b", bresp); errors = errors + 1; end
 
         if (errors == 0) $display("PASS_AUDIO_REGS");

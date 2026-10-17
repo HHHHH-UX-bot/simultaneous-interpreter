@@ -35,6 +35,7 @@ RTL_INPUTS = [
 ]
 SIM_INPUTS = [
     "sim/tb_i2c_wm8731.v",
+    "sim/tb_i2c_read.v",
     "sim/tb_i2s_loopback.v",
     "sim/tb_audio_latency.v",
     "sim/tb_audio_regs.v",
@@ -42,6 +43,7 @@ SIM_INPUTS = [
 ]
 TESTS = [
     ("tb_i2c_wm8731", "PASS_I2C_WM8731"),
+    ("tb_i2c_read", "PASS_I2C_READ"),
     ("tb_i2s_loopback", "PASS_I2S_LOOPBACK"),
     ("tb_audio_latency", "PASS_AUDIO_LATENCY"),
     ("tb_audio_regs", "PASS_AUDIO_REGS"),

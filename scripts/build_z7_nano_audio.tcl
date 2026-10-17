@@ -110,7 +110,8 @@ connect_bd_net [get_bd_pins bclk_hz/dout] [get_bd_pins aregs/bclk_hz]
 set audio_status_in {live codec_found codec_addr_sel init_busy init_done init_error \
                      regs_written occ_frames latency_cycles adc_frames dac_frames \
                      overruns underruns bclk_cycles latency_us min_us max_us max_valid \
-                     pin_count0 pin_count1 pin_count2 pin_count3}
+                     pin_count0 pin_count1 pin_count2 pin_count3 \
+                     rb_r4 rb_r7 rb_r8 rb_r9 rb_valid sda_idle scl_idle}
 set audio_ctrl_out {init_trigger clear_extremes freeze_display cfg_r0 cfg_r1 cfg_r2 \
                     cfg_r3 cfg_r4 cfg_r5 cfg_r7 cfg_r8}
 foreach pin [concat $audio_status_in $audio_ctrl_out] {
@@ -155,7 +156,7 @@ write_bd_tcl -force [file join $out nano_audio_bd.tcl]
 # Sources and constraints (added before the design exit so the GUI project is
 # complete as well), then synthesis and implementation.
 # ---------------------------------------------------------------------------
-foreach filename {z7_nano_audio_top.v i2c_master.v wm8731_init.v i2s_master_loopback.v \
+foreach filename {z7_nano_audio_top.v i2c_master.v wm8731_init.v i2s_loopback.v \
                   audio_latency.v audio_regs.v audio_overlay.v audio_pin_activity.v \
                   hdmi_clock.v async_rst_sync.v dvi_encoder.v dvi_transmitter_top.v \
                   serializer_10_to_1.v} {

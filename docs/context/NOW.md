@@ -4,7 +4,7 @@
 
 长期目标是形成语音进入板卡、Wi-Fi 直接调用云端语音翻译、中文字幕上屏、触摸交互的独立产品，使用时不依赖电脑。2026-10-14 用户选择阿里百炼一体方案，见 [D13](DECISIONS.md#d13-云端语音翻译与独立终端)和[CLOUD_SPEECH](../design/CLOUD_SPEECH.md)；旧系统方案保留历史范围。
 
-2026-10-16 用户新增近期目标：麦克风 → 音频模块 → 板卡 → 耳机实时回环，并把延迟时间实时显示在 HDMI 屏幕上，已有画面及功能不动；接线事实、时延分层定义与分阶段计划见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)，决策见 [D15](DECISIONS.md#d15-音频实时回环与时延显示)。本轮为文档轮次：未接线、未建约束、未构建、未烧录、未测量。
+2026-10-16 用户新增近期目标：麦克风 → 音频模块 → 板卡 → 耳机实时回环，并把延迟时间实时显示在 HDMI 屏幕上，已有画面及功能不动；接线事实、时延分层定义与分阶段计划见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)，决策见 [D15](DECISIONS.md#d15-音频实时回环与时延显示)。2026-10-17 已完成 PL 实现定稿（WM8731 作 I2S 主）、Vivado 2018.3 构建、下载与板级取证：I2C 11 条写入有真实 ACK，但模块未产生任何 BCLK/LRCLK/ADCDAT；同时发现模块 J3 与开发板 JP2 的电源/地针文档有误（J3-1 是 GND、JP2-12/30 是 GND）。当前卡在硬件供电/共地，详见 [AUDIO_LOOPBACK §10](../design/AUDIO_LOOPBACK.md#10-板级取证2026-10-17)。
 
 当前推进至 [C1-7a ARM 自主可信 TLS](../design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)。实现、本机验证、代码复核和 ARM 构建通过；修正版已下载，画面与常驻触摸获用户验收。首次入网通知误判已修正并恢复 AT，但修正版的 TLS 身份对照尚未重跑。2026-10-16 用户因额度要求整理、同步 GitHub，本轮停止硬件实验；当前屏幕是演示字幕，证据见 [本阶段](../../output/z7_nano/tls_boot/stage.json)。
 
@@ -58,8 +58,9 @@ P5c-0 DeepSeek 独立文本已实测：17 项离线验证和独立复核通过�
 
 尚需核实以下事项：
 
-- 音频模块：2026-10-16 用户确认主控为 **WM8731** 并提供 J3→JP2→FPGA 接线表。按 Z7-NANO_R21.pdf 第 5/13 页逐针核对：JP2 为 CON40A（2x20）排针、走 Bank35（`GPIO2_5P/5N`、`6P/6N`、`7P/7N`、`8P`），H16/H17 为 MRCC 时钟脚；JP2 电源针 11/12=`VCC_5V`、29/30=`VCC_3V3`。旧说法“FPGA20引脚”不再使用。第一版英语转中文已在 DECISIONS D8 确认。
-- 音频引脚占用已核对：当前板 HDMI 在 Bank34（`U18/U19`、`V20/W20`、`T20/U20`、`N20/P20`，见 [source.json](../../hardware/z7_nano/source.json)），与音频 7 个 Bank35 信号**不重叠**，无需改脚；旧板 [hdmi.xdc](../../constraints/hdmi.xdc) 的“冲突”判断已在 R17 更正。模块原理图 AN831.pdf 也已核对：`U11=WM8731SEFL` + `Y3=12.288 MHz 晶振`（不需 FPGA 供 MCLK）、`U8=LT1117-3.3`、J3 1/2=`VCC5V`、39/40=`D3V3`，信号针 3–9 与接线表一致。**上板前置变为 I2C 配置**：需先写 R7 主模式、R8 采样率、R6/R4/R5/R2/R3 与 R9 使能，模块才会输出 BCLK/LRCLK（见 R18）。[AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)
+- 音频模块：2026-10-16 用户确认主控为 **WM8731** 并提供 J3→JP2→FPGA 接线表。按 Z7-NANO_R21.pdf 第 5/13 页逐针核对：JP2 为 CON40A（2x20）排针、走 Bank35（`GPIO2_5P/5N`、`6P/6N`、`7P/7N`、`8P`），H16/H17 为 MRCC 时钟脚。**2026-10-17 更正电源/地针**：JP2 11=`VCC_5V`、29=`VCC_3V3`、12/30=GND；模块 J3-1=GND、2=`VCC5V`、37/38=GND、39/40=`D3V3`（旧记录把 J3 1/2 都记为 VCC5V、把 JP2 12/30 记为电源针，均错误）。旧说法“FPGA20引脚”不再使用。第一版英语转中文已在 DECISIONS D8 确认。
+- 音频引脚占用已核对：当前板 HDMI 在 Bank34（`U18/U19`、`V20/W20`、`T20/U20`、`N20/P20`，见 [source.json](../../hardware/z7_nano/source.json)），与音频 7 个 Bank35 信号**不重叠**，无需改脚；旧板 [hdmi.xdc](../../constraints/hdmi.xdc) 的“冲突”判断已在 R17 更正。模块原理图 AN831.pdf 也已核对：`U11=WM8731SEFL` + `Y3=12.288 MHz 晶振`（不需 FPGA 供 MCLK）、`U8=LT1117-3.3`、J3-1=GND、J3-2=`VCC5V`、J3-37/38=GND、J3-39/40=`D3V3`，信号针 3–9 与接线表一致。**上板前置变为 I2C 配置**：需先写 R7 主模式、R8 采样率、R6/R4/R5/R2/R3 与 R9 使能，模块才会输出 BCLK/LRCLK（见 R18）。[AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)
+- 音频模块供电（2026-10-17 用户万用表）：开发板 JP2-11 的 5 V 在屏幕带电时约 4.3 V、拔屏 4.6 V；AN831 的 D3V3(J3-39/40) 与 codec 的 VCC3V3 是两个网络，codec 3.3 V 只由板上 LT1117-3.3 从 5 V 产生，4.3 V 输入处在压差边缘。**待实测模块 VCC3V3**（U8 OUT/TAP 或 C39 正端对模块 GND）才能判断是供电余量还是模块晶振问题，见 RISKS R23。
 - 新板 USB 枚举、真实输入、四角坐标与 UI 控制已通过各自范围；完整 VBUS 电压/电流测量尚未做。
 - 触摸启动与暗屏的触发顺序、USB 供电实际电压/电流和屏幕内部电路仍待定位；最新诊断及当前接线由 USB_TOUCH/迁移专题维护。独立屏幕电源对照未执行，不先行认定电流不足。
 - 当前使用裸机 USB Host/HID；独立上电启动介质与产品启动方式尚未决定。新板最小 PS/DDR 实测结果由 JTAG/OCM 获取。
@@ -69,7 +70,7 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 
 ## 下一步
 
-- 音频回环已实现并仿真通过（2026-10-17）：PL 软 I2C + WM8731 初始化（0x1A/0x1B 自适应）、I2S 从机收发、2 帧 FIFO 与预填充门控、L1 时间戳、右上角 `L1 nnnn us` 叠加；五个自检 testbench 全通过，位精确回环延迟 3 帧 = 192 BCLK（3.072 MHz 下 62.5 µs），证据见 [simulation.json](../../output/z7_nano/audio_loopback/simulation.json)。**未执行**：Vivado 综合/位流、下载、接线、真实出声与实际时延、实屏验收。文件清单与寄存器映射见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#7-已实现2026-10-17)。
+- 音频实时回环**已通**（2026-10-17）：PL 侧按 **WM8731 作 I2S 时钟主** 定稿——软 I2C 初始化（R4=0x015 麦克风+DAC、R7=0x042 主模式 I2S 16-bit、R8=0x000 normal 48 kHz）、`i2s_loopback.v` 从机回环（2 帧 FIFO）+ L1 时间戳、右上角 `L1 nnnn us` 叠加；六个自检 testbench 通过，Vivado 2018.3 构建（setup/hold 7.419/0.032 ns）与下载通过。**根因与解决**：模块 3.3 V 由板上 LT1117-3.3 从 J3-2 的 5 V 产生（J3-39/40 的 D3V3 与 codec 的 VCC3V3 是两个网络，接它不给 codec 供电）；开发板 USB 5 V 被屏幕负载拖到 4.3 V，处在 LT1117 压差边缘，导致 codec 能应答 I2C 但晶振不启动。用户改用充电宝主供电、排针 5V 直供模块后一切正常。**实测证据**：[program.json](../../output/z7_nano/audio_loopback/program.json)：`live=1`、`codec_found=1`、`regs_written=11`、`bclk_alive=1`、引脚计数 BCLK 48696307 / ADCLRC 763781 / DADLRC 766854 / ADCDAT 3928603、`occ=2`、`over=0/under=0`、`L1=192 cycles = 62 µs`、min/max=0/62；显示 `format_errors=0`、整帧 614400、`display_ok=1`。细节见 [AUDIO_LOOPBACK §10](../design/AUDIO_LOOPBACK.md#10-板级取证2026-10-17)。**屏幕供电**：屏由开发板 PS USB0 主机端口 VBUS 供电（PORTSC1.PP），只有 CPU1 USB host 固件或等价初始化才会打开；`scripts/z7_nano_audio.tcl run` 已内置该初始化（`USB0_PORT_POWER PP=1`），烧录后屏幕即有电。**下一步**：用户耳机听感验收、屏上 `L1 0062 us` 实屏确认、持续运行（≥30 min 溢出统计）与 L3 声学时延；当前是 L1 数字域读数，不等于声学端到端。
 
 音频回环主线（用户 2026-10-16 指定）：下一步是用项目许可的 Vivado 跑 [A 阶段](../context/RUNBOOK.md#a-音频实时回环与时延显示后续)的构建（`scripts/run_audio_loopback.py build`），再按模块接线并依次确认 I2C ACK、BCLK 出现、耳机出声、屏上读数；A0 的剩余核对（模块 I2C 地址、供电/GND、丝印方向）在接线时完成。文档里的步骤不构成执行授权。
 

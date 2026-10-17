@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-// Byte-level I2C master for the WM8731 control port (100 kHz standard mode).
+// Byte-level I2C master for the WM8731 control port (SCL_HZ standard mode).
 //
 // The pads are open drain: the core drives them low or releases them, and the
 // pull-ups live on the audio module (VW_I2C_SCLK / VM_I2C_SDAT) or the board.
@@ -11,6 +11,11 @@
 // Timing: every quarter of an SCL period lasts QUARTER clocks. START and STOP
 // walk three quarters (qn), the byte engine walks four quarters per bit (k)
 // over nine bits: eight data bits plus the ACK bit.
+//
+// A transaction is either a write (address byte then tx_count data bytes) or,
+// when rd is set, a read: the address byte must carry R/W = 1 (the caller puts
+// it in tx_byte for index 0) and then tx_count/rd_count bytes are clocked in,
+// each followed by an ACK driven by the master (NACK on the last byte).
 module i2c_master #(
     parameter CLK_HZ  = 50000000,
     parameter SCL_HZ  = 100000,
@@ -29,6 +34,12 @@ module i2c_master #(
     output wire       scl_low,     // 1 = pull SCL low (open drain)
     output wire       sda_low,     // 1 = pull SDA low (open drain)
     input  wire       sda_in,
+    // Read path: rd = 1 makes the transaction a read of rd_count bytes.
+    input  wire       rd,
+    input  wire [2:0] rd_count,
+    output reg  [7:0] rd_byte,     // byte that just completed
+    output reg  [1:0] rd_index,    // its index (0..3)
+    output reg        rd_valid,    // one-clock pulse
     // Bus recovery: a slave interrupted mid-transfer can hold SDA low, which
     // blocks every later transaction until SCL is clocked nine times.
     input  wire       recover,
@@ -41,7 +52,8 @@ module i2c_master #(
         S_BYTE  = 3'd3,
         S_NEXT  = 3'd4,
         S_STOP  = 3'd5,
-        S_GAP   = 3'd6;
+        S_GAP   = 3'd6,
+        S_RD    = 3'd7;
 
     localparam integer QW = (QUARTER < 2) ? 2 : QUARTER;
 
@@ -54,12 +66,19 @@ module i2c_master #(
     reg [7:0]  count;
     reg        nack;
     reg        scl_low_i, sda_low_i;
+    // Read mode.
+    reg        rd_mode;
+    reg [2:0]  rd_left;    // bytes still to read (this one included)
+    reg [7:0]  rd_shift;
+    reg [1:0]  rd_done_idx; // index presented with the completed byte
 
     wire [3:0] bitpos   = sub[5:2];
     wire [1:0] k        = sub[1:0];
     wire       is_ack   = (bitpos == 4'd8);
     wire       qdone    = (qphase >= QW - 1);
     wire       byte_end = (sub == 6'd35) && (k == 2'd3);
+    wire       rd_last  = (rd_left == 3'd1);
+    wire       rd_shift_en = (k == 2'd1) && !is_ack && qdone;
 
     assign busy = (state != S_IDLE);
 
@@ -68,8 +87,12 @@ module i2c_master #(
             state <= S_IDLE; qn <= 2'd0; qphase <= 0; sub <= 0; shreg <= 0;
             sent <= 0; count <= 0; nack <= 0; tx_index <= 0;
             done <= 0; ack_error <= 0; scl_low_i <= 0; sda_low_i <= 0;
+            rd_mode <= 1'b0; rd_left <= 3'd0; rd_shift <= 8'd0;
+            rd_byte <= 8'd0; rd_index <= 2'd0; rd_valid <= 1'b0;
+            rd_done_idx <= 2'd0;
         end else begin
             done <= 1'b0;
+            rd_valid <= 1'b0;
             case (state)
                 S_IDLE: begin
                     scl_low_i <= 1'b0;
@@ -82,6 +105,10 @@ module i2c_master #(
                         ack_error <= 1'b0;
                         qphase    <= 16'd0;
                         qn        <= 2'd0;
+                        rd_mode   <= rd;
+                        rd_left   <= rd ? rd_count : 3'd0;
+                        rd_done_idx <= 2'd0;
+                        rd_shift  <= 8'd0;
                         state     <= S_START;
                     end
                 end
@@ -139,6 +166,16 @@ module i2c_master #(
                     if (nack) begin
                         ack_error <= 1'b1;
                         state     <= S_STOP;
+                    end else if (rd_mode) begin
+                        // Address byte (with R/W = 1) has been sent: clock in the
+                        // requested number of bytes.
+                        if (rd_left == 3'd0) begin
+                            state <= S_STOP;
+                        end else begin
+                            sub    <= 6'd0;
+                            qphase <= 16'd0;
+                            state  <= S_RD;
+                        end
                     end else if (sent >= count) begin
                         state <= S_STOP;
                     end else begin
@@ -146,6 +183,44 @@ module i2c_master #(
                         tx_index <= tx_index + 1'b1;
                         state    <= S_LOAD;
                     end
+                end
+                // Read one byte: 8 shifted-in bits then an ACK driven by the
+                // master (NACK on the last byte so the slave releases SDA).
+                S_RD: begin
+                    case (k)
+                        2'd0: begin
+                            scl_low_i <= 1'b1;
+                            sda_low_i <= is_ack ? (rd_last ? 1'b0 : 1'b1) : 1'b0;
+                        end
+                        2'd1: begin
+                            scl_low_i <= 1'b0;
+                            if (rd_shift_en) rd_shift <= {rd_shift[6:0], sda_in};
+                        end
+                        2'd2: begin
+                            scl_low_i <= 1'b0;
+                        end
+                        default: begin
+                            scl_low_i <= 1'b1;
+                        end
+                    endcase
+                    if (qdone) begin
+                        qphase <= 16'd0;
+                        if (byte_end) begin
+                            rd_byte     <= rd_shift;
+                            rd_index    <= rd_done_idx;
+                            rd_done_idx <= rd_done_idx + 1'b1;
+                            rd_left     <= rd_left - 1'b1;
+                            rd_valid    <= 1'b1;
+                            if (rd_last) begin
+                                state <= S_STOP;
+                            end else begin
+                                sub      <= 6'd0;
+                                rd_shift <= 8'd0;
+                            end
+                        end else begin
+                            sub <= sub + 1'b1;
+                        end
+                    end else qphase <= qphase + 1'b1;
                 end
                 // STOP: SDA rises while SCL is high.
                 S_STOP: begin
@@ -176,7 +251,7 @@ module i2c_master #(
     // ---- bus recovery -----------------------------------------------------
     // While recovering, SDA is released and SCL is clocked nine times so a
     // slave that was interrupted mid-byte shifts out and frees the bus.
-    reg [3:0]  rec_cnt;
+    reg [4:0]  rec_cnt;         // 0..17 (9 low + 9 high phases)
     reg [15:0] rec_div;
     reg        rec_active;
 
@@ -196,7 +271,7 @@ module i2c_master #(
         end else if (rec_active) begin
             if (rec_div == QW[15:0] - 1'b1) begin
                 rec_div <= 16'd0;
-                if (rec_cnt == 4'd17) rec_active <= 1'b0;   // 9 low + 9 high phases
+                if (rec_cnt == 5'd17) rec_active <= 1'b0;   // 9 low + 9 high phases
                 else                  rec_cnt    <= rec_cnt + 1'b1;
             end else begin
                 rec_div <= rec_div + 1'b1;
