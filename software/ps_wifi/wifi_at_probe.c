@@ -6,7 +6,7 @@ static wifi_write_fn reg_write;
 static char response[512];
 static uint32_t response_size,step,tx_pos,deadline;
 static const char *pending;
-static const char *const commands[]={"\rAT\r\n","\rATE0\r\n","\rAT\r\n","\rAT+GMR\r\n"
+static const char *const commands[]={"AT\r\n","ATE0\r\n","AT\r\n","AT+GMR\r\n"
 #ifdef Z7_UART_921600
     ,"AT+UART_CUR?\r\n"
 #endif
@@ -62,6 +62,9 @@ static uint32_t module_baud(void) {
 #endif
 void wifi_probe_init(wifi_read_fn read,wifi_write_fn write,uint32_t now) {
     reg_read=read;reg_write=write;
+    /* The module corrupts the first byte after a long idle: warm the link once. */
+    write(16,13);for(volatile uint32_t i=0;i<20000;++i){}
+    write(12,15);
     volatile uint32_t *w=(volatile uint32_t *)&wifi_info;
     for(uint32_t i=0;i<16u;++i) w[i]=0;
     wifi_info.sequence=1;fence();

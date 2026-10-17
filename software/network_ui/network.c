@@ -125,7 +125,7 @@ void network_stop(void) {
     (void)ui_control(model,UI_PAUSE);
 }
 static void issue_setup(void) {
-    static const char *const commands[]={"\rATE0\r\n","\rAT+GMR\r\n","AT+CIPSERVER=0\r\n","AT+SYSSTORE=0\r\n",
+    static const char *const commands[]={"ATE0\r\n","AT+GMR\r\n","AT+CIPSERVER=0\r\n","AT+SYSSTORE=0\r\n",
         "AT+CWMODE=1\r\n",0,"AT+CIFSR\r\n","AT+CIPMUX=1\r\n","AT+CIPDINFO=0\r\n","AT+CIPRECVMODE=0\r\n","AT+CIPSERVER=1,8266\r\n"};
     _Static_assert(sizeof(commands)/sizeof(commands[0])==SETUP_COUNT,"Setup command count");
     network_info.last_code=setup_step;
@@ -304,7 +304,7 @@ static void configuration(void) {
         (cloud_tls ||
         (network_config.reserved ? network_config.port>=1 && network_config.port<=65535 :
          (network_config.port==0 || network_config.port==8266)));
-    uint32_t n=0;const char *prefix="\rAT+CWJAP=\"";while(*prefix) join_command[n++]=*prefix++;
+    uint32_t n=0;const char *prefix="AT+CWJAP=\"";while(*prefix) join_command[n++]=*prefix++;
     if(valid) for(uint32_t part=0;part<2;++part) {
         uint32_t count=part?pn:sn;
         for(uint32_t i=0;i<count;++i) {
@@ -507,6 +507,9 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
     tls_mode=tls_step=tls_wait_until=tls_time_deadline=tls_connected=tls_closing=0;
 #endif
     network_info.magic=0x3154454eu;network_info.client=0xffffffffu;network_config.magic=0x3146434eu;
+    /* The ESP8266 AT firmware runs at 115200 (divider 434); force it at init
+       because an earlier JTAG session may have left another divider. */
+    write_reg(12,15);write_reg(8,434);
     enabled=ipd_left=line_used=frame_used=frame_ready=command_phase=ack_pending=prompt_padding=0;wipe(join_command,sizeof(join_command));
     send_size=32;peer=peer_port=raw_state=raw_deadline=0;stream_receive=0;
     report_ms=(uint32_t)-200;publish_report(0);
