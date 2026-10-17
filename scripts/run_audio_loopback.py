@@ -32,6 +32,7 @@ RTL_INPUTS = [
     "rtl/audio_latency.v",
     "rtl/audio_regs.v",
     "rtl/audio_overlay.v",
+    "rtl/audio_sample_tap.v",
 ]
 SIM_INPUTS = [
     "sim/tb_i2c_wm8731.v",
@@ -57,6 +58,9 @@ BUILD_INPUTS = RTL_INPUTS + [
     "rtl/dvi_encoder.v",
     "rtl/dvi_transmitter_top.v",
     "rtl/serializer_10_to_1.v",
+    "rtl/wifi_uart_axi.v",
+    "rtl/wifi_uart_phy.v",
+    "rtl/wifi_byte_fifo.v",
     "scripts/build_z7_nano_audio.tcl",
     "scripts/prepare_z7_nano.py",
     "hardware/z7_nano/source.json",

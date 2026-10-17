@@ -5,8 +5,9 @@
 #include "../subtitle_ui/ui_demo.h"
 #include "../subtitle_ui/ui_render.h"
 static void render_service(void);
-static uint32_t uart_read(uint32_t offset) {return *(volatile uint32_t *)(0x43c20000u+offset);}
-static void uart_write(uint32_t offset,uint32_t value) {*(volatile uint32_t *)(0x43c20000u+offset)=value;}
+/* Combined audio + ESP platform: audio registers at 0x43c20000, ESP UART at 0x43c30000. */
+static uint32_t uart_read(uint32_t offset) {return *(volatile uint32_t *)(0x43c30000u+offset);}
+static void uart_write(uint32_t offset,uint32_t value) {*(volatile uint32_t *)(0x43c30000u+offset)=value;}
 __attribute__((section(".network_upload_control"),used)) volatile uint32_t network_upload_duration;
 static uint32_t service_ms,wifi_service_ms,upload_start,upload_sequence,upload_ready,upload_sent_ms;
 static uint8_t upload[1536];

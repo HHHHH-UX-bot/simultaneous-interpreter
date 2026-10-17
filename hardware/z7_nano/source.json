@@ -55,7 +55,7 @@
     "i2c_sda": "A20"
   },
   "AudioRole": "slave",
-  "AudioBclkPeriodNs": 325.520,
+  "AudioBclkPeriodNs": 325.52,
   "AudioPinsNote": "Audio module wired to JP2 (GPIO2) pins 13-19 on Bank35; per-pin mapping, module schematic and checks live in hardware/z7_nano/audio_module.json. The WM8731 is the I2S clock master (AN831 has its own 12.288 MHz crystal): BCLK, ADCLRC and DACLRC are FPGA inputs at 64 x Fs = 3.072 MHz / 48 kHz; re-derive the period if the codec format changes.",
   "USB": {
     "Controller": "USB0",
@@ -148,5 +148,9 @@
     "PCW_APU_PERIPHERAL_FREQMHZ": "666.666666",
     "PCW_PRESET_BANK0_VOLTAGE": "LVCMOS 3.3V",
     "PCW_PRESET_BANK1_VOLTAGE": "LVCMOS 1.8V"
+  },
+  "EspPins": {
+    "esp_tx": "N17",
+    "esp_rx": "P18"
   }
 }

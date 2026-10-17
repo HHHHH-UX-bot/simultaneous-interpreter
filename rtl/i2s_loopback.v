@@ -38,7 +38,11 @@ module i2s_loopback #(
     output reg  [15:0] overruns,
     output reg  [15:0] underruns,
     output reg  [31:0] bclk_cycles,
-    output reg         live
+    output reg         live,
+    // Latest captured left-channel ADC sample, BCLK domain, plus a per-frame
+    // toggle that the system-side tap uses for its clock domain crossing.
+    output reg  [15:0] adc_left_sample,
+    output reg         adc_sample_toggle
 );
     localparam integer DEPTH = FIFO_DEPTH;
 
@@ -94,6 +98,7 @@ module i2s_loopback #(
             over_cnt <= 0; under_cnt <= 0;
             adclrc_d <= 1'b0; rx_bit <= 5'd0; rx_shift <= 16'h0000; rx_left <= 16'h0000;
             rx_push <= 1'b0; rx_push_left <= 16'h0000; rx_push_right <= 16'h0000;
+            adc_left_sample <= 16'h0000; adc_sample_toggle <= 1'b0;
             dadlrc_d <= 1'b0; tx_bit <= 5'd0; tx_l <= 16'h0000; tx_r <= 16'h0000;
             tx_shift <= 16'h0000; primed <= 1'b0; lat_cycles <= 16'd0;
             stamp_cur <= 16'd0; push_stamp <= 16'd0;
@@ -112,6 +117,8 @@ module i2s_loopback #(
                     rx_push_left  <= rx_left;             // right word complete
                     rx_push_right <= rx_shift;
                     rx_push       <= 1'b1;
+                    adc_left_sample   <= rx_left;
+                    adc_sample_toggle <= ~adc_sample_toggle;
                     // The frame that just completed started at the previous
                     // left-slot change, which is the current stamp_cur.
                     push_stamp    <= stamp_cur;

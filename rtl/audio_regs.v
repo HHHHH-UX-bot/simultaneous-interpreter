@@ -78,6 +78,10 @@ module audio_regs #(
     input  wire        rb_valid,
     input  wire        sda_idle,
     input  wire        scl_idle,
+    // Microphone sample tap (system domain, see audio_sample_tap.v).
+    input  wire [15:0] sample_data,
+    input  wire        sample_toggle,
+    input  wire [31:0] sample_count,
     // Controls out
     output reg         init_trigger,
     output reg         clear_extremes,
@@ -186,6 +190,10 @@ module audio_regs #(
                     8'h74: s_axi_rdata <= {23'd0, rb_r7};   // codec R7 readback
                     8'h78: s_axi_rdata <= {23'd0, rb_r8};   // codec R8 readback
                     8'h7c: s_axi_rdata <= {23'd0, rb_r9};   // codec R9 readback
+                    // Microphone PCM tap: [16] toggles once per captured frame,
+                    // [15:0] is the latest left sample (signed 16-bit).
+                    8'h80: s_axi_rdata <= {15'd0, sample_toggle, sample_data[15:0]};
+                    8'h84: s_axi_rdata <= sample_count;
                     default: begin s_axi_rdata <= 32'd0; s_axi_rresp <= 2'b10; end
                 endcase
             end

@@ -23,6 +23,11 @@ create_project nano_audio [file join $out vivado] -part $board_part -force
 
 add_files [file join $root rtl framebuffer_video.v]
 add_files [file join $root rtl audio_regs.v]
+# The ESP8266 UART is a module reference inside the block design, so its
+# sources must be in the project before create_bd_cell resolves them.
+foreach filename {ps_wifi_uart.v wifi_uart_axi.v wifi_uart_phy.v wifi_byte_fifo.v} {
+    add_files [file join $root rtl $filename]
+}
 
 # ---------------------------------------------------------------------------
 # Block design
@@ -52,7 +57,7 @@ set_property -dict [list CONFIG.c_include_s2mm {0} CONFIG.c_include_mm2s {1} \
     CONFIG.c_include_mm2s_dre {0}] $dma
 set video [create_bd_cell -type module -reference framebuffer_video video]
 set regs [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 regs]
-set_property CONFIG.NUM_MI 3 $regs
+set_property CONFIG.NUM_MI 4 $regs
 set memory [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 memory]
 set_property CONFIG.NUM_MI 1 $memory
 set reset [create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 reset]
@@ -111,7 +116,8 @@ set audio_status_in {live codec_found codec_addr_sel init_busy init_done init_er
                      regs_written occ_frames latency_cycles adc_frames dac_frames \
                      overruns underruns bclk_cycles latency_us min_us max_us max_valid \
                      pin_count0 pin_count1 pin_count2 pin_count3 \
-                     rb_r4 rb_r7 rb_r8 rb_r9 rb_valid sda_idle scl_idle}
+                     rb_r4 rb_r7 rb_r8 rb_r9 rb_valid sda_idle scl_idle \
+                     sample_data sample_toggle sample_count}
 set audio_ctrl_out {init_trigger clear_extremes freeze_display cfg_r0 cfg_r1 cfg_r2 \
                     cfg_r3 cfg_r4 cfg_r5 cfg_r7 cfg_r8}
 foreach pin [concat $audio_status_in $audio_ctrl_out] {
@@ -128,6 +134,23 @@ create_bd_addr_seg -range 0x10000 -offset 0x43c10000 [get_bd_addr_spaces ps7/Dat
 set audio_segment [get_bd_addr_segs -of_objects [get_bd_intf_pins aregs/S_AXI]]
 if {[llength $audio_segment] != 1} {error "Audio register segment missing"}
 create_bd_addr_seg -range 0x10000 -offset 0x43c20000 [get_bd_addr_spaces ps7/Data] $audio_segment SEG_AUDIO
+
+# ESP8266 UART mailbox on the fourth AXI master, so the PS drives the AT link
+# through the same register-file style as the audio block. Only esp_tx/esp_rx
+# cross the block-design boundary.
+set uart [create_bd_cell -type module -reference ps_wifi_uart uart]
+connect_bd_intf_net [get_bd_intf_pins regs/M03_AXI] [get_bd_intf_pins uart/S_AXI]
+connect_bd_net $clk [get_bd_pins uart/aclk]
+connect_bd_net [get_bd_pins reset/peripheral_aresetn] [get_bd_pins uart/aresetn]
+foreach pin {esp_tx esp_rx} {
+    make_bd_pins_external [get_bd_pins uart/$pin]
+    set port [get_bd_ports ${pin}_0]
+    if {[llength $port] != 1} {error "Missing UART port $pin"}
+    set_property name $pin $port
+}
+set uart_segment [get_bd_addr_segs -of_objects [get_bd_intf_pins uart/S_AXI]]
+if {[llength $uart_segment] != 1} {error "UART register segment missing"}
+create_bd_addr_seg -range 0x10000 -offset 0x43c30000 [get_bd_addr_spaces ps7/Data] $uart_segment SEG_UART
 assign_bd_address [get_bd_addr_segs ps7/S_AXI_HP0/HP0_DDR_LOWOCM]
 validate_bd_design
 if {[get_property CONFIG.c_prmry_is_aclk_async $dma] != 0} {error "VDMA did not infer the common clock"}
@@ -158,6 +181,7 @@ write_bd_tcl -force [file join $out nano_audio_bd.tcl]
 # ---------------------------------------------------------------------------
 foreach filename {z7_nano_audio_top.v i2c_master.v wm8731_init.v i2s_loopback.v \
                   audio_latency.v audio_regs.v audio_overlay.v audio_pin_activity.v \
+                  audio_sample_tap.v \
                   hdmi_clock.v async_rst_sync.v dvi_encoder.v dvi_transmitter_top.v \
                   serializer_10_to_1.v} {
     add_files [file join $root rtl $filename]
@@ -185,7 +209,7 @@ if {$setup eq "" || $hold eq "" || $setup < 0 || $hold < 0} {error "Timing faile
 foreach {port pin} $board_pins {
     if {[get_property PACKAGE_PIN [get_ports $port]] ne $pin} {error "Pin mismatch: $port"}
 }
-foreach {port pin} {i2s_bclk H16 i2s_dadlrc H17 i2s_adclrc D19 i2s_adcdat B20 i2s_dacdat C20 i2c_scl B19 i2c_sda A20} {
+foreach {port pin} {i2s_bclk H16 i2s_dadlrc H17 i2s_adclrc D19 i2s_adcdat B20 i2s_dacdat C20 i2c_scl B19 i2c_sda A20 esp_tx N17 esp_rx P18} {
     if {[get_property PACKAGE_PIN [get_ports $port]] ne $pin} {error "Audio pin mismatch: $port"}
 }
 foreach {pin period} {u_clock/u_mmcm/CLKOUT0 20.0 u_clock/u_mmcm/CLKOUT1 4.0} {

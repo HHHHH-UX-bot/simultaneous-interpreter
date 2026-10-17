@@ -39,7 +39,11 @@ module z7_nano_audio_top (
     input  wire i2s_adcdat,
     output wire i2s_dacdat,
     inout  wire i2c_scl,
-    inout  wire i2c_sda
+    inout  wire i2c_sda,
+    // ESP8266 four-wire link (JP1 pins 1/2 = N17/P18): PL UART mailbox to the
+    // AT firmware, used by the PS for the cloud WebSocket session.
+    output wire esp_tx,
+    input  wire esp_rx
 );
     wire pixel_clk, serial_clk_5x, locked, video_reset;
     wire video_hs, video_vs, video_de;
@@ -65,6 +69,14 @@ module z7_nano_audio_top (
     // Codec control-port readback (proves the I2C writes landed) and bus levels.
     wire [8:0]  rb_r4, rb_r7, rb_r8, rb_r9;
     wire        rb_valid, sda_idle, scl_idle;
+    // Microphone PCM tap (BCLK domain -> system domain).
+    wire [15:0] adc_left_sample;
+    wire        adc_sample_toggle;
+    wire [15:0] sample_data;
+    wire        sample_toggle;
+    wire [31:0] sample_count;
+
+
 
     // --- I2C open-drain pads ----------------------------------------------
     wire scl_low, sda_low, sda_raw, sda_in;
@@ -97,6 +109,9 @@ module z7_nano_audio_top (
         .FIXED_IO_0_ps_porb(FIXED_IO_ps_porb), .FIXED_IO_0_ps_srstb(FIXED_IO_ps_srstb),
         .pixel_clk(pixel_clk), .pixel_reset(video_reset), .frame_count(frame_count),
         .video_hs(video_hs), .video_vs(video_vs), .video_de(video_de), .video_rgb(video_rgb),
+        .sample_data(sample_data), .sample_toggle(sample_toggle),
+        .sample_count(sample_count),
+        .esp_tx(esp_tx), .esp_rx(esp_rx),
         .live(audio_live), .codec_found(codec_found), .codec_addr_sel(codec_addr_sel),
         .init_busy(init_busy), .init_done(init_done), .init_error(init_error),
         .regs_written(regs_written),
@@ -157,10 +172,21 @@ module z7_nano_audio_top (
         .clk_sys(pixel_clk), .reset_n_sys(sys_rst_n & locked),
         .bclk(i2s_bclk), .adclrc(i2s_adclrc), .dadlrc(i2s_dadlrc),
         .adcdat(i2s_adcdat), .dacdat(i2s_dacdat),
+        .adc_left_sample(adc_left_sample), .adc_sample_toggle(adc_sample_toggle),
         .occ_frames(occ_frames), .latency_cycles(latency_cycles),
         .adc_frames(adc_frames), .dac_frames(dac_frames),
         .overruns(overruns), .underruns(underruns), .bclk_cycles(bclk_cycles),
         .live(audio_live));
+
+    // --- microphone sample tap ---------------------------------------------
+    // Publish the latest ADC left sample to the register file at 0x80/0x84 so
+    // the PS can read 48 kHz PCM and decimate it to the cloud's 16 kHz.
+    audio_sample_tap u_sample_tap(
+        .reset_n(sys_rst_n & locked),
+        .bclk(i2s_bclk), .adc_sample(adc_left_sample), .adc_toggle(adc_sample_toggle),
+        .clk(pixel_clk), .sample_data(sample_data), .sample_toggle(sample_toggle),
+        .sample_count(sample_count));
+
 
     // --- L1 latency presentation -------------------------------------------
     // The measured cycles come from the loopback itself, so only the unit

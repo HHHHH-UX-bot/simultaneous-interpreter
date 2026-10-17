@@ -68,6 +68,10 @@ P5c-0 DeepSeek 独立文本已实测：17 项离线验证和独立复核通过�
 
 NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md#原理图来源与可访问性)。没有把旧路径失效误判为 NAS 关机。
 
+## 云端同声传译（进行中）
+
+用户 2026-10-17 给出百炼云工作空间端点与 Key，要求板端麦克风实时同传、HDMI 只显示中文译文、右上角显示传译延迟。电脑侧已按仓库既有协议验证通过（见 [pc_protocol.json](../../output/cloud_speech/pc_protocol.json)）：`wss://ws-zckg39zhbiii3yrv.cn-beijing.maas.aliyuncs.com/api-ws/v1/realtime?model=qwen3.8-livetranslate-flash-realtime`，`session.update` 设 `translation.zh` + 纯文本，20 ms 16 kHz PCM `input_audio_buffer.append`，中文首字 2.19 s、全文 13.27 s，事件类型齐全。PL 侧新增 ESP8266 UART 邮箱（0x43c30000，ID 0x57494631 已由 PS 读通）与麦克风 PCM 抽头（0x43c20080/0x43c20084，48 kHz 计数已验证）；**ESP 模块在多个波特率下均不回 AT**（FPGA 发送计数递增、RX 空闲为高），需确认模块引脚/供电/固件状态后继续移植 ARM 云端客户端。
+
 ## 下一步
 
 - 音频实时回环**已通**（2026-10-17）：PL 侧按 **WM8731 作 I2S 时钟主** 定稿——软 I2C 初始化（R4=0x015 麦克风+DAC、R7=0x042 主模式 I2S 16-bit、R8=0x000 normal 48 kHz）、`i2s_loopback.v` 从机回环（2 帧 FIFO）+ L1 时间戳、右上角 `L1 nnnn us` 叠加；六个自检 testbench 通过，Vivado 2018.3 构建（setup/hold 7.419/0.032 ns）与下载通过。**根因与解决**：模块 3.3 V 由板上 LT1117-3.3 从 J3-2 的 5 V 产生（J3-39/40 的 D3V3 与 codec 的 VCC3V3 是两个网络，接它不给 codec 供电）；开发板 USB 5 V 被屏幕负载拖到 4.3 V，处在 LT1117 压差边缘，导致 codec 能应答 I2C 但晶振不启动。用户改用充电宝主供电、排针 5V 直供模块后一切正常。**实测证据**：[program.json](../../output/z7_nano/audio_loopback/program.json)：`live=1`、`codec_found=1`、`regs_written=11`、`bclk_alive=1`、引脚计数 BCLK 48696307 / ADCLRC 763781 / DADLRC 766854 / ADCDAT 3928603、`occ=2`、`over=0/under=0`、`L1=192 cycles = 62 µs`、min/max=0/62；显示 `format_errors=0`、整帧 614400、`display_ok=1`。细节见 [AUDIO_LOOPBACK §10](../design/AUDIO_LOOPBACK.md#10-板级取证2026-10-17)。**屏幕供电**：屏由开发板 PS USB0 主机端口 VBUS 供电（PORTSC1.PP），只有 CPU1 USB host 固件或等价初始化才会打开；`scripts/z7_nano_audio.tcl run` 已内置该初始化（`USB0_PORT_POWER PP=1`），烧录后屏幕即有电。**下一步**：用户耳机听感验收、屏上 `L1 0062 us` 实屏确认、持续运行（≥30 min 溢出统计）与 L3 声学时延；当前是 L1 数字域读数，不等于声学端到端。

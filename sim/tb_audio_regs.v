@@ -43,6 +43,9 @@ module tb_audio_regs;
     reg  [8:0]  rb_r4 = 9'h015, rb_r7 = 9'h042, rb_r8 = 9'h000, rb_r9 = 9'h001;
     reg         rb_valid = 1;
     reg         sda_idle = 1, scl_idle = 1;
+    reg  [15:0] sample_data = 16'hBEEF;
+    reg         sample_toggle = 1;
+    reg  [31:0] sample_count = 32'd123456;
 
     wire        init_trigger, clear_extremes;
     wire [8:0]  cfg_r0, cfg_r1, cfg_r2, cfg_r3, cfg_r4, cfg_r5, cfg_r7, cfg_r8;
@@ -65,6 +68,7 @@ module tb_audio_regs;
         .pin_count2(32'd33), .pin_count3(32'd44),
         .rb_r4(rb_r4), .rb_r7(rb_r7), .rb_r8(rb_r8), .rb_r9(rb_r9),
         .rb_valid(rb_valid), .sda_idle(sda_idle), .scl_idle(scl_idle),
+        .sample_data(sample_data), .sample_toggle(sample_toggle), .sample_count(sample_count),
         .init_trigger(init_trigger), .clear_extremes(clear_extremes), .freeze_display(),
         .cfg_r0(cfg_r0), .cfg_r1(cfg_r1), .cfg_r2(cfg_r2), .cfg_r3(cfg_r3),
         .cfg_r4(cfg_r4), .cfg_r5(cfg_r5), .cfg_r7(cfg_r7), .cfg_r8(cfg_r8));
@@ -153,6 +157,9 @@ module tb_audio_regs;
         expect_read(8'h74, 32'h042, "readback r7");
         expect_read(8'h78, 32'h000, "readback r8");
         expect_read(8'h7c, 32'h001, "readback r9");
+        // Microphone tap: [16] toggle, [15:0] signed sample; 0x84 frame count.
+        expect_read(8'h80, 32'h0001_BEEF, "mic sample");
+        expect_read(8'h84, 32'd123456, "mic sample count");
 
         // Status word: [7:0] flags (live, codec_found, addr_sel[1:0], init_busy,
         // init_done, init_error, max_valid), [10:8] scl_idle/sda_idle/rb_valid

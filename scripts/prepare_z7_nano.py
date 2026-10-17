@@ -71,6 +71,18 @@ def main():
             "set_false_path -from [get_ports {i2s_adcdat i2s_adclrc i2s_dadlrc}]",
             "set_false_path -to [get_ports i2s_dacdat]",
         ]
+    # ESP8266 four-wire link (JP1 pins 1/2). The PL UART mailbox is driven from
+    # the 50 MHz system clock; the link is asynchronous to the AT firmware.
+    esp = board.get("EspPins", {"esp_tx": "N17", "esp_rx": "P18"})
+    axdc += [f"set_property PACKAGE_PIN {pin} [get_ports {port}]" for port, pin in esp.items()]
+    axdc += [
+        f"set_property IOSTANDARD LVCMOS33 [get_ports {{{' '.join(esp.keys())}}}]",
+        "set_property DRIVE 8 [get_ports esp_tx]",
+        "set_property SLEW SLOW [get_ports esp_tx]",
+        "set_property PULLUP true [get_ports esp_rx]",
+        "set_false_path -from [get_ports esp_rx]",
+        "set_false_path -to [get_ports esp_tx]",
+    ]
     axdc += [
         "# I2C is a 100 kHz open-drain bus: no meaningful setup/hold relationship.",
         "set_false_path -from [get_ports {i2c_scl i2c_sda}]",
