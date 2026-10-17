@@ -13,7 +13,10 @@
 module i2s_master_loopback #(
     parameter integer DIV   = 16,       // clk cycles per BCLK period
     parameter integer SLOT  = 32,       // BCLK per channel slot
-    parameter integer DEPTH = 2         // frames buffered before playback
+    parameter integer DEPTH = 2,        // frames buffered before playback
+    // TX-only self test: send a generated 1 kHz square wave instead of the
+    // captured frames, so the codec frame format can be proven on its own.
+    parameter integer TONE_TEST = 1
 ) (
     input  wire        clk,
     input  wire        reset_n,
@@ -49,6 +52,9 @@ module i2s_master_loopback #(
     reg        primed;
 
     wire [5:0] nxt = bitpos + 1'b1;
+
+    reg  [9:0]  tone_cnt;
+    reg  [15:0] tone_sample;
     wire       pop_ok  = primed && (occ != 2'd0);
     // The slot freed by this frame's playback can be reused immediately, which
     // keeps the FIFO two frames deep without counting a spurious overrun.
@@ -58,7 +64,7 @@ module i2s_master_loopback #(
     // sample one BCLK AFTER its LRCLK transition, so the frame is shifted by
     // one extra bit (the leading zero is that mandatory delay bit).
     wire [64:0] tx_shift = {tx_frame, 1'b0};
-    wire [64:0] tx_aligned = tx_shift >> (7'd64 - nxt);
+    wire [64:0] tx_aligned = tx_shift >> (7'd65 - nxt);
 
     assign live = primed;
 
@@ -68,6 +74,7 @@ module i2s_master_loopback #(
             rx_frame <= 64'd0; tx_frame <= 64'd0; cycle_cnt <= 32'd0;
             wp <= {AW{1'b0}}; rp <= {AW{1'b0}}; occ <= 2'd0; primed <= 1'b0;
             occ_frames <= 16'd0; latency_cycles <= 16'd0;
+            tone_cnt <= 10'd0; tone_sample <= 16'h4000;
             adc_frames <= 32'd0; dac_frames <= 32'd0;
             overruns <= 16'd0; underruns <= 16'd0; bclk_cycles <= 32'd0;
         end else begin
@@ -108,7 +115,20 @@ module i2s_master_loopback #(
                     end else begin
                         overruns <= overruns + 1'b1;
                     end
-                    if (pop_ok) begin
+                    if (TONE_TEST != 0) begin
+                        // 1 kHz at 48.83 kHz: flip every 24 frames.
+                        if (tone_cnt >= 10'd24) begin
+                            tone_cnt    <= 10'd0;
+                            tone_sample <= ~tone_sample + 16'd1;
+                        end else begin
+                            tone_cnt    <= tone_cnt + 1'b1;
+                        end
+                        tx_frame  <= {tone_sample, 16'd0, tone_sample, 16'd0};
+                        rp        <= rp + 1'b1;
+                        if (occ != 2'd0) occ <= occ - 1'b1;
+                        latency_cycles <= 16'd0;
+                        dac_frames <= dac_frames + 1'b1;
+                    end else if (pop_ok) begin
                         tx_frame       <= {fifo_l[rp], 16'd0, fifo_r[rp], 16'd0};
                         rp             <= rp + 1'b1;
                         latency_cycles <= cycle_cnt[15:0] - stamp[rp];
