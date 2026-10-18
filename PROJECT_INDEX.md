@@ -13,8 +13,14 @@
 | 移植或操作当前 Z7-Nano 板卡 | [BOARD_MIGRATION](docs/design/BOARD_MIGRATION.md) | 新板资料、板级入口、迁移顺序及验收范围；旧 RevB 入口不用于新板 |
 | 验证新板 USB Host 与触摸 | [USB_TOUCH](docs/design/USB_TOUCH.md) | 控制器/PHY、坐标、按钮、常驻生命周期与断电恢复 |
 | 连接新板 ESP8266 | [新板接线](docs/design/BOARD_MIGRATION.md#esp8266-新板接线)、[新板 UART](docs/design/BOARD_MIGRATION.md#m5-新板-uart-与自主-at) | JP1 针位、UART/AT 入口及后续网络验证 |
+| 接音频模块、做实时回环与延迟显示 | [AUDIO_LOOPBACK](docs/design/AUDIO_LOOPBACK.md)、[接线与球号](docs/context/MAP.md#音频模块连接)、[A 阶段操作](docs/context/RUNBOOK.md#a-音频实时回环与时延显示后续) | 需求、实现、寄存器、板级取证；回环已通（5 V 供电余量是根因），听感/L3 待验收（§2/§10） |
+| 核对音频引脚占用与新板显示是否冲突 | [风险 R17/R18](docs/context/RISKS.md)、[接线事实](hardware/z7_nano/audio_module.json) | 已核对不重叠（Bank35 JP2 vs Bank34 HDMI）；残留项为 MCLK、电平与丝印方向 |
+| 调整时延读数在屏幕上的呈现 | [UI_SPEC 时延读数](docs/design/UI_SPEC.md#时延读数)、[叠加实现](rtl/audio_overlay.v) | 右上角 120x16 框、5x7 字体、框外像素不改；已实现 |
+| 查看/修改音频回环实现与寄存器映射 | [AUDIO_LOOPBACK 已实现](docs/design/AUDIO_LOOPBACK.md#7-已实现2026-10-17)、[寄存器文件](rtl/audio_regs.v)、[回环](rtl/i2s_loopback.v) | 文件职责、AXI `0x43c20000` 寄存器表、L1 定义与仿真证据 |
+| 跑音频仿真或构建音频位流 | [仿真/构建运行器](scripts/run_audio_loopback.py)、[构建脚本](scripts/build_z7_nano_audio.tcl)、[A 阶段操作](docs/context/RUNBOOK.md#a-音频实时回环与时延显示后续) | simulate 六个 testbench 通过；Vivado 2018.3 构建+下载通过；板级回环已通（稳定 5 V 供电后 live=1、L1=62 µs），见 AUDIO_LOOPBACK §10 |
 | 理解系统分工、选型、资源和时延预算 | [SYSTEM_PLAN](docs/design/SYSTEM_PLAN.md) | 产品与系统方案 |
 | 接入云端语音翻译、脱离电脑运行 | [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md) | 已选百炼方案、官方接口来源、凭据准备、音频带宽与分阶段接入 |
+| 低带宽实时音频（Opus、qwen3.5、Cache/MMU） | [AUDIO_COMPRESSION](docs/design/AUDIO_COMPRESSION.md) | 上行 13–14 kB/s 瓶颈、libopus v1.4 供应商化与主机/ARM 可行性验证、MMU/Cache 前置与实施步骤 |
 | 复盘产品瓶颈、选择后续验证顺序 | [2026-10-15 计划](docs/design/CLOUD_SPEECH.md#2026-10-15-复盘后的验证顺序建议)、[当前系统主线](docs/design/SYSTEM_PLAN.md#当前产品主线与实施取舍) | 建议、依赖、停止条件与预存音频闭环；不是恢复实验或已确认换型 |
 | 将新板 UART 切换至 921600 | [高速 UART](docs/design/BOARD_MIGRATION.md#m5-2-921600-串口) | 临时波特率协商、冷启动与暖重载、验证入口和放行边界 |
 | 查询当前 ESP 固件的加密配置 | [C1-0](docs/design/CLOUD_SPEECH.md#c1-0-固定加密配置查询)、[操作](docs/context/RUNBOOK.md#c-云端语音接入) | 固定查询、实际应答与后续 TLS/带宽边界 |

@@ -4,6 +4,8 @@
 
 长期目标是形成语音进入板卡、Wi-Fi 直接调用云端语音翻译、中文字幕上屏、触摸交互的独立产品，使用时不依赖电脑。2026-10-14 用户选择阿里百炼一体方案，见 [D13](DECISIONS.md#d13-云端语音翻译与独立终端)和[CLOUD_SPEECH](../design/CLOUD_SPEECH.md)；旧系统方案保留历史范围。
 
+2026-10-16 用户新增近期目标：麦克风 → 音频模块 → 板卡 → 耳机实时回环，并把延迟时间实时显示在 HDMI 屏幕上，已有画面及功能不动；接线事实、时延分层定义与分阶段计划见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)，决策见 [D15](DECISIONS.md#d15-音频实时回环与时延显示)。2026-10-17 已完成 PL 实现定稿（WM8731 作 I2S 主）、Vivado 2018.3 构建、下载与板级取证：I2C 11 条写入有真实 ACK，但模块未产生任何 BCLK/LRCLK/ADCDAT；同时发现模块 J3 与开发板 JP2 的电源/地针文档有误（J3-1 是 GND、JP2-12/30 是 GND）。当前卡在硬件供电/共地，详见 [AUDIO_LOOPBACK §10](../design/AUDIO_LOOPBACK.md#10-板级取证2026-10-17)。
+
 当前推进至 [C1-7a ARM 自主可信 TLS](../design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)。实现、本机验证、代码复核和 ARM 构建通过；修正版已下载，画面与常驻触摸获用户验收。首次入网通知误判已修正并恢复 AT，但修正版的 TLS 身份对照尚未重跑。2026-10-16 用户因额度要求整理、同步 GitHub，本轮停止硬件实验；当前屏幕是演示字幕，证据见 [本阶段](../../output/z7_nano/tls_boot/stage.json)。
 
 2026-10-13 用户更换为 Z7-Nano 7010，并要求移植现有工程，见 [D9](DECISIONS.md#d9-换为-z7-nano-7010-并继续产品迁移)。[板级迁移](../design/BOARD_MIGRATION.md)已取得显示、PS/DDR、动态中文、USB 触摸与基本网络的分项证据；当前实施缺口集中在板端云连接、连续音频、完整字库及独立启动。旧 RevB 的验收仅属于旧板；电脑 P5 文件推理及接口证据可保留原范围。
@@ -56,7 +58,9 @@ P5c-0 DeepSeek 独立文本已实测：17 项离线验证和独立复核通过�
 
 尚需核实以下事项：
 
-- 音频模块型号、协议、电平及“FPGA20引脚”的含义。最后一次音频到货确认是 2026-10-11 的“尚未到货”；新板音频连接未确认。第一版英语转中文已在 DECISIONS D8 确认。
+- 音频模块：2026-10-16 用户确认主控为 **WM8731** 并提供 J3→JP2→FPGA 接线表。按 Z7-NANO_R21.pdf 第 5/13 页逐针核对：JP2 为 CON40A（2x20）排针、走 Bank35（`GPIO2_5P/5N`、`6P/6N`、`7P/7N`、`8P`），H16/H17 为 MRCC 时钟脚。**2026-10-17 更正电源/地针**：JP2 11=`VCC_5V`、29=`VCC_3V3`、12/30=GND；模块 J3-1=GND、2=`VCC5V`、37/38=GND、39/40=`D3V3`（旧记录把 J3 1/2 都记为 VCC5V、把 JP2 12/30 记为电源针，均错误）。旧说法“FPGA20引脚”不再使用。第一版英语转中文已在 DECISIONS D8 确认。
+- 音频引脚占用已核对：当前板 HDMI 在 Bank34（`U18/U19`、`V20/W20`、`T20/U20`、`N20/P20`，见 [source.json](../../hardware/z7_nano/source.json)），与音频 7 个 Bank35 信号**不重叠**，无需改脚；旧板 [hdmi.xdc](../../constraints/hdmi.xdc) 的“冲突”判断已在 R17 更正。模块原理图 AN831.pdf 也已核对：`U11=WM8731SEFL` + `Y3=12.288 MHz 晶振`（不需 FPGA 供 MCLK）、`U8=LT1117-3.3`、J3-1=GND、J3-2=`VCC5V`、J3-37/38=GND、J3-39/40=`D3V3`，信号针 3–9 与接线表一致。**上板前置变为 I2C 配置**：需先写 R7 主模式、R8 采样率、R6/R4/R5/R2/R3 与 R9 使能，模块才会输出 BCLK/LRCLK（见 R18）。[AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)
+- 音频模块供电（2026-10-17 用户万用表）：开发板 JP2-11 的 5 V 在屏幕带电时约 4.3 V、拔屏 4.6 V；AN831 的 D3V3(J3-39/40) 与 codec 的 VCC3V3 是两个网络，codec 3.3 V 只由板上 LT1117-3.3 从 5 V 产生，4.3 V 输入处在压差边缘。**待实测模块 VCC3V3**（U8 OUT/TAP 或 C39 正端对模块 GND）才能判断是供电余量还是模块晶振问题，见 RISKS R23。
 - 新板 USB 枚举、真实输入、四角坐标与 UI 控制已通过各自范围；完整 VBUS 电压/电流测量尚未做。
 - 触摸启动与暗屏的触发顺序、USB 供电实际电压/电流和屏幕内部电路仍待定位；最新诊断及当前接线由 USB_TOUCH/迁移专题维护。独立屏幕电源对照未执行，不先行认定电流不足。
 - 当前使用裸机 USB Host/HID；独立上电启动介质与产品启动方式尚未决定。新板最小 PS/DDR 实测结果由 JTAG/OCM 获取。
@@ -64,9 +68,17 @@ P5c-0 DeepSeek 独立文本已实测：17 项离线验证和独立复核通过�
 
 NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md#原理图来源与可访问性)。没有把旧路径失效误判为 NAS 关机。
 
+## 云端同声传译（进行中）
+
+用户 2026-10-17 给出百炼云工作空间端点与 Key，要求板端麦克风实时同传、HDMI 只显示中文译文、右上角显示传译延迟。电脑侧已按仓库既有协议验证通过（见 [pc_protocol.json](../../output/cloud_speech/pc_protocol.json)）：`wss://ws-zckg39zhbiii3yrv.cn-beijing.maas.aliyuncs.com/api-ws/v1/realtime?model=qwen3.8-livetranslate-flash-realtime`，`session.update` 设 `translation.zh` + 纯文本，20 ms 16 kHz PCM `input_audio_buffer.append`，中文首字 2.19 s、全文 13.27 s，事件类型齐全。PL 侧新增 ESP8266 UART 邮箱（0x43c30000，ID 0x57494631 已由 PS 读通）与麦克风 PCM 抽头（0x43c20080/0x43c20084，48 kHz 计数已验证）；**ESP 模块已实测打通（2026-10-17 21:20）**：真实波特率 **115200**（分频 434），`AT` 返回 `OK`；此前误判是因为读串口寄存器时有效位应为 bit31（写成了 bit8）且按 921600 采样。预热一个哑字节后首字符不再损坏。下一步：按 115200 配置应用、写入热点 OnePlus12、跑通联网/TLS/WSS。
+
 ## 下一步
 
-接续先核对实际板卡/程序状态，按 [C1-7a](../design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)重跑 ARM TLS 正确/错误/正确身份及关闭对照；本版显示与触摸已经用户确认。TLS 通过后再做 ARM WSS Upgrade 与会话配置，并接回同一程序的预装文件发送/云事件消费；随后分别验证长时、真实采音、完整字库和独立启动。音频模块到货与接口待核实；精简实现要求见 [AGENTS](../../AGENTS.md#实现与换板约定)。
+- 音频实时回环**已通**（2026-10-17）：PL 侧按 **WM8731 作 I2S 时钟主** 定稿——软 I2C 初始化（R4=0x015 麦克风+DAC、R7=0x042 主模式 I2S 16-bit、R8=0x000 normal 48 kHz）、`i2s_loopback.v` 从机回环（2 帧 FIFO）+ L1 时间戳、右上角 `L1 nnnn us` 叠加；六个自检 testbench 通过，Vivado 2018.3 构建（setup/hold 7.419/0.032 ns）与下载通过。**根因与解决**：模块 3.3 V 由板上 LT1117-3.3 从 J3-2 的 5 V 产生（J3-39/40 的 D3V3 与 codec 的 VCC3V3 是两个网络，接它不给 codec 供电）；开发板 USB 5 V 被屏幕负载拖到 4.3 V，处在 LT1117 压差边缘，导致 codec 能应答 I2C 但晶振不启动。用户改用充电宝主供电、排针 5V 直供模块后一切正常。**实测证据**：[program.json](../../output/z7_nano/audio_loopback/program.json)：`live=1`、`codec_found=1`、`regs_written=11`、`bclk_alive=1`、引脚计数 BCLK 48696307 / ADCLRC 763781 / DADLRC 766854 / ADCDAT 3928603、`occ=2`、`over=0/under=0`、`L1=192 cycles = 62 µs`、min/max=0/62；显示 `format_errors=0`、整帧 614400、`display_ok=1`。细节见 [AUDIO_LOOPBACK §10](../design/AUDIO_LOOPBACK.md#10-板级取证2026-10-17)。**屏幕供电**：屏由开发板 PS USB0 主机端口 VBUS 供电（PORTSC1.PP），只有 CPU1 USB host 固件或等价初始化才会打开；`scripts/z7_nano_audio.tcl run` 已内置该初始化（`USB0_PORT_POWER PP=1`），烧录后屏幕即有电。**下一步**：用户耳机听感验收、屏上 `L1 0062 us` 实屏确认、持续运行（≥30 min 溢出统计）与 L3 声学时延；当前是 L1 数字域读数，不等于声学端到端。
+
+音频回环主线（用户 2026-10-16 指定）：下一步是用项目许可的 Vivado 跑 [A 阶段](../context/RUNBOOK.md#a-音频实时回环与时延显示后续)的构建（`scripts/run_audio_loopback.py build`），再按模块接线并依次确认 I2C ACK、BCLK 出现、耳机出声、屏上读数；A0 的剩余核对（模块 I2C 地址、供电/GND、丝印方向）在接线时完成。文档里的步骤不构成执行授权。
+
+接续云端主线先核对实际板卡/程序状态，按 [C1-7a](../design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)重跑 ARM TLS 正确/错误/正确身份及关闭对照；本版显示与触摸已经用户确认。TLS 通过后再做 ARM WSS Upgrade 与会话配置，并接回同一程序的预装文件发送/云事件消费；随后分别验证长时、真实采音、完整字库和独立启动。音频模块的型号与逐针映射已核对（引脚与当前板显示不重叠），MCLK 来源、电平与 JP2 丝印方向待确认，见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md)；精简实现要求见 [AGENTS](../../AGENTS.md#实现与换板约定)。
 
 2026-10-14 的额度暂停点保留为 [历史接续记录](../../output/z7_nano/upload/pause.json)，现已被本次继续指令解除。Git 维护授权继续有效；本轮源码、限定测试与进度在核对后同步，远端核验由 [Git 结果](../../output/github/publish.json)维护。
 
@@ -100,3 +112,50 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 - 文档证据：[直接链接与职责入口检查](../../output/verification/documentation_validation.json)，范围为本次改动的 Markdown、评审记录、原型本地导航和直接引用目标，没有扩展审计同级工程或 NAS 内容。
 - Wi-Fi 文档补充：[本阶段直接链接检查](../../output/verification/wifi_documentation_validation.json)，检查九份改动文档及其直接目标，不扩展审计资料库。
 - 产品接续建档：[本次文档检查](../../output/verification/product_handoff_documentation_validation.json)，检查八份修改文档、沿用规则和直接链接；不包含业务实现、构建、烧录或业务测试。
+
+## 云端同传收尾清单（2026-10-18 状态）
+
+2026-10-18 用户在场完成多轮**中文语音→中文（中译中）→ HDMI 实时字幕→ T1 延迟**联调，并大幅优化延迟：字幕改为**边生成边显示**（`response.text.delta` 逐字上屏，定稿再进历史记录），会话 VAD 改为 `server_vad, silence_duration_ms=500`；用户实测从开口到首字约 **1.5–3.5 s**，连续多句不再卡死，屏幕正常。证据 [云端板端阶段](../../output/cloud_app/status.json)，抓帧 [capture3/screen.png](../../output/cloud_app/capture3/screen.png)。
+
+本日完成的关键修正：
+- **字库准确性**：28 px 字幕字体扩展为 GB2312 一级常用字（3858 字，`ui_assets` 上限 2 MiB 内 95.9%）；演示标签/示例仍用小集合；`generate_subtitle_assets.py` 去掉 fontTools 依赖，自带 TTC/`cmap` 解析，`--extend-size 28` 生成；`net_glyph_available` 只校验 28 px 字幕字体；“最近记录”/原文行也改用 28 px 字体，不再出现方框乱码。
+- **稳定性**：单个无法解析/不匹配的服务端事件不再终止会话；`response.done` 为 `cancelled/incomplete` 属正常（用户重新开口会取消上一响应），只丢弃该句；配对槽位可回收；流式 `AT+CIPSEND` 超时/ERROR 改为丢帧+发 `AT` 探活（30 s 上限），不再整会话 fault；网络 fault 时主动停流并把 T1 置为无效（显示 `----`）。
+- **T1 准确性**：按音频时间轴测量——每个上行 append 记录流位置与本地时间，`speech_started.audio_start_ms` 映射回采集时刻，T1 为“开口→首字上屏”的真实延迟；`response.done` 重置窗口。
+- **中译中**：会话 `translation.language=zh`，屏幕标签改为“中文 → 中文”，字幕只显示译文；后续再按功能拆分独立工程（英译中/中译英/英译英）。
+
+遗留（按优先级）：
+1. **上行带宽是当前瓶颈**：实测 ESP8266 单连接 TLS 上行约 13–14 kB/s，而 16 kHz PCM/Base64 实时需约 44 kB/s，导致部分语音帧被丢、长句/多句时偶发“说了但没识别”（`cloud_report` 仍正常，`ignored` 增加）。用户已感觉“延迟好很多”，但要商业级连续识别需要：音频压缩（Opus，qwen3.5-livetranslate 文档支持 `input_audio_format=opus`/`sample_rate=8000`，需在 A9 上实现编码或换方案）或更高吞吐链路。下一步先做短对照，不靠单次现象定论。
+2. **HDMI 画面横向循环错位（间歇）**：背景内容循环平移、overlay 位置正常；多次重烧后可恢复正常，尚未定位启动相位根因；属 VDMA/视频启动竞争候选，需采集卡或示波器级诊断。
+3. `AT+CIPSEND` 极端超时后 ESP 仍可能停在等数据状态，只能整板断电恢复；新代码已把常见发送超时改为可恢复。
+4. API Key 仍只在运行期经 JTAG 写入 `.cloud_config`（0x1E200），未入库；凭据脚本在 `tmp/cloud/`（Git 忽略）。
+
+## 下一阶段：Opus + qwen3.5（2026-10-18 决定）
+
+用户选择“方案 1”：改用 `qwen3.5-livetranslate-flash-realtime` 的 Opus 低码率上行，解决 13–14 kB/s 上行与 44 kB/s 需求的缺口。开工前已把完整工程备份到桌面 `simultaneous-interpreter-zhzh-20261018`（含 `.git`，HEAD `b350714`，171 MB，与工作目录逐字节一致），并完成可行性验证：
+
+- `third_party/opus` 已引入 libopus v1.4（BSD-3-Clause，`source.json` 记录 commit 与逐文件 sha256），固定点配置 `FIXED_POINT + DISABLE_FLOAT_API + VAR_ARRAYS`。
+- 主机（MinGW x64）编译 128 个 C 文件并跑通编码→解码回环（16 kHz 单声道、20 ms 帧、16 kbit/s，VBR 平均约 6 B/帧，100/100 帧解码有效）。
+- Cortex-A9 `-Os` 交叉编译通过；编码器+解码器 `.text` 合计约 215 KB。
+
+关键前置（详见 [AUDIO_COMPRESSION](../design/AUDIO_COMPRESSION.md)）：`start.S` 目前关闭 MMU/Cache、栈在 OCM 顶端，Opus 需要可缓存 DDR 执行与更大的栈。因此下一步先做 MMU/Cache 与代码/栈迁移（保持显示/音频/网络回归），再接入编码器并切 qwen3.5、把 `session.update` 改为 opus/16000/server_vad 500；PCM 路径保留为回退。
+
+## 2026-10-18 下午：MMU/Cache + Opus + Ogg 已上板
+
+已完成（详见 [AUDIO_COMPRESSION](../design/AUDIO_COMPRESSION.md#2026-10-18-实施结果mmucache--opus--ogg--qwen35)）：
+
+- MMU/Cache 启动路径与布局迁移完成：应用/rodata/data 在 `0x01C00000` 可缓存 DDR、栈 128 KB 在 `0x01CE0000`，OCM section 与邮箱保持非缓存；framebuffer/cloud_final/snapshot/guard 在发布前 `cache_clean_range()`。显示、音频回环、ESP/WSS 回归全部通过；渲染耗时可从约 246 ms 降到 15–18 ms。
+- libopus v1.4 固定点编进 APP_DDR（约 270 KB），16 kHz/20 ms/16 kbit·s⁻¹ CBR；**qwen3.5 的 `input_audio_format=opus` 需要 Ogg Opus 容器**，已实现 `ogg_opus.c` 并按 10 包（200 ms）/页发送，主机工具与可用参考实现逐字节一致。
+- 板端实测：qwen3.5 会话建立成功，Ogg 头页后 5 页/秒、上行 **约 3.4 kB/s**，8 秒连续无服务端错误、`cloud_report phase=1/error=0`、FIFO 无溢出。
+- qwen3.5 事件适配：`response.text.text` 累计式流式文本已接入（替代 3.8 的 `response.text.delta`），`response.text.done` 仍作定稿；用真实服务端事件 JSON 做了本机解析验证。
+
+待办：板端真实语音（中译中）多句连续、长时静默后首句、T1、30 分钟稳定性——需要用户在场说话；PC 侧已用 `test_en.wav` 验证同一 Ogg 流/会话配置可被识别并返回中文译文。
+
+## 2026-10-18 晚：中译中改显 ASR 原文，完成无麦克风自测
+
+- **中译中字幕口径**：源=目标语种时 qwen3.5 返回的是改写而非原文（“老师好”→“大家好”），不可用；新增 `Z7_ASR_SUBTITLE` 编译开关，字幕改为流式 ASR 原文（`text`+`stash` 累计），ASR `completed` 即提交，译文事件忽略。见 [AUDIO_COMPRESSION](../design/AUDIO_COMPRESSION.md#2026-10-18-晚中译中显示-asr-原文t1-口径修正无麦克风自测)。
+- **T1 口径修正**：`speech_started.audio_start_ms` 是服务端自己的音频位置，长静音后会与板端发送位置脱节（实测板端已发 44.2 s、服务端报 14.4 s），原音频时间轴映射会漂移并钳到 9999。改为 **T1 = speech_started 事件 → 首条 ASR 文本**（服务端 VAD 触发到首字），跨多句/长静音稳定。
+- **`input_audio_buffer.clear` 在 server_vad 下返回错误**（`Error clear input audio buffer: server_vad is enabled.`），已移除；长静音本身没问题（PC 40 s 静音、板端 30 s 静音自测后下一轮仍正常识别并提交）。
+- **无麦克风自测工具**：`scripts/generate_selftest_audio.py`（Windows 中文 TTS）+ `build_cloud_app.py --selftest` → `cloud_app_selftest.elf`，以“14.58 s 中文语音 + 30 s 静音”循环驱动整条链路；自测每周期 4 句全部 committed、云 phase=1/error=0。
+- **板端当前状态**：自测固件运行中做 30 分钟连续测试；之后恢复麦克风固件并重新配置 qwen3.5，等用户真人语音验收。ESP 偶发不响应 AT（本次通过 JTAG 发 `+++`/`AT+RST` 并重烧恢复），已知硬故障仍需断电。
+
+

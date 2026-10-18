@@ -3,12 +3,16 @@
 #include "../subtitle_ui/ui_model.h"
 #define CLOUD_JSON_BYTES 4096u
 #define CLOUD_ID_BYTES 80u
-enum cloud_kind {CLOUD_IGNORE,CLOUD_ASR_FINAL,CLOUD_TRANSLATION,CLOUD_RESPONSE_DONE,CLOUD_FINISHED,CLOUD_ERROR,CLOUD_ITEM_LINK};
+enum cloud_kind {CLOUD_IGNORE,CLOUD_ASR_FINAL,CLOUD_TRANSLATION,CLOUD_RESPONSE_DONE,CLOUD_FINISHED,CLOUD_ERROR,CLOUD_ITEM_LINK,
+                 CLOUD_SESSION_CREATED,CLOUD_SESSION_UPDATED,CLOUD_TRANSLATION_DELTA,CLOUD_SPEECH_STARTED,CLOUD_ASR_PARTIAL};
 enum cloud_parse_code {CLOUD_OK,CLOUD_JSON,CLOUD_SCHEMA,CLOUD_LIMIT};
 struct cloud_event {
     enum cloud_kind kind;
     uint32_t completed;
+    uint32_t cumulative;       /* response.text.text carries the full text so far */
+    uint32_t audio_start_ms;   /* speech_started: onset position in the uploaded audio stream */
     char item_id[CLOUD_ID_BYTES],response_id[CLOUD_ID_BYTES],error_code[CLOUD_ID_BYTES];
+    char error_message[CLOUD_ID_BYTES];
     char previous_id[CLOUD_ID_BYTES];
     uint32_t text[UI_MAX_TEXT];
 };

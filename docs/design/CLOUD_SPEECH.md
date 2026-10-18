@@ -203,6 +203,18 @@ C1-6 验收版本边界：电脑仍负责 TLS/WSS 初始化、预编码音频及
 
 接续顺序：先核对实际板卡状态，恢复本版显示/常驻触摸（若已断电须受控重新配置），运行 ARM 正确身份→错误身份拒绝→正确身份的 TLS 对照并确认三次关闭；通过后再做 C1-7b 的 WSS Upgrade、session.update 与现有音频/字幕链路交接。运行期 Key、掩码熵、完整字库、真实采音、长时和独立启动仍未完成，不把电脑提供的控制掩码当作独立产品随机源。
 
+## C1-8 板端实时云同传集成（2026-10-17 夜）
+
+本阶段把 C1-6/C1-7a 的 TLS/WSS/事件链与新 PL 麦克风通路上板联调，应用 `output/cloud_app/cloud_app.elf`。统一证据与遗留项见 [云端板端阶段](../../output/cloud_app/status.json)；可复现构建入口为 [build_cloud_app.py](../../scripts/build_cloud_app.py)（记录 [build.json](../../output/cloud_app/build.json)），本次烧录记录 [program.json](../../output/cloud_app/program.json)，构建不编译任何云 Key。
+
+已通过：`cloud_app.elf` 曾停在显示报告 seq=1 的根因不是链接布局（`.bss` 在 DDR `0x1A80000`、`.cloud_runtime` 随后、字体区 `0x1800000` 起均不重叠，`--print-memory-usage` 通过），而是云客户端初始化写未实现的 `audio_regs 0x88` 触发 data abort（PC=`0x10078` exception_hang、LR_ABT=`0x16814`）。PL 新增 0x88 传译延迟寄存器、0x8c/0x90/0x94 的 16 kHz 麦克风 FIFO（48 kHz 3:1 抽取，1024 样本/64 ms），应用恢复并完成显示（整帧 614400、format_errors=0）与音频回环（L1=62 µs、over/under=0）。应用启动把 ESP8266 从 115200 协商到 921600（分频 54），`network_stream_attach` 允许在 TLS phase 8 接管链路；板上实测 WSS 握手、session.created→session.update→session.updated、45 ms PCM append 流式发送均无协议错误，真实语音一次得到 `asr_final=1/translations=1/committed=1`，中文定稿「不好意思，」提交到 UI，HDMI 抓帧见 [screen.png](../../output/cloud_app/capture/screen.png)。overlay 现为右上角两行：`L1 nnnn us` 与 `T1 nnnn ms`（0x88，bit16 有效），延迟从服务端 `speech_started` 到首个 `response.text.delta`，一次读数 4299 ms；RGB 与 DE/HS/VS 在 overlay 内同一级寄存器输出，修正了顶层分别延迟可能造成的画面错位。
+
+未通过/未放行：实测 UART 发送约 14.1 kB/s，而 16 kHz PCM/Base64 需要约 45.7 kB/s（ESP TLS 单次 CIPSEND 往返约 143 ms/1991 B），客户端在忙碌时丢帧，只有约三分之一实时音频上云；板上英文话语只产生 `response.text.delta` 与 4299 ms 读数，未出现 `speech_stopped`/`transcription.completed`/`response.text.done`，因此没有第二句定稿（PC 在“连续语音+静音”下可稳定收到完整收段事件，推断与音频断续有关）。长时读取还使 PL FIFO 溢出计数到 3767。热点已由用户关闭，整机实屏验收、30 min 稳定性与耳机听感留待下次；解决吞吐与收段前不宣告实时同传验收。API Key 仍只在运行期写入 `.cloud_config`（0x1E200），未进入 ELF、文档或 Git。
+
+2026-10-18 上午热点重开后完成一次真实英文语音的端到端运行：WSS 会话建立、45 ms PCM 持续上传、服务端识别到语音；`cloud_report` 为 `phase=1/error=0/messages=25/asr_final=1/translations=1/committed=1`，源文 “Hello. Hello, he...”，中文定稿 “ 好。 好， 好， 好。” 进入 UI（抓帧 [capture3/screen.png](../../output/cloud_app/capture3/screen.png)）；`audio_regs 0x88=0x00010839`（有效，2105 ms，从 `input_audio_buffer.speech_started` 到首个 `response.text.delta`）。同时修正：演示字库缺字用空格替代而不是终止会话（`cloud_live.c`）、CIPSEND/AT 超时 4 s→10 s、网络 fault 后主动停流（`network.c`/`main.c`）。注意 ESP 在 `AT+CIPSEND` 超时后会停在等数据状态，只能整板断电恢复。仍未解决的是 HDMI 画面横向循环错位：抓帧与 DDR framebuffer 正确、VDMA 寄存器读回正确，但实屏上 framebuffer 内容整体循环平移、PL overlay（L1/T1）位置正确；已回退试过的“停机配置再启动”顺序。证据与遗留详见 [云端板端阶段](../../output/cloud_app/status.json)。
+
+2026-10-18 下午按用户“商业级实时”要求做延迟优化并完成多轮中译中联调：`session.update` 增加 `audio.input.turn_detection = server_vad/threshold 0.2/silence_duration_ms 500`（默认 speaker_detection + 1000 ms 收句更慢）；字幕改为**边生成边显示**——`response.text.delta` 解析 item_id/delta 文本，按 item 链映射到配对并追加，直接镜像到当前字幕（不写历史），`response.text.done` 到达后被完整文本覆盖并走原定稿流程；T1 改为音频时间轴测量（append 记录流位置+本地时间，`speech_started.audio_start_ms` 反推采集时刻）；稳定性改为单事件容错（解析失败/不匹配/`response.done` 为 cancelled 只丢弃该句）、配对槽位回收、流式 CIPSEND 超时/ERROR 丢帧并用 `AT` 探活（30 s），fault 时 T1 置无效；28 px 字幕字体扩展 GB2312 一级 3858 字（自带 TTC/cmap 解析，不再依赖 fontTools），最近记录/原文行改用 28 px。用户实测：开口到首字约 **1.5–3.5 s**，连续多句不卡死，屏幕正常；但仍偶发“多句里只有一句识别到/长期不说话后识别不到”，根因是上行只有 13–14 kB/s（好时约 38 kB/s），16 kHz PCM/Base64 实时需约 44 kB/s，链路按可用性丢帧。下一步需音频压缩（Opus；qwen3.5-livetranslate 文档支持 `input_audio_format=opus` 与 8000 Hz）或更高吞吐链路，才能做到商业级连续识别；透传历史上有载荷损坏证据，未重新验证前不采用。
+
 ## C2-PC 受控音频云端对照
 
 2026-10-14 电脑通过实际 WLAN 直连北京地域服务，以实时节奏发送已有的 9.025 秒公开合成英语 PCM。API 返回了完整英语原文、中文译文及完成事件，见 [本次文件结果](../../output/cloud_speech/attempts/20261014T111342583658Z/result.json)；音频来源由 [MODEL_BACKEND](MODEL_BACKEND.md#受控文件证据与噪声修复)维护，客户端由 [run_bailian_file](../../scripts/run_bailian_file.py)实现。

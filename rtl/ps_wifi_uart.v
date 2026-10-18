@@ -41,8 +41,13 @@ module ps_wifi_uart #(parameter FIFO_ADDR_BITS=12) (
     input wire esp_rx,
     output wire esp_tx
 );
-    wire [31:0] local_aw = s_axi_awaddr[31:16]==16'h43c2 ? {16'd0,s_axi_awaddr[15:0]} : 32'hffffffff;
-    wire [31:0] local_ar = s_axi_araddr[31:16]==16'h43c2 ? {16'd0,s_axi_araddr[15:0]} : 32'hffffffff;
+    // Two accepted windows share the same 64 KiB register layout: 0x43c2xxxx
+    // for the standalone wifi platform and 0x43c3xxxx for the combined
+    // audio + ESP platform. Everything else stays an invalid address.
+    wire aw_mapped = (s_axi_awaddr[31:16]==16'h43c2) || (s_axi_awaddr[31:16]==16'h43c3);
+    wire ar_mapped = (s_axi_araddr[31:16]==16'h43c2) || (s_axi_araddr[31:16]==16'h43c3);
+    wire [31:0] local_aw = aw_mapped ? {16'd0,s_axi_awaddr[15:0]} : 32'hffffffff;
+    wire [31:0] local_ar = ar_mapped ? {16'd0,s_axi_araddr[15:0]} : 32'hffffffff;
     wifi_uart_axi #(.FIFO_ADDR_BITS(FIFO_ADDR_BITS)) u_uart(
         .aclk(aclk),
         .aresetn(aresetn),

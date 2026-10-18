@@ -62,6 +62,9 @@ static uint32_t module_baud(void) {
 #endif
 void wifi_probe_init(wifi_read_fn read,wifi_write_fn write,uint32_t now) {
     reg_read=read;reg_write=write;
+    /* The module corrupts the first byte after a long idle: warm the link once. */
+    write(16,13);for(volatile uint32_t i=0;i<20000;++i){}
+    write(12,15);
     volatile uint32_t *w=(volatile uint32_t *)&wifi_info;
     for(uint32_t i=0;i<16u;++i) w[i]=0;
     wifi_info.sequence=1;fence();

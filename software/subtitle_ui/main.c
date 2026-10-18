@@ -3,6 +3,9 @@
 #include "ui_assets.h"
 #include "ui_demo.h"
 #include "ui_render.h"
+#ifdef Z7_MMU_CACHE
+#include "../ps_bringup/cache.h"
+#endif
 #ifdef Z7_NANO_TOUCH
 #include "ui_touch.h"
 __attribute__((section(".touch_feedback"),used)) volatile struct touch_feedback touch_feedback;
@@ -72,6 +75,9 @@ static void initialize_guards(void) {
     for(uint32_t g=0;g<4u;++g) for(uint32_t i=0;i<64u;++i)
         wr(guard_bases[g]+i*4u,0x9e3779b9u^(g*0x10001u)^i);
     barrier();
+#ifdef Z7_MMU_CACHE
+    for(uint32_t g=0;g<4u;++g) cache_clean_range((const void *)guard_bases[g],256u);
+#endif
 }
 static void check_guards(void) {
     for(uint32_t g=0;g<4u;++g) for(uint32_t i=0;i<64u;++i)
@@ -114,6 +120,11 @@ static void draw(uint32_t index,uint32_t elapsed,uint32_t page) {
     last_render_ms=now_ms()-start;if(last_render_ms>max_render_ms) max_render_ms=last_render_ms;
     if(snapshot->stats.missing_glyphs || snapshot->stats.clipped_glyph_pixels) fail(32);
     barrier();check_guards();
+#ifdef Z7_MMU_CACHE
+    /* Make the frame and its snapshot visible to the VDMA and the JTAG host. */
+    cache_clean_range((const void *)(index?FB_BASE1:FB_BASE0),(unsigned)(FB_HEIGHT*FB_STRIDE));
+    cache_clean_range(&snapshots[index],(unsigned)sizeof(struct ui_snapshot));
+#endif
 }
 static void publish_ui(uint32_t active) {
     const struct ui_state *shown=&snapshots[active].state;
@@ -138,19 +149,26 @@ int main(void) {
 #endif
     begin_report();report.magic=0x46504231u;report.state=1;report.phase=1;
     __asm__ volatile("mrc p15,0,%0,c1,c0,0":"=r"(report.cpu_sctlr));end_report();
+#ifdef Z7_MMU_CACHE
+    if((report.cpu_sctlr&0x1005u)!=0x1005u) fail(1);   /* MMU + I-cache + D-cache must be on */
+#else
     if(report.cpu_sctlr&0x3805u) fail(1);
+#endif
     wr(0xf8f00208u,1);barrier();started_ticks=timer();
     for(volatile uint32_t i=0;i<1000u;++i) {}
     if(timer()==started_ticks) fail(2);
     if(rd(VIDEO_BASE)!=0x46564231u || rd(VIDEO_BASE+0x24u)!=FB_HEIGHT*65536u+FB_WIDTH) fail(3);
-    if(ui_font_count!=7u || !ui_demo_sample_count) fail(31);
-    static const uint32_t sizes[]={14,18,20,24,28,36,44};
-    for(uint32_t i=0;i<7u;++i) if(ui_fonts[i].size!=sizes[i] || !ui_fonts[i].count) fail(31);
+    if(ui_font_count!=5u || !ui_demo_sample_count) fail(31);
+    static const uint32_t sizes[]={14,18,28,36,44};
+    for(uint32_t i=0;i<5u;++i) if(ui_fonts[i].size!=sizes[i] || !ui_fonts[i].count) fail(31);
     wr(VIDEO_BASE+4u,0);wait_value(VIDEO_BASE+4u,2u,0u,1000u,8);
     wr(VDMA_BASE,0);wait_value(VDMA_BASE+4u,1u,1u,1000u,9);
     wr(VDMA_BASE,4);wait_value(VDMA_BASE,4u,0u,1000u,4);
     initialize_guards();
     ui_demo_init(&demo,&state,now_ms());draw(0,now_ms(),0);draw(1,now_ms(),0);
+    /* Accepted bring-up order: start the VDMA, write its frame geometry and
+       addresses, then enable the video timing. Reordering this (configure while
+       halted, then start) makes the first frames fail format_ok on this board. */
     wr(VDMA_BASE,1);wr(VDMA_BASE+0x5cu,FB_BASE0);wr(VDMA_BASE+0x60u,FB_BASE1);
     wr(VDMA_BASE+0x28u,0);wr(VDMA_BASE+0x58u,FB_STRIDE);wr(VDMA_BASE+0x54u,FB_WIDTH*4u);
     wr(VDMA_BASE+0x50u,FB_HEIGHT);barrier();wr(VIDEO_BASE+4u,1);barrier();

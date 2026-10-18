@@ -1,8 +1,11 @@
-"""Generate the explicitly limited demonstration font and UTF-32 text assets.
+"""Generate the prototype font and UTF-32 text assets.
 
-The font path is an operator-supplied CLI argument, never part of the product UI
-or manifest. No font license, complete Chinese font, speech or touch capability
-is implied by producing this private prototype asset subset.
+The demonstration labels/samples keep their small subset; the live Chinese
+caption font (28 px) is additionally extended with the GB2312 level-1 common
+character set so real speech translations are shown accurately. The font path
+is an operator-supplied CLI argument and is never part of the product UI or
+manifest. No font license or complete Chinese font is implied by producing this
+private prototype asset subset; assets are generated into output/ only.
 """
 from __future__ import annotations
 
@@ -12,15 +15,16 @@ import json
 import math
 import platform
 import re
+import struct
 from datetime import datetime, timezone
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont, __version__ as pillow_version
-from fontTools.ttLib import TTFont
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FONT_SIZES = (14, 18, 20, 24, 28, 36, 44)
+FONT_SIZES = (14, 18, 28, 36, 44)
+LIVE_FONT_SIZE = 28
 MAX_TEXT_CODEPOINTS = 255
 ASSET_LIMIT = 2 * 1024 * 1024
 REQUIRED_LABELS = {
@@ -34,6 +38,92 @@ REQUIRED_LABELS = {
 
 def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _u16(data: bytes, at: int) -> int:
+    return struct.unpack_from(">H", data, at)[0]
+
+
+def _u32(data: bytes, at: int) -> int:
+    return struct.unpack_from(">I", data, at)[0]
+
+
+def read_cmap_codepoints(path: Path, font_index: int = 0) -> set[int]:
+    """Read the Unicode cmap of a TTF/TTC without external font libraries."""
+    data = path.read_bytes()
+    if data[:4] == b"ttcf":
+        if _u32(data, 4) not in (0x00010000, 0x00020000):
+            raise ValueError("Unsupported TTC version")
+        count = _u32(data, 8)
+        if font_index >= count:
+            raise ValueError("TTC font index out of range")
+        base = _u32(data, 12 + 4 * font_index)
+    else:
+        base = 0
+    num_tables = _u16(data, base + 4)
+    cmap_off = None
+    for i in range(num_tables):
+        rec = base + 12 + 16 * i
+        if data[rec:rec + 4] == b"cmap":
+            cmap_off = _u32(data, rec + 8)
+            break
+    if cmap_off is None:
+        raise ValueError("Font has no cmap table")
+    codepoints: set[int] = set()
+    num_sub = _u16(data, cmap_off + 2)
+    for i in range(num_sub):
+        rec = cmap_off + 4 + 8 * i
+        platform, encoding = _u16(data, rec), _u16(data, rec + 2)
+        if (platform, encoding) not in ((3, 1), (3, 10), (0, 3), (0, 4), (0, 6)):
+            continue
+        sub = cmap_off + _u32(data, rec + 4)
+        fmt = _u16(data, sub)
+        if fmt == 4:
+            seg_x2 = _u16(data, sub + 6)
+            seg = seg_x2 // 2
+            end = sub + 14
+            start = end + seg_x2 + 2
+            delta = start + seg_x2
+            range_offset = delta + seg_x2
+            for j in range(seg):
+                e = _u16(data, end + 2 * j)
+                s = _u16(data, start + 2 * j)
+                d = _u16(data, delta + 2 * j)
+                ro = _u16(data, range_offset + 2 * j)
+                if s == 0xFFFF:
+                    continue
+                for c in range(s, e + 1):
+                    if ro == 0:
+                        cp = (c + d) & 0xFFFF
+                    else:
+                        glyph_at = range_offset + 2 * j + ro + 2 * (c - s)
+                        g = _u16(data, glyph_at) if glyph_at + 2 <= len(data) else 0
+                        if not g:
+                            continue
+                        cp = (g + d) & 0xFFFF
+                    codepoints.add(cp)
+        elif fmt == 12:
+            groups = _u32(data, sub + 12)
+            for j in range(groups):
+                rec2 = sub + 16 + 12 * j
+                s = _u32(data, rec2)
+                e = _u32(data, rec2 + 4)
+                for c in range(s, e + 1):
+                    codepoints.add(c)
+    return codepoints
+
+
+def gb2312_level1_codepoints() -> list[int]:
+    """Common (GB2312 level-1) Han characters, 3755 codepoints."""
+    chars: set[int] = set()
+    for high in range(0xB0, 0xD8):
+        for low in range(0xA1, 0xFF):
+            try:
+                char = bytes((high, low)).decode("gb2312")
+            except UnicodeDecodeError:
+                continue
+            chars.add(ord(char))
+    return sorted(chars)
 
 
 def load_text(path: Path) -> tuple[dict[str, str], list[dict[str, str]], list[int]]:
@@ -175,7 +265,7 @@ def parse_c_array(source: str, name: str) -> str:
 
 def validate_serialized_c(path: Path, fonts: dict[int, tuple[list[dict], bytes]],
                           labels: dict[str, str], samples: list[dict[str, str]],
-                          codepoints: list[int]) -> None:
+                          size_codepoints: dict[int, list[int]]) -> None:
     """Parse the actual C output and independently reconstruct each bitmap range."""
     source = path.read_text(encoding="utf-8")
     fields = ("codepoint", "offset", "width", "height", "advance", "x_offset", "y_offset")
@@ -191,7 +281,7 @@ def validate_serialized_c(path: Path, fonts: dict[int, tuple[list[dict], bytes]]
             parsed_glyphs.append(dict(zip(fields, values)))
         if parsed_pixels != expected_pixels or parsed_glyphs != expected_glyphs:
             raise ValueError(f"Serialized {size}px font differs from validated input")
-        validate_font(parsed_glyphs, parsed_pixels, codepoints)
+        validate_font(parsed_glyphs, parsed_pixels, size_codepoints[size])
     texts = {f"label_{key}": value for key, value in labels.items()}
     texts.update({f"sample_{i}_{key}": item[key] for i, item in enumerate(samples)
                   for key in ("source", "translated")})
@@ -201,16 +291,23 @@ def validate_serialized_c(path: Path, fonts: dict[int, tuple[list[dict], bytes]]
             raise ValueError(f"Serialized UTF-32 text {name} differs from JSON")
 
 
-def generate(font_path: Path, input_path: Path, output: Path) -> dict:
+def generate(font_path: Path, input_path: Path, output: Path,
+             extend_size: int = LIVE_FONT_SIZE) -> dict:
     labels, samples, codepoints = load_text(input_path)
-    source_font = TTFont(str(font_path), fontNumber=0, lazy=True)
-    try:
-        cmap = source_font.getBestCmap()
-        missing = [cp for cp in codepoints if cp not in cmap]
-        if missing:
-            raise ValueError("Missing glyphs: " + ", ".join(f"U+{cp:04X}" for cp in missing))
-    finally:
-        source_font.close()
+    size_codepoints = {size: codepoints for size in FONT_SIZES}
+    extended_count = 0
+    if extend_size:
+        if extend_size not in FONT_SIZES:
+            raise ValueError("Extend size must be one of FONT_SIZES")
+        extended = sorted(set(codepoints) | set(gb2312_level1_codepoints()))
+        if len(extended) > 0xFFFF:
+            raise ValueError("Extended glyph table exceeds ui_font.count")
+        size_codepoints[extend_size] = extended
+        extended_count = len(extended)
+    cmap = read_cmap_codepoints(font_path)
+    missing = [cp for cp in sorted({cp for cps in size_codepoints.values() for cp in cps}) if cp not in cmap]
+    if missing:
+        raise ValueError("Missing glyphs: " + ", ".join(f"U+{cp:04X}" for cp in missing[:16]))
     output.mkdir(parents=True, exist_ok=True)
     chunks = [
         "/* Generated by scripts/generate_subtitle_assets.py; modify the JSON source. */",
@@ -227,7 +324,7 @@ def generate(font_path: Path, input_path: Path, output: Path) -> dict:
     font_payloads = {}
     preview_font = None
     for size in FONT_SIZES:
-        glyphs, pixels, font_metrics = make_font(font_path, size, codepoints)
+        glyphs, pixels, font_metrics = make_font(font_path, size, size_codepoints[size])
         font_payloads[size] = (glyphs, pixels)
         metrics.append(font_metrics)
         chunks.append(byte_array(f"font_{size}_pixels", pixels))
@@ -239,7 +336,7 @@ def generate(font_path: Path, input_path: Path, output: Path) -> dict:
         if size == 36:
             preview_font = (glyphs, pixels)
     chunks.append("const struct ui_font ui_fonts[] UI_ASSET = {")
-    chunks.extend(f"    {{{size}, {len(codepoints)}, font_{size}_glyphs, font_{size}_pixels}},"
+    chunks.extend(f"    {{{size}, {len(size_codepoints[size])}, font_{size}_glyphs, font_{size}_pixels}},"
                   for size in FONT_SIZES)
     chunks.extend(["};", f"const uint32_t ui_font_count UI_ASSET = {len(FONT_SIZES)};\n"])
     for key, value in labels.items():
@@ -256,7 +353,7 @@ def generate(font_path: Path, input_path: Path, output: Path) -> dict:
     chunks.extend(["};", f"const uint32_t ui_demo_sample_count UI_ASSET = {len(samples)};\n"])
     generated = output / "ui_assets.c"
     generated.write_text("\n".join(chunks), encoding="utf-8", newline="\n")
-    validate_serialized_c(generated, font_payloads, labels, samples, codepoints)
+    validate_serialized_c(generated, font_payloads, labels, samples, size_codepoints)
     # Include 4-byte alignment padding for every asset object in this estimate.
     pixel_bytes = sum(item["pixel_bytes"] for item in metrics)
     glyph_bytes = sum(item["glyph_record_bytes"] for item in metrics)
@@ -274,7 +371,7 @@ def generate(font_path: Path, input_path: Path, output: Path) -> dict:
         schema_version=1,
         generated_utc=datetime.now(timezone.utc).isoformat(),
         status="passed",
-        scope="Demonstration text subset only; no live audio, ASR, translation or touch input.",
+        scope="Demonstration subset plus GB2312 level-1 live-caption font; no live audio or ASR proof.",
         input_sha256=digest(input_path), font_sha256=digest(font_path),
         generator_sha256=digest(Path(__file__)),
         header_sha256=digest(ROOT / "software/subtitle_ui/ui_assets.h"),
@@ -282,6 +379,9 @@ def generate(font_path: Path, input_path: Path, output: Path) -> dict:
         python_version=platform.python_version(), pillow_version=pillow_version,
         missing_codepoints=[], codepoint_count=len(codepoints),
         codepoints=[f"U+{cp:04X}" for cp in codepoints],
+        extended_font_size=extend_size,
+        extended_codepoint_count=extended_count,
+        per_size_codepoint_count={str(size): len(size_codepoints[size]) for size in FONT_SIZES},
         pixel_encoding="row-major 4-bit coverage, high nibble first, odd final low nibble zero",
         metrics=metrics, label_count=len(labels), sample_count=len(samples),
         sample_lengths=[dict(source=len(item["source"]), translated=len(item["translated"])) for item in samples],
@@ -304,11 +404,14 @@ def make_preview(font_data: tuple[list[dict], bytes] | None, path: Path) -> None
     glyphs, pixels = font_data
     lookup = {g["codepoint"]: g for g in glyphs}
     image = Image.new("RGB", (1000, 220), "#f4f7fa")
-    lines = ["译声  英语 → 简体中文  模拟演示", "请确认每个人都能清楚地听到发言。", "09:30  长句自动分页  触摸待接入"]
+    lines = ["译声  中文 → 中文  模拟演示", "请确认每个人都能清楚地听到发言。", "09:30  长句自动分页  触摸待接入"]
     for row, text in enumerate(lines):
         x, y = 24, 16 + row * 66
         for char in text:
-            glyph = lookup[ord(char)]
+            glyph = lookup.get(ord(char))
+            if glyph is None:
+                x += 14
+                continue
             count = glyph["width"] * glyph["height"]
             if count:
                 end = glyph["offset"] + (count + 1) // 2
@@ -324,9 +427,13 @@ def main() -> None:
     parser.add_argument("--font", type=Path, required=True)
     parser.add_argument("--input", type=Path, default=ROOT / "assets/subtitle_demo.json")
     parser.add_argument("--output", type=Path, default=ROOT / "output/subtitle_ui")
+    parser.add_argument("--extend-size", type=int, default=LIVE_FONT_SIZE,
+                        help="font size extended with GB2312 level-1 characters (0 disables)")
     args = parser.parse_args()
-    manifest = generate(args.font, args.input, args.output)
+    manifest = generate(args.font, args.input, args.output, args.extend_size)
     print(json.dumps({"status": manifest["status"], "codepoints": manifest["codepoint_count"],
+                      "extended_font_size": manifest["extended_font_size"],
+                      "extended_codepoint_count": manifest["extended_codepoint_count"],
                       "pixel_bytes": manifest["pixel_bytes"],
                       "arm32_payload_upper_bound": manifest["arm32_payload_upper_bound"],
                       "sample_lengths": manifest["sample_lengths"]}, ensure_ascii=False))

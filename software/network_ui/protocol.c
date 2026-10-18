@@ -2,13 +2,16 @@
 #include "../subtitle_ui/ui_assets.h"
 uint32_t net_word(const uint8_t *p) {return p[0]|((uint32_t)p[1]<<8)|((uint32_t)p[2]<<16)|((uint32_t)p[3]<<24);}
 void net_put(uint8_t *p,uint32_t v) {for(uint32_t i=0;i<4;++i) p[i]=(uint8_t)(v>>(8*i));}
+/* Cloud/live Chinese subtitles render with the extended 28 px caption font
+   (GB2312 level-1 plus the demo subset), so that is the coverage that matters. */
 int net_glyph_available(uint32_t cp) {
     for(uint32_t f=0;f<ui_font_count;++f) {
+        if(ui_fonts[f].size!=28u) continue;
         uint32_t lo=0,hi=ui_fonts[f].count;
         while(lo<hi) {uint32_t m=lo+(hi-lo)/2;if(ui_fonts[f].glyphs[m].codepoint<cp) lo=m+1;else hi=m;}
-        if(lo==ui_fonts[f].count || ui_fonts[f].glyphs[lo].codepoint!=cp) return 0;
+        return lo<ui_fonts[f].count && ui_fonts[f].glyphs[lo].codepoint==cp;
     }
-    return 1;
+    return 0;
 }
 static uint32_t decode(const uint8_t *p,uint32_t bytes,uint32_t *text) {
     uint32_t i=0,n=0;

@@ -17,7 +17,7 @@ static const char *const capability_tags[]={"+CIPSSLSIZE:","+CIPSSLCCONF:",
 static wifi_read_fn read_reg;static wifi_write_fn write_reg;
 static struct ui_state *model;
 static uint32_t current_time,report_ms,setup_step,enabled,ipd_left,ipd_client,line_used,frame_used,frame_expected,frame_ready;
-static uint32_t command_phase,command_size,command_pos,command_deadline,reply_size,reply_line_start,ack_pending,last_request,prompt_padding;
+static uint32_t command_phase,command_size,command_pos,command_deadline,reply_size,reply_line_start,ack_pending,last_request,prompt_padding,resync,send_failures;
 static char command[320],reply[512],line[128],join_command[240];
 enum setup_state { SETUP_ECHO,SETUP_VERSION,SETUP_STOP_SERVER,SETUP_VOLATILE,
     SETUP_STATION,SETUP_JOIN,SETUP_IP,SETUP_MULTIPLEX,SETUP_IPD_SIMPLE,
@@ -25,6 +25,10 @@ enum setup_state { SETUP_ECHO,SETUP_VERSION,SETUP_STOP_SERVER,SETUP_VOLATILE,
 static uint8_t frame[NET_FRAME_BYTES],ack[2048];
 static uint32_t send_size;
 static uint32_t peer,peer_port,raw_state,raw_deadline;
+/* A transient AT/SNTP/TLS failure must not require a re-flash: the last SSID and
+   password are kept so the whole setup can be re-armed automatically. */
+static uint8_t saved_ssid[32],saved_pass[64];
+static uint32_t saved_ssid_bytes,saved_pass_bytes,saved_retry_count,saved_retry_at;
 static void (*stream_receive)(uint8_t);
 #ifdef Z7_NETWORK_CAPABILITIES
 /* action 3: trusted cloud TLS, action 4: close and return UART ownership.
@@ -77,7 +81,7 @@ static void fault(uint32_t error) {
 #ifdef Z7_NETWORK_CAPABILITIES
     if(network_capabilities.phase==1) {network_capabilities.phase=6;network_capabilities.error=error;}
 #endif
-    network_info.phase=6;network_info.error=error;command_phase=0;ack_pending=0;
+    network_info.phase=6;network_info.error=error;command_phase=0;ack_pending=0;resync=0;
     wipe(command,sizeof(command));wipe(reply,sizeof(reply));wipe(join_command,sizeof(join_command));
     if(enabled) (void)ui_control(model,UI_PAUSE);
 }
@@ -97,20 +101,23 @@ static void send_ack_command(void) {
     char text[48];uint32_t n=0;const char *prefix="AT+CIPSEND=";
     while(*prefix) text[n++]=*prefix++;
     n+=decimal(text+n,network_info.client);text[n++]=',';n+=decimal(text+n,send_size);
-    text[n++]='\r';text[n++]='\n';text[n]=0;begin_command(text,4000);
+    text[n++]='\r';text[n++]='\n';text[n]=0;begin_command(text,30000);
 }
 int network_send(const uint8_t *data,uint32_t size) {
     if(network_info.phase!=4 || command_phase || ack_pending || frame_ready || !size || size>sizeof(ack)) return 0;
     for(uint32_t i=0;i<size;++i) ack[i]=data[i];
     send_size=size;ack_pending=1;
-    if(raw_state==1) {command_phase=3;command_pos=0;command_deadline=current_time+4000;}
+    if(raw_state==1) {command_phase=3;command_pos=0;command_deadline=current_time+10000;}
     else send_ack_command();
     return 1;
 }
 int network_stream_attach(void (*receive)(uint8_t)) {
-    if(!receive || network_info.phase || network_config.request_sequence!=network_info.config_ack ||
+    /* phase 0: pilot attaches before the TCP client connects; phase 8: the
+       trusted cloud TLS link is already up and the cloud client adopts it. */
+    if(!receive || (network_info.phase!=0 && network_info.phase!=8) ||
+       network_config.request_sequence!=network_info.config_ack ||
        command_phase || ack_pending || raw_state || stream_receive) return 0;
-    stream_receive=receive;network_info.phase=4;network_info.client=0;
+    stream_receive=receive;network_info.phase=4;network_info.client=0;resync=0;send_failures=0;
     return 1;
 }
 int network_stream_busy(void) {return command_phase || ack_pending;}
@@ -189,7 +196,7 @@ static void tls_result(int failure) {
     if(++tls_step<sizeof(tls_commands)/sizeof(tls_commands[0])) {
         if(tls_step==2) tls_time_deadline=current_time+15000u;
         tls_issue();
-    } else {network_info.phase=8;network_info.client=0;}
+    } else {network_info.phase=8;network_info.client=0;saved_retry_count=saved_retry_at=0;}
 }
 #endif
 static uint32_t parse_ip(const char *s) {
@@ -316,6 +323,11 @@ static void configuration(void) {
         join_command[n++]='"';if(part==0) {join_command[n++]=',';join_command[n++]='"';}
     }
     join_command[n++]='\r';join_command[n++]='\n';join_command[n]=0;
+    if(valid) {
+        saved_ssid_bytes=sn;saved_pass_bytes=pn;
+        for(uint32_t i=0;i<sn;++i) saved_ssid[i]=network_config.credentials[i];
+        for(uint32_t i=0;i<pn;++i) saved_pass[i]=network_config.credentials[33+i];
+    }
     for(uint32_t i=0;i<100;++i) network_config.credentials[i]=0;
     network_config.ssid_bytes=network_config.password_bytes=0;fence();network_info.config_ack=request;
     if(!valid || request!=network_config.request_sequence) {fault(11);return;}
@@ -415,7 +427,18 @@ static void receive(uint8_t byte) {
 }
 static void command_tick(void) {
     if(!command_phase) return;
-    if((int32_t)(current_time-command_deadline)>=0) {fault(27);return;}
+    if((int32_t)(current_time-command_deadline)>=0) {
+        /* A stalled streaming send is a transient Wi-Fi/TLS hiccup: drop the
+           frame and probe the AT command mode instead of killing the whole
+           session. Setup/TLS commands still fault on timeout. */
+        if(network_info.phase==4 && stream_receive) {
+            ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);
+            command_phase=ack_pending=0;command_size=command_pos=0;
+            wipe(reply,sizeof(reply));reply_size=0;
+            if(!resync) {resync=1;begin_command("AT\r\n",2000);return;}
+        }
+        fault(27);return;
+    }
     if(command_phase==1) {
         // The bounded drain may leave old RX bytes queued. Send only after
         // that backlog is empty, so it cannot certify a new transaction.
@@ -431,8 +454,11 @@ static void command_tick(void) {
         command_phase=4;reply_size=0;reply[0]=0;
     }
     if(command_phase==4) {
-        if(contains(reply,"ERROR") || contains(reply,"FAIL")) fault(28);
-        else if(contains(reply,"\r\nSEND OK\r\n")) {command_phase=ack_pending=0;wipe(reply,sizeof(reply));}
+        if(contains(reply,"ERROR") || contains(reply,"FAIL")) {
+            ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);command_phase=ack_pending=0;wipe(reply,sizeof(reply));reply_size=0;return;
+        }
+        if(contains(reply,"\r\nSEND OK\r\n")) {send_failures=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;}
+        if(resync && contains(reply,"\r\nOK\r\n")) {resync=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;}
         return;
     }
     if(command_phase!=2) return;
@@ -446,9 +472,25 @@ static void command_tick(void) {
         return;
     }
     if(network_info.phase==4 && ack_pending) {
-        if(contains(reply,"ERROR") || contains(reply,"FAIL")) fault(28);
-        else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=0;reply[0]=0;command_deadline=current_time+4000;}
+        if(contains(reply,"ERROR") || contains(reply,"FAIL")) {
+            /* A rejected CIPSEND is a transient Wi-Fi/TLS hiccup too: drop this
+               frame and probe the AT mode instead of killing the session. */
+            ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);
+            command_phase=ack_pending=0;wipe(reply,sizeof(reply));reply_size=0;
+            if(send_failures>8u) fault(28);
+            else if(!resync) {resync=1;begin_command("AT\r\n",2000);}
+            return;
+        }
+        else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=0;reply[0]=0;command_deadline=current_time+30000;}
         return; // An earlier OK is not the CIPSEND prompt.
+    }
+    if(network_info.phase==4 && resync) {
+        /* The AT resync probe reply belongs to the probe, not to the setup/TLS
+           state machine: swallowing it prevents a stray phase=3 transition. */
+        if(contains(reply,"\r\nOK\r\n") || contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n")) {
+            resync=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));reply_size=0;
+        }
+        return;
     }
     int failure=contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n");
     if(!contains(reply,"\r\nOK\r\n") && !failure) return;
@@ -461,7 +503,8 @@ static void command_tick(void) {
     }
 #ifdef Z7_NETWORK_CAPABILITIES
     if(network_capabilities.phase==1) {capability_result(failure);return;}
-    if(tls_mode && (tls_closing || setup_step==SETUP_COUNT)) {tls_result(failure);return;}
+    uint32_t tls_count=sizeof(tls_commands)/sizeof(tls_commands[0]);
+    if(tls_mode && (tls_closing || (setup_step==SETUP_COUNT && tls_step<tls_count))) {tls_result(failure);return;}
 #endif
     if(failure && setup_step!=SETUP_STOP_SERVER) {fault(29);return;} // deleting an absent old server may ERROR.
     if(setup_step==SETUP_VERSION) {
@@ -507,14 +550,51 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
     tls_mode=tls_step=tls_wait_until=tls_time_deadline=tls_connected=tls_closing=0;
 #endif
     network_info.magic=0x3154454eu;network_info.client=0xffffffffu;network_config.magic=0x3146434eu;
+    /* The ESP8266 AT firmware runs at 115200 (divider 434); force it at init
+       because an earlier JTAG session may have left another divider. */
+    write_reg(12,15);write_reg(8,434);
     enabled=ipd_left=line_used=frame_used=frame_ready=command_phase=ack_pending=prompt_padding=0;wipe(join_command,sizeof(join_command));
     send_size=32;peer=peer_port=raw_state=raw_deadline=0;stream_receive=0;
     report_ms=(uint32_t)-200;publish_report(0);
 }
 int network_owns_ui(void) {return enabled!=0;}
+#ifdef Z7_NETWORK_CAPABILITIES
+/* A transient AT/SNTP/TLS failure otherwise needs a re-flash: re-arm a fresh
+   cloud setup from the saved credentials after a short backoff. */
+static void retry_faulted(void) {
+    if(network_info.phase!=6 || !tls_mode || !saved_ssid_bytes || saved_retry_count>=6) return;
+    uint32_t error=network_info.error;
+    if(error!=27 && error!=28 && error!=29 && error!=32 && error!=34 && error!=43 &&
+       error!=44 && error!=45 && error!=46 && error!=47) return;
+    if((int32_t)(current_time-saved_retry_at)<0) return;
+    ++saved_retry_count;
+    saved_retry_at=current_time+5000u;
+    stream_receive=0;
+    tls_mode=tls_step=tls_wait_until=tls_connected=tls_closing=0;
+    enabled=0;command_phase=ack_pending=resync=0;
+    ipd_left=frame_used=frame_ready=0;line_used=0;prompt_padding=0;raw_state=0;
+    network_info.phase=0;network_info.error=0;
+    network_config.magic=0x3146434eu;
+    network_config.action=3;
+    network_config.reserved=0;
+    network_config.port=0;
+    network_config.ssid_bytes=saved_ssid_bytes;
+    network_config.password_bytes=saved_pass_bytes;
+    for(uint32_t i=0;i<100;++i) network_config.credentials[i]=0;
+    for(uint32_t i=0;i<saved_ssid_bytes;++i) network_config.credentials[i]=saved_ssid[i];
+    for(uint32_t i=0;i<saved_pass_bytes;++i) network_config.credentials[33+i]=saved_pass[i];
+    network_info.config_ack=network_config.request_sequence;
+    network_config.request_sequence=network_info.config_ack+1u;
+    fence();
+}
+#endif
+
 void network_tick(struct ui_state *state,uint32_t now) {
     model=state;current_time=now;++network_info.sequence;fence();
     configuration();network_info.overflow=read_reg(32);network_info.framing=read_reg(36);
+#ifdef Z7_NETWORK_CAPABILITIES
+    retry_faulted();
+#endif
 #ifdef Z7_NETWORK_CAPABILITIES
     if(tls_mode && tls_wait_until && network_info.phase==1 && (int32_t)(now-tls_wait_until)>=0) {
         tls_wait_until=0;tls_issue();

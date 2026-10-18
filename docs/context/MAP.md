@@ -28,7 +28,9 @@
 | `software/network_ui/cloud_events.*`、`third_party/jsmn/`、`output/z7_nano/cloud_events/` | 有界 C 事件解码、固定上游来源及公开样例验证 | [C1-5](../design/CLOUD_SPEECH.md#c1-5-c-端云事件解码)维护解码范围，集成见 C1-6 |
 | `software/network_ui/cloud_frame.c`、`cloud_wire.*`、`cloud_live.*`、`third_party/wslay/`、`output/z7_nano/cloud_live/` | 帧重组、原译 ID 配对、字幕消费与离线/板上阶段证据 | [C1-6](../design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)维护内存分区、栈与边界；C1-6 固定 ELF 的短文件云译上屏已验收 |
 | `software/network_ui/network.c`、`scripts/probe_z7_nano_tls_boot.py`、`output/z7_nano/tls_boot/` | ARM 非阻塞 TLS、私有 Wi-Fi 配置与身份对照工具 | [C1-7a](../design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)维护状态/边界；network_tick 进入既有 DDR 云代码区，修正版 TLS 板测待重跑 |
+| `software/network_ui/cloud_client.*`、`scripts/build_cloud_app.py`、`output/cloud_app/` | 板端自主 WSS 客户端（握手、session.update、PCM append、传译延迟写入 audio_regs 0x88）、云端应用构建/烧录/抓帧证据 | [C1-8](../design/CLOUD_SPEECH.md#c1-8-板端实时云同传集成2026-10-17-夜)维护；构建入口 `python -B scripts/build_cloud_app.py`，烧录用 `scripts/z7_nano_audio.tcl run` |
 | `hardware/z7_nano/`、`output/z7_nano/` | 新板权威配置、独立构建/下载与 PS 验证产物 | 2026-10-13 建立；方法见 BOARD_MIGRATION，当前验收见 NOW |
+| `rtl/i2c_master.v`、`rtl/wm8731_init.v`、`rtl/i2s_loopback.v`、`rtl/audio_latency.v`、`rtl/audio_regs.v`、`rtl/audio_overlay.v`、`rtl/z7_nano_audio_top.v`、`scripts/build_z7_nano_audio.tcl`、`scripts/audio_synth_ooc.tcl`、`scripts/run_audio_loopback.py`、`output/z7_nano/audio_loopback/`、`output/z7_nano/audio_ooc/` | 音频回环 RTL（I2C 初始化、I2S 从机回环、L1 时延、屏幕读数叠加）、BD/位流构建、OOC 综合检查与仿真/构建证据 | 2026-10-17 建立；寄存器映射 AXI `0x43c20000`、验收边界见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#7-已实现2026-10-17)；位流与实屏证据未产生 |
 | `tmp/` | 必要中间脚本与选定原理图页 | 已建立，不作为长期规则来源 |
 
 最小 PS 源码入口见 [PS_BRINGUP](../design/PS_BRINGUP.md)；电脑模型试验见 [MODEL_BACKEND](../design/MODEL_BACKEND.md)，当前云语音计划见 [CLOUD_SPEECH](../design/CLOUD_SPEECH.md)。真实音频尚未接入，已验收的新板 USB 触摸入口由迁移专题路由。静态入口为 [static_ui_top](../../rtl/static_ui_top.v)、[static_ui_video](../../rtl/static_ui_video.v) 和 [run_static_ui](../../scripts/run_static_ui.ps1)。
@@ -46,8 +48,8 @@ DDR 显示的配置、地址和运行入口由 [FRAMEBUFFER](../design/FRAMEBUFF
 | 对象 | 事实或状态 | 来源与限制 |
 |---|---|---|
 | 开发板、器件、屏幕、既有 HDMI 显示 | 沿用同级 HDMI 项目的对象 | [其 MAP](../../../hdmi/docs/context/MAP.md#对象与证据)、[显示验收](../../../hdmi/docs/context/NOW.md#当前进展)；旧结果不替代新项目验收 |
-| 音频模块 | 尚未到货；型号、输入类型、数字协议、采样率和电平均待核实 | 用户当前说明；不得假定是 I2S 或直接分配引脚 |
-| “FPGA20引脚” | 含义待核实 | 可能指连接器针号或接口称呼；不能直接认定为信号线 |
+| 音频模块 | WM8731 主控模块；J3→JP2→Bank35 的 7 根信号已与原理图逐针对上（含 MRCC 时钟脚与电源针）；模块 MCLK 来源、供电/电平与实物丝印方向待核实 | 用户说明 + Z7-NANO_R21.pdf 第 5/13 页；映射见[音频模块连接](#音频模块连接)与 [audio_module.json](../../hardware/z7_nano/audio_module.json) |
+| “FPGA20引脚” | 2026-10-16 的音频接线表改用明确的 FPGA 球号与 JP2 针号，旧说法不再引用；球号本身仍待与原理图核对 | 用户接线表；区分排针序号、板上丝印、FPGA 封装球号和 HDL 端口，见 R2 |
 | 扩展连接器 CAM1 | 原理图为 40 针双排，提供 34 个 PL I/O；物理针号 20、21 为 3.3 V，40 为 5 V，1、19、22 为 GND | 原理图第 9 页；[所读页](../../tmp/schematic-page-09.png)。核对实物方向后才能用针号 |
 | DDR | 原理图一颗 MT41J256M16、16 位数据总线；配置声明 512 MiB | 第 6 页，[所读页](../../tmp/schematic-page-06.png)；2026-10-11 最小初始化及限定区域检查两次通过，范围见 [PS_BRINGUP](../design/PS_BRINGUP.md)。未全容量逐字节测试，Linux 可用内存未测 |
 | USB 数据口 | 原理图 P3 连接 USB3320 ULPI PHY，并有 `USBCP_EN` 控制 VBUS；CC1/CC2 接到 `USB_ID` | 第 10 页，[所读页](../../tmp/schematic-page-10.png)；这不证明任意 Type-C 线能进入 Host 模式 |
@@ -75,6 +77,33 @@ DDR 显示的配置、地址和运行入口由 [FRAMEBUFFER](../design/FRAMEBUFF
 
 新增 Wi-Fi 源码位于 rtl、sim 和 scripts；产物及证据放在 output/wifi，中间文件放在 tmp/wifi。实现与接口见 [WIFI_LINK](../design/WIFI_LINK.md)。
 
+## 音频模块连接
+
+核验日期：2026-10-16；范围：用户提供的接线表、模块主控说明（WM8731）与 Z7-NANO_R21.pdf 第 5/13 页逐针核对。未做电气测量、未核对实物丝印方向、本轮未接线。
+
+用户 2026-10-16 提供的接线（已与原理图逐针对上）如下，机器可读副本见 [audio_module.json](../../hardware/z7_nano/audio_module.json)：
+
+| J3 脚 | 模块信号 | JP2 脚 | 板级网络 | FPGA 球号 | Bank35 引脚名 | 方向 |
+|---|---|---|---|---|---|---|
+| 3 | VW_I2C_SCLK | 15 | GPIO2_6P | B19 | IO_L2P_T0_AD8P_35 | FPGA → 模块 |
+| 4 | VM_I2C_SDAT | 16 | GPIO2_6N | A20 | IO_L2N_T0_AD8N_35 | 双向 |
+| 5 | VM_DACDAT | 17 | GPIO2_7P | C20 | IO_L1P_T0_AD0P_35 | FPGA → 模块 |
+| 6 | VM_BCLK | 13 | GPIO2_5P | H16 | IO_L13P_T2_MRCC_35 | 模块 → FPGA |
+| 7 | VM_ADCDAT | 18 | GPIO2_7N | B20 | IO_L1N_T0_AD0N_35 | 模块 → FPGA |
+| 8 | VM_DADLRC | 14 | GPIO2_5N | H17 | IO_L13N_T2_MRCC_35 | 模块 → FPGA |
+| 9 | VM_ADCLRC | 19 | GPIO2_8P | D19 | IO_L4P_T0_35 | 模块 → FPGA |
+| 10 | NC | — | — | — | — | 悬空 |
+
+- JP2 = CON40A（2x20），在 Bank35，网络前缀 `GPIO2_`；同页 JP1 为 GPIO1（ESP8266 所用）。JP2 电源/地针（2026-10-17 按第 13 页复核）：11 = `VCC_5V`、29 = `VCC_3V3`、**12 与 30 = GND**；此前记为 11/12=VCC_5V、29/30=VCC_3V3 是错误的。
+- 针号是用户提供的逻辑针号；实物 1 号脚方向与丝印尚未核对，不能直接按图计数（同 ESP8266 的 JP1 约定）。
+- **引脚占用已核对：与当前板显示不冲突**。当前板 TMDS 由 [source.json](../../hardware/z7_nano/source.json) 的 `Pins` 定为 Bank34 的 `U18/U19`、`V20/W20`、`T20/U20`、`N20/P20`；音频 7 个信号全在 Bank35 的 JP2 上。仓库内 [hdmi.xdc](../../constraints/hdmi.xdc) 标注 ZYNQ_MINI_REVB（旧板），不是当前板显示约束，不能据此认定冲突。见 [RISKS](RISKS.md) R17 与 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#3-引脚占用核对已核实与当前板显示不冲突)。
+- 接口事实：模块主控为 WM8731（用户说明），工作为 I2S 时钟主（BCLK、DADLRC、ADCLRC 由模块输出），PL 只能作从机；采集与播放各有独立 LRCLK；控制走 I2C；H16/H17 是 MRCC 时钟脚。实现已按此方向（R7=0x042 主模式），见 [AUDIO_LOOPBACK](../design/AUDIO_LOOPBACK.md#7-已实现2026-10-17)。
+- 板级补充核对（2026-10-16，Z7-NANO_R21.pdf 全 15 页）：①开发板没有音频 codec 或音频时钟，音频全部经 JP2 外接模块；②Bank34 与 Bank35 均由 `VCC_3V3` 供电，PL 侧为 3.3 V 逻辑；③板载 24C32 EEPROM 的 I2C 网络位于 Bank34 网络块（与 `HDMI1_*`、`GPIO1_*` 同块），不占用 JP2 的音频脚。
+- 模块补充核对（2026-10-17 复核 AN831.pdf 原理图 + 黑金模块实验文档第 5 页）：`U11=WM8731SEFL`、`Y3=12.288 MHz 晶振`（不需要 FPGA 供 MCLK）、`U8=LT1117-3.3`、`J10/J11/J12=3.5 mm 插座`、`J3=CONN PCB 20x2-S`。**J3 电源/地针更正**：1 = **GND**、2 = **VCC5V**、37/38 = **GND**、39/40 = **D3V3**（此前把 1/2 都记为 VCC5V 是错误的；该错误可能误导模块供电接线）。信号针 3–9 与上表一致（用户已确认实物方向）。**BCLK/LRCLK 需先经 I2C 配置 R7 主模式与 R9 使能后才输出**，模块未引出 MCLK/CLKOUT。
+- JP2 编号规则（同页核对）：奇数为 P、偶数为 N（pin1=GPIO2_0P，pin2=GPIO2_0N，依此类推，遇电源位列跳号）；11=`VCC_5V`、12=GND、29=`VCC_3V3`、30=GND。
+- 对接注意：JP2 与模块 J3 都是 2x20，但**针号不一一对应，不能用整排排线直连**（例：J3 3→JP2 15、J3 6→JP2 13），必须按上表逐根跳线。**GND 用 JP2 第 12 或 30 针**（2026-10-17 更正；此前误判 JP2 没有 GND 针）。模块供电：J3 1/2 接 JP2 11（5 V，经模块 LT1117-3.3），J3 39/40 接 JP2 29（3.3 V）。
+- 正确供电接线（2026-10-17）：模块 J3-2（5 V）→ JP2-11（`VCC_5V`）**或** J3-39/40（3.3 V）→ JP2-29（`VCC_3V3`）；模块 GND（J3-1/37/38）→ JP2-12 或 30（GND）。只接 3.3 V 时模块板载 LT1117 空载，不影响 codec。
+
 ## 沿用而不复制的权威配置
 
 HDMI 引脚、电气连接和当前已验收视频时序以 [HDMI MAP 的硬件与视频配置](../../../hdmi/docs/context/MAP.md#已核对的硬件与视频配置) 为唯一权威表。新项目选择显示方案时按需读取；不复制旧 bitstream 当成新实现。
@@ -100,3 +129,5 @@ Linux 资料只做文件名定位：`02教程文档/LINUX篇/` 含 Ubuntu 虚拟
 2026-10-14 已确认关联账号与本机现有 Git 登录均为 `HHHHH-UX-bot`，创建仓库 [simultaneous-interpreter](https://github.com/HHHHH-UX-bot/simultaneous-interpreter)时为私有。2026-10-15 GitHub API 核验时仓库为公开，本轮未修改可见性；变化时间与原因未核实。本项目独立 Git 根目录、分支 `main`，远程目标为该仓库；当前提交/远端核验见 [Git 结果](../../output/github/publish.json)，流程见 [RUNBOOK](RUNBOOK.md#git-维护)。
 
 [忽略规则](../../.gitignore)将 tmp/output、运行模型/构建产物、密钥/许可证及安装字体留在本地。文档中的这些路径及同级旧 HDMI 工程是本机证据/资料入口，Git 仓库不携带所有运行缓存。[字节规则](../../.gitattributes)保留现有行尾，避免改变绑定源码字节的验证哈希。TinyUSB 许可随裁剪源码保留；本项目未另行声明全部材料可开源再分发。
+
+2026-10-16 用户说明已将仓库 fork 到 `max133777/simultaneous-interpreter`，并要求本次改动以 PR 形式提交。该 fork 的远端地址、可见性、默认分支及与上游的关系尚未核验（待核实）。本轮核对发现：交给本次修改的本地副本是一个解压目录、不含 Git 元数据，不能直接在其中提交或推送。PR 的基线仓库、分支与合并方式以用户当次指令为准，流程见 [RUNBOOK](RUNBOOK.md#git-维护)。
