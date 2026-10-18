@@ -1,16 +1,21 @@
 ENTRY(_start)
+/* Boot code stays in OCM and runs uncached; the application, its rodata/data
+   and the stack live in cached DDR. Mailboxes keep their host-pinned OCM
+   addresses and are mapped Normal non-cacheable so JTAG always reads fresh
+   values. The L1 section table is built at 0x01D00000 by start.S. */
 MEMORY {
     OCM (rwx) : ORIGIN = 0x00010000, LENGTH = 0x10000
+    APP_DDR (rwx) : ORIGIN = 0x01C00000, LENGTH = 0x000E0000
+    STACK_DDR (rw) : ORIGIN = 0x01CE0000, LENGTH = 0x00020000
     FONT_DDR (r) : ORIGIN = 0x01800000, LENGTH = 0x200000
     SNAPSHOT_DDR (rw) : ORIGIN = 0x01B00000, LENGTH = 0x10000
     CLOUD_DDR (rw) : ORIGIN = 0x01A00000, LENGTH = 0x100000
 }
 SECTIONS {
     .vectors : { KEEP(*(.vectors)) } > OCM
-    .text : { *(.text*) *(.rodata*) } > OCM
-    .data : { *(.data*) } > OCM
-    /* The cloud client adds several KiB of static buffers; keep the OCM for
-       code, the report/stack reserve and the mailboxes only. */
+    .boot : { KEEP(*(.boot)) } > OCM
+    .text : { *(.text*) *(.rodata*) } > APP_DDR
+    .data : { *(.data*) } > APP_DDR
     .bss 0x01A80000 (NOLOAD) : {
         . = ALIGN(4); __bss_start = .; *(.bss*) *(COMMON)
         . = ALIGN(4); __bss_end = .;
@@ -29,6 +34,10 @@ SECTIONS {
     ASSERT(SIZEOF(.network_config) == 0x80, "Network private mailbox ABI changed")
     .cloud_config 0x0001E200 (NOLOAD) : { KEEP(*(.cloud_config)) } > OCM
     ASSERT(SIZEOF(.cloud_config) <= 0x180, "Cloud config exceeds reserve")
+    .stream_pilot 0x0001E380 (NOLOAD) : { KEEP(*(.stream_pilot)) } > OCM
+    ASSERT(SIZEOF(.stream_pilot) <= 0x40, "Stream pilot ABI changed")
+    .cloud_mailbox 0x0001E3C0 (NOLOAD) : { KEEP(*(.cloud_mailbox)) } > OCM
+    ASSERT(SIZEOF(.cloud_mailbox) <= 0x40, "Cloud public ABI changed")
     .ui_assets : { __ui_assets_start = .; KEEP(*(.ui_assets)) __ui_assets_end = .; } > FONT_DDR
     .cloud_runtime (NOLOAD) : { KEEP(*(.cloud_runtime)) } > CLOUD_DDR
     .cloud_final 0x01A60000 (NOLOAD) : { KEEP(*(.cloud_final)) } > CLOUD_DDR
@@ -37,6 +46,6 @@ SECTIONS {
     .ui_runtime (NOLOAD) : { __ui_runtime_start = .; KEEP(*(.ui_runtime)) __ui_runtime_end = .; } > SNAPSHOT_DDR
     ASSERT(SIZEOF(.ui_assets) <= 0x200000, "Font subset exceeds asset reserve")
     ASSERT(SIZEOF(.ui_runtime) <= 0x10000, "Snapshots exceed dedicated DDR reserve")
-    __stack_top = 0x0001FFF0;
+    __stack_top = 0x01CFFFF0;
     /DISCARD/ : { *(.comment*) *(.note*) *(.ARM.exidx*) *(.ARM.extab*) }
 }

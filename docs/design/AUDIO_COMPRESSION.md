@@ -35,10 +35,21 @@
 - `input_audio_buffer.append` 的 `audio` 为 Base64 的 Opus 包；具体是“每包一次 append”还是可拼接，需先在电脑端用同一模型做短对照确认，再改板端。
 - 当前 3.8 模型的 16 kHz PCM 路径保留为回退（`path` 由运行期 `.cloud_config` 决定，不需要重新编译 ELF 即可切换 model 名）。
 
-## 实施步骤
+## 2026-10-18 实施结果（MMU/Cache + Opus + Ogg + qwen3.5）
 
-1. 启用 MMU/Cache 并迁移代码/栈到 DDR；保持现有中译中功能与显示/音频/网络回归通过（本地备份见桌面 `simultaneous-interpreter-zhzh-20261018`）。
-2. 把 `third_party/opus` 接入 `scripts/build_cloud_app.py`：新增 `opus_encoder` 源文件集、静态内存池（覆盖 `OPUS_ALLOC/FREE`）、编码封装（20 ms 帧、16 kbit/s、VOIP）。
-3. 新增 `opus` 上行路径：PL 仍输出 16 kHz PCM FIFO；PS 组 320 样本帧 → `opus_encode` → Base64 → append；保留 PCM 回退开关。
-4. 切换 `cloud_config.path` 到 qwen3.5 模型，按上文 `session.update`；板上验证识别连续性、T1、长时静默后首句、多句连续。
-5. 达标后再拆英译中/中译英/英译英工程。
+已完成并验证：
+
+- **MMU/Cache 启动路径**（`start.S` 默认路径保持不变，cloud_app 定义 `Z7_MMU_CACHE` 启用）：1 MB section 表在 `0x01D00000`，section 0（OCM/邮箱）Normal 非缓存、DDR Normal WB-WA、外设 Device；开启 MMU/I-Cache/D-Cache/分支预测；L2 保持关闭（PL HP 不与其相干，`DCCMVAC` 才能到 DRAM）。应用代码/rodata/data 迁到 `0x01C00000`，栈 128 KB 在 `0x01CE0000`，`.bss`/`cloud_runtime`/`cloud_final` 仍在 CLOUD_DDR；`cloud_final`、framebuffer、snapshot、guard 在发布/换帧前用 `cache_clean_range()` 清到 PoC。启动踩过的坑：首次实现忘了把 section 0 描述符写进 r6（表项 0 为 0，MMU 一开就 prefetch abort）、缺 VBAR 与 TLBIALL；均已修复。
+- **回归**：显示 `format_errors=0`、整帧 614400、flips 正常；音频回环 L1=62 µs、over/under=0；ESP TLS/WSS phase 4；DDR 抓帧与实屏一致；`ui_render` 最大渲染从约 246 ms 降到约 15–18 ms（缓存收益）。
+- **libopus 接入**：`third_party/opus`（v1.4 固定点）128 个 C 文件以 `-Os` 编进 APP_DDR（`.text` 约 270 KB），静态池覆盖 `opus_alloc/free/alloc_scratch`，`opus_codec.c` 封装 16 kHz 单声道 20 ms、16 kbit/s CBR（每包 40 B）。
+- **关键协议发现**：qwen3.5 的 `input_audio_format=opus` 接受的是 **Ogg Opus 字节流**，不是裸 Opus 包。已实现 `ogg_opus.c`（CRC32/OpusHead/OpusTags/音频页；10 包=200 ms 一页），并用主机工具验证与能工作的 Python 参考实现**逐字节一致**（27,737 B、sha 相同）。
+- **板端实测**：会话 `session.created/session.updated` 通过（qwen3.5 + opus/16000），Ogg 头页 + 5 页/秒流式发送，上行约 **3.4 kB/s**（对比 PCM 时 13–14 kB/s 的链路上限，余量充足），8 秒内 40 页连续发送、无服务端错误、音频 FIFO 无溢出、云 phase=1/error=0。
+- **qwen3.5 事件差异**：译文增量用 `response.text.text`（累计全文，含预测文本），完成后 `response.text.done` 给全文；原文识别增量为 `conversation.item.input_audio_transcription.text`，完成为 `.completed`。板端已支持 `response.text.text`（累计替换式流式字幕）并保留 3.8 的 `response.text.delta` 兼容路径；用真实 qwen3.5 事件 JSON 做了本机解析器验证（说话开始/物品链接/ASR/译文/response.done 全部按预期解析）。
+- **待用户验收**：板端麦克风真实语音（中译中）多句连续、长时静默后首句、30 分钟稳定性；PC 侧已用 `test_en.wav` 验证同一 Ogg 流与同一 session.update 能被服务端识别并返回中文译文。
+## 实施步骤（2026-10-18 状态）
+
+1. ✅ 启用 MMU/Cache 并迁移代码/栈到 DDR；显示/音频/网络回归通过（本地备份见桌面 `simultaneous-interpreter-zhzh-20261018`）。
+2. ✅ 把 `third_party/opus` 接入 `scripts/build_cloud_app.py`：独立编译 128 个 C 文件、静态内存池、`opus_codec` 封装（20 ms 帧、16 kbit/s CBR、VOIP）。
+3. ✅ 新增 Ogg Opus 上行路径：16 kHz PCM FIFO → 320 样本帧 → `opus_encode` → Ogg 页（10 包/页）→ Base64 append；PCM 路径仍在源码中作为回退（`Z7_OPUS` 未定义时编译）。
+4. ✅ 切换 `cloud_config.path` 到 qwen3.5 模型并验证会话与流式发送；⬜ 板端真实语音识别连续性、T1、长时静默后首句、多句连续（需用户在场）。
+5. ⬜ 达标后再拆英译中/中译英/英译英工程。

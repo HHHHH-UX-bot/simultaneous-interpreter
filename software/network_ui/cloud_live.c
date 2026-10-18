@@ -5,6 +5,9 @@
 #include "stream_pilot.h"
 #include "cloud_client.h"
 #include "protocol.h"
+#ifdef Z7_MMU_CACHE
+#include "../ps_bringup/cache.h"
+#endif
 #include <string.h>
 #define CLOUD_PAIRS 4u
 struct cloud_pair {
@@ -73,6 +76,10 @@ static void cloud_commit(void) {
         ++cloud_caption.sequence;cloud_fence();
         for(uint32_t i=0;i<UI_MAX_TEXT;++i) {cloud_caption.source[i]=p->source[i];cloud_caption.translated[i]=p->translated[i];}
         cloud_fence();++cloud_caption.sequence;cloud_fence();
+#ifdef Z7_MMU_CACHE
+        /* cloud_caption lives in cached DDR but is read back over JTAG. */
+        cache_clean_range((const void *)&cloud_caption,(unsigned)sizeof(cloud_caption));
+#endif
         struct cloud_recent *recent=cloud.recent+cloud.recent_cursor++%CLOUD_PAIRS;
         cloud_id_copy(recent->response,p->response_id);cloud_id_copy(recent->source,p->source_id);cloud_id_copy(recent->target,p->target_id);
         ++cloud.live.committed;memset(p,0,sizeof(*p));
@@ -105,9 +112,15 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
             }
         }
         if(p) {
-            uint32_t n=0;while(n<UI_MAX_TEXT-1u && p->translated[n]) ++n;
-            for(uint32_t i=0;i<UI_MAX_TEXT-1u && n<UI_MAX_TEXT-1u && e->text[i];++i) p->translated[n++]=e->text[i];
-            p->translated[n]=0;
+            if(e->cumulative) {
+                /* qwen3.5 response.text.text is the full text seen so far. */
+                for(uint32_t i=0;i<UI_MAX_TEXT;++i) p->translated[i]=e->text[i];
+                p->translated[UI_MAX_TEXT-1u]=0;
+            } else {
+                uint32_t n=0;while(n<UI_MAX_TEXT-1u && p->translated[n]) ++n;
+                for(uint32_t i=0;i<UI_MAX_TEXT-1u && n<UI_MAX_TEXT-1u && e->text[i];++i) p->translated[n++]=e->text[i];
+                p->translated[n]=0;
+            }
             if(cloud.model->epoch==cloud.live.epoch && cloud.model->session==UI_RUNNING) {
                 for(uint32_t i=0;i<UI_MAX_TEXT;++i) cloud.model->translated[i]=p->translated[i];
                 cloud.model->stage=UI_TRANSLATING;

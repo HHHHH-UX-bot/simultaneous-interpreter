@@ -138,6 +138,19 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
         return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,"transcript"),event->text);
     }
+    if(cloud_json_equal(s,tokens+type,"response.text.text")) {
+        /* qwen3.5 streams the (speculative) full translation text in this
+           event; response.text.done carries the final text. */
+        event->kind=CLOUD_TRANSLATION_DELTA;
+        event->cumulative=1;
+        int idtok=cloud_json_member(s,tokens,count,0,"item_id");
+        if(idtok>=0) (void)cloud_json_identifier(s,tokens,idtok,event->item_id);
+        int rtok=cloud_json_member(s,tokens,count,0,"response_id");
+        if(rtok>=0) (void)cloud_json_identifier(s,tokens,rtok,event->response_id);
+        int ttext=cloud_json_member(s,tokens,count,0,"text");
+        if(ttext<0 || cloud_json_text(s,tokens,ttext,event->text)) event->text[0]=0;
+        return CLOUD_OK;
+    }
     if(cloud_json_equal(s,tokens+type,"response.text.delta")) {
         event->kind=CLOUD_TRANSLATION_DELTA;
         /* Streaming text: item_id links the delta to its translation item and

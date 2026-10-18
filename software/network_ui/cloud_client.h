@@ -22,6 +22,9 @@ struct cloud_client_state {
        speech_started audio_start_ms can be mapped back to when it was captured. */
     uint32_t audio_ms, hist_pos, utterance_wall, utterance_wall_valid;
     struct cloud_audio_stamp hist[96];
+    uint32_t opus_ready;
+    uint32_t opus_frames, opus_bytes;
+    uint32_t ogg_header_step, ogg_seq, ogg_granule;
     /* Diagnostics visible to the host: the last append's JSON size and head. */
     uint32_t tx_len, tx_frames;
     char tx_head[40];

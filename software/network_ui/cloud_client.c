@@ -10,6 +10,10 @@
 #include "cloud_wire.h"
 #include "cloud_events.h"
 #include "cloud_live.h"
+#ifdef Z7_OPUS
+#include "opus_codec.h"
+#include "ogg_opus.h"
+#endif
 #include <string.h>
 
 #define AUDIO_SAMPLE   (*(volatile uint32_t *)0x43c20080u) // [16]=toggle, [15:0]=sample
@@ -27,6 +31,29 @@ __attribute__((section(".cloud_config"),used)) volatile struct cloud_client_conf
 int cloud_live_message(const char *json,uint32_t size,void *user);
 static struct cloud_client_state client;
 static void pcm_flush(void);
+
+/* Opus path: qwen3.5-livetranslate with Opus input fits the ESP TLS uplink.
+   PCM path: the previous qwen3.8 45 ms chunk stream (kept as the fallback). */
+#ifdef Z7_OPUS
+static const char session_update_json[] =
+    "{\"event_id\":\"session_config\",\"type\":\"session.update\","
+    "\"session\":{\"modalities\":[\"text\"],\"sample_rate\":16000,"
+    "\"input_audio_format\":\"opus\",\"output_audio_format\":\"pcm\","
+    "\"input_audio_transcription\":{\"model\":\"qwen3-asr-flash-realtime\",\"language\":\"zh\"},"
+    "\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.2,\"silence_duration_ms\":500},"
+    "\"translation\":{\"language\":\"zh\",\"same_language_skip_options\":{\"skip_text\":false,\"skip_audio\":true}}}}";
+#define OPUS_FRAME_BYTES 640u
+#define OPUS_QUEUE 24u
+#define OPUS_BATCH 10u
+#define OGG_SERIAL 0x5A374E32u
+static uint8_t opus_packet[OPUS_QUEUE][128];
+static uint8_t opus_packet_len[OPUS_QUEUE];
+static uint32_t opus_head,opus_tail;
+#else
+static const char session_update_json[] =
+    "{\"event_id\":\"session_config\",\"type\":\"session.update\","
+    "\"session\":{\"audio\":{\"input\":{\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.2,\"silence_duration_ms\":500}}},\"translation\":{\"language\":\"zh\"},\"output_modalities\":[\"text\"]}}";
+#endif
 
 static void append(char *out,uint32_t *used,uint32_t limit,const char *text) {
     while(*text && *used<limit) out[(*used)++]=*text++;
@@ -60,14 +87,11 @@ static int send_json(const char *json,uint32_t size) {
 }
 
 static void send_session_update(void) {
-    static const char update[] =
-        "{\"event_id\":\"session_config\",\"type\":\"session.update\","
-        "\"session\":{\"audio\":{\"input\":{\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.2,\"silence_duration_ms\":500}}},\"translation\":{\"language\":\"zh\"},\"output_modalities\":[\"text\"]}}";
     client.phase=CLOUD_WAITING_UPDATE;
     client.session_sent=1u;
     // The previous CIPSEND may still be finishing; keep retrying until the
     // network channel accepts the frame instead of silently losing the config.
-    client.update_pending=send_json(update,(uint32_t)sizeof(update)-1u)?0u:1u;
+    client.update_pending=send_json(session_update_json,(uint32_t)sizeof(session_update_json)-1u)?0u:1u;
 }
 
 /* session.created is the first server event; only then may the update be sent
@@ -141,6 +165,9 @@ static void send_handshake(void) {
 void cloud_client_init(void) {
     memset(&client,0,sizeof(client));
     client.phase=CLOUD_IDLE;
+#ifdef Z7_OPUS
+    client.opus_ready=(uint32_t)opus_codec_init();
+#endif
     audio_regs32(AUDIO_LATENCY_REG)=0;
     pcm_flush();
 }
@@ -189,12 +216,19 @@ static void pcm_flush(void) {
     while(count--) (void)audio_regs32(AUDIO_FIFO_DATA);
     audio_regs32(AUDIO_FIFO_OVERFLOWS)=0;
     client.pcm_bytes=0;
+#ifdef Z7_OPUS
+    opus_head=opus_tail=0;
+    client.ogg_header_step=0;
+    client.ogg_seq=2;          /* OpusHead and OpusTags occupy pages 0 and 1 */
+    client.ogg_granule=0;
+#endif
 }
 
 /* One WebSocket append carries 45 ms (720 samples / 1440 B PCM) instead of the
    20 ms the protocol's PC reference used. At the ESP's per-CIPSEND round-trip
    the smaller packet cannot sustain 16 kHz real time; the larger one can, and
-   the cloud accepts any append length. */
+   the cloud accepts any append length. This is the PCM fallback path. */
+#ifndef Z7_OPUS
 #define PCM_CHUNK 1440u
 
 static void send_pcm(uint32_t now) {
@@ -232,14 +266,72 @@ static void send_pcm(uint32_t now) {
         ++client.hist_pos;
     }
 }
+#else
+/* Opus path: encode each 20 ms frame, package OPUS_BATCH packets (200 ms) into
+   one Ogg page and send that page as one input_audio_buffer.append. The
+   qwen3.5 websocket endpoint expects an Ogg Opus stream, so the OpusHead and
+   OpusTags pages must be sent before the first audio page. */
+static int send_append(const uint8_t *bytes,uint32_t length) {
+    static char json[2100];
+    static const char table[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    uint32_t used=0;
+    append(json,&used,sizeof(json),"{\"event_id\":\"a");
+    append_decimal(json,&used,sizeof(json),++client.event_sequence);
+    append(json,&used,sizeof(json),"\",\"type\":\"input_audio_buffer.append\",\"audio\":\"");
+    for(uint32_t i=0;i<length;i+=3u) {
+        uint32_t left=length-i;
+        uint32_t v=((uint32_t)bytes[i]<<16);
+        if(left>1u) v|=(uint32_t)bytes[i+1]<<8;
+        if(left>2u) v|=(uint32_t)bytes[i+2];
+        if(used+4u>=sizeof(json)) return 0;
+        json[used++]=table[(v>>18)&63u];json[used++]=table[(v>>12)&63u];
+        json[used++]=left>1u?table[(v>>6)&63u]:'=';
+        json[used++]=left>2u?table[v&63u]:'=';
+    }
+    append(json,&used,sizeof(json),"\"}");
+    return send_json(json,used);
+}
+
+static int send_ogg_header(void) {
+    static uint8_t page[128];
+    uint32_t length=client.ogg_header_step==0u?ogg_opus_head(page,sizeof(page),OGG_SERIAL):
+                                                ogg_opus_tags(page,sizeof(page),OGG_SERIAL);
+    if(!length || !send_append(page,length)) return 0;
+    ++client.ogg_header_step;
+    return 1;
+}
+
+static int send_ogg_page(uint32_t now) {
+    static uint8_t page[2048];
+    const uint8_t *packets[OPUS_BATCH];
+    uint8_t lengths[OPUS_BATCH];
+    uint32_t count=opus_tail-opus_head;
+    if(count>OPUS_BATCH) count=OPUS_BATCH;
+    for(uint32_t i=0;i<count;++i) {
+        uint32_t slot=(opus_head+i)%OPUS_QUEUE;
+        packets[i]=opus_packet[slot];
+        lengths[i]=opus_packet_len[slot];
+    }
+    uint32_t granule=client.ogg_granule+320u*count;   /* 16 kHz samples */
+    uint32_t length=ogg_opus_page(page,sizeof(page),0,granule,OGG_SERIAL,client.ogg_seq,
+                                  packets,lengths,count);
+    if(!length || !send_append(page,length)) return 0;
+    opus_head+=count;
+    client.ogg_granule=granule;
+    ++client.ogg_seq;
+    client.audio_ms+=20u*count;
+    client.hist[client.hist_pos%AUDIO_HISTORY].audio=client.audio_ms;
+    client.hist[client.hist_pos%AUDIO_HISTORY].wall=now;
+    ++client.hist_pos;
+    client.opus_frames+=count;client.opus_bytes+=length;
+    return 1;
+}
+#endif
 
 void cloud_client_tick(uint32_t now) {
     client.now_ms=now;
     if(client.phase==CLOUD_WAITING_UPDATE && client.update_pending) {
-        static const char update[] =
-            "{\"event_id\":\"session_config\",\"type\":\"session.update\","
-            "\"session\":{\"audio\":{\"input\":{\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.2,\"silence_duration_ms\":500}}},\"translation\":{\"language\":\"zh\"},\"output_modalities\":[\"text\"]}}";
-        client.update_pending=send_json(update,(uint32_t)sizeof(update)-1u)?0u:1u;
+        client.update_pending=send_json(session_update_json,(uint32_t)sizeof(session_update_json)-1u)?0u:1u;
     }
     if(client.phase!=CLOUD_STREAMING) return;
     // The PL decimates the 48 kHz codec stream to 16 kHz and buffers it; drain
@@ -247,12 +339,41 @@ void cloud_client_tick(uint32_t now) {
     // (16 ms) per call is more than the ~16 that arrive per millisecond.
     uint32_t count=audio_regs32(AUDIO_FIFO_COUNT);
     if(count>256u) count=256u;
+#ifdef Z7_OPUS
+    while(count--) {
+        uint32_t raw=audio_regs32(AUDIO_FIFO_DATA);
+        client.pcm[client.pcm_bytes++]=(uint8_t)(raw&0xffu);
+        client.pcm[client.pcm_bytes++]=(uint8_t)((raw>>8)&0xffu);
+        if(client.pcm_bytes>=OPUS_FRAME_BYTES) {
+            int16_t samples[320];
+            for(uint32_t i=0;i<320u;++i)
+                samples[i]=(int16_t)((uint16_t)client.pcm[2u*i]|((uint16_t)client.pcm[2u*i+1u]<<8));
+            uint8_t packet[128];
+            int length=opus_codec_encode(samples,packet,sizeof(packet));
+            client.pcm_bytes=0;
+            if(length>0) {
+                if(length>(int)sizeof(opus_packet[0])) length=(int)sizeof(opus_packet[0]);
+                if(opus_tail-opus_head>=OPUS_QUEUE) ++opus_head;
+                uint32_t slot=opus_tail%OPUS_QUEUE;
+                for(int i=0;i<length;++i) opus_packet[slot][i]=packet[i];
+                opus_packet_len[slot]=(uint8_t)length;
+                ++opus_tail;
+            }
+        }
+    }
+    if(client.ogg_header_step<2u) {
+        while(client.ogg_header_step<2u && send_ogg_header()) {}
+        return;
+    }
+    while(opus_tail-opus_head>=OPUS_BATCH) { if(!send_ogg_page(now)) break; }
+#else
     while(count--) {
         uint32_t raw=audio_regs32(AUDIO_FIFO_DATA);
         client.pcm[client.pcm_bytes++]=(uint8_t)(raw&0xffu);
         client.pcm[client.pcm_bytes++]=(uint8_t)((raw>>8)&0xffu);
         if(client.pcm_bytes>=PCM_CHUNK) send_pcm(now);
     }
+#endif
 }
 
 // Called from cloud_live.c when a parsed event yields translation text. Record

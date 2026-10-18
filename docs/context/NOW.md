@@ -139,4 +139,15 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 
 关键前置（详见 [AUDIO_COMPRESSION](../design/AUDIO_COMPRESSION.md)）：`start.S` 目前关闭 MMU/Cache、栈在 OCM 顶端，Opus 需要可缓存 DDR 执行与更大的栈。因此下一步先做 MMU/Cache 与代码/栈迁移（保持显示/音频/网络回归），再接入编码器并切 qwen3.5、把 `session.update` 改为 opus/16000/server_vad 500；PCM 路径保留为回退。
 
+## 2026-10-18 下午：MMU/Cache + Opus + Ogg 已上板
+
+已完成（详见 [AUDIO_COMPRESSION](../design/AUDIO_COMPRESSION.md#2026-10-18-实施结果mmucache--opus--ogg--qwen35)）：
+
+- MMU/Cache 启动路径与布局迁移完成：应用/rodata/data 在 `0x01C00000` 可缓存 DDR、栈 128 KB 在 `0x01CE0000`，OCM section 与邮箱保持非缓存；framebuffer/cloud_final/snapshot/guard 在发布前 `cache_clean_range()`。显示、音频回环、ESP/WSS 回归全部通过；渲染耗时可从约 246 ms 降到 15–18 ms。
+- libopus v1.4 固定点编进 APP_DDR（约 270 KB），16 kHz/20 ms/16 kbit·s⁻¹ CBR；**qwen3.5 的 `input_audio_format=opus` 需要 Ogg Opus 容器**，已实现 `ogg_opus.c` 并按 10 包（200 ms）/页发送，主机工具与可用参考实现逐字节一致。
+- 板端实测：qwen3.5 会话建立成功，Ogg 头页后 5 页/秒、上行 **约 3.4 kB/s**，8 秒连续无服务端错误、`cloud_report phase=1/error=0`、FIFO 无溢出。
+- qwen3.5 事件适配：`response.text.text` 累计式流式文本已接入（替代 3.8 的 `response.text.delta`），`response.text.done` 仍作定稿；用真实服务端事件 JSON 做了本机解析验证。
+
+待办：板端真实语音（中译中）多句连续、长时静默后首句、T1、30 分钟稳定性——需要用户在场说话；PC 侧已用 `test_en.wav` 验证同一 Ogg 流/会话配置可被识别并返回中文译文。
+
 
