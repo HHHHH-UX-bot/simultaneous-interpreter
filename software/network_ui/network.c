@@ -457,7 +457,7 @@ static void command_tick(void) {
         if(contains(reply,"ERROR") || contains(reply,"FAIL")) {
             ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);command_phase=ack_pending=0;wipe(reply,sizeof(reply));reply_size=0;return;
         }
-        if(contains(reply,"\r\nSEND OK\r\n")) {command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;}
+        if(contains(reply,"\r\nSEND OK\r\n")) {send_failures=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;}
         if(resync && contains(reply,"\r\nOK\r\n")) {resync=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;}
         return;
     }
@@ -472,7 +472,15 @@ static void command_tick(void) {
         return;
     }
     if(network_info.phase==4 && ack_pending) {
-        if(contains(reply,"ERROR") || contains(reply,"FAIL")) fault(28);
+        if(contains(reply,"ERROR") || contains(reply,"FAIL")) {
+            /* A rejected CIPSEND is a transient Wi-Fi/TLS hiccup too: drop this
+               frame and probe the AT mode instead of killing the session. */
+            ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);
+            command_phase=ack_pending=0;wipe(reply,sizeof(reply));reply_size=0;
+            if(send_failures>8u) fault(28);
+            else if(!resync) {resync=1;begin_command("AT\r\n",2000);}
+            return;
+        }
         else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=0;reply[0]=0;command_deadline=current_time+30000;}
         return; // An earlier OK is not the CIPSEND prompt.
     }
@@ -487,7 +495,8 @@ static void command_tick(void) {
     }
 #ifdef Z7_NETWORK_CAPABILITIES
     if(network_capabilities.phase==1) {capability_result(failure);return;}
-    if(tls_mode && (tls_closing || setup_step==SETUP_COUNT)) {tls_result(failure);return;}
+    uint32_t tls_count=sizeof(tls_commands)/sizeof(tls_commands[0]);
+    if(tls_mode && (tls_closing || (setup_step==SETUP_COUNT && tls_step<tls_count))) {tls_result(failure);return;}
 #endif
     if(failure && setup_step!=SETUP_STOP_SERVER) {fault(29);return;} // deleting an absent old server may ERROR.
     if(setup_step==SETUP_VERSION) {
@@ -547,8 +556,8 @@ int network_owns_ui(void) {return enabled!=0;}
 static void retry_faulted(void) {
     if(network_info.phase!=6 || !tls_mode || !saved_ssid_bytes || saved_retry_count>=6) return;
     uint32_t error=network_info.error;
-    if(error!=29 && error!=32 && error!=34 && error!=43 && error!=44 &&
-       error!=45 && error!=46 && error!=47) return;
+    if(error!=27 && error!=28 && error!=29 && error!=32 && error!=34 && error!=43 &&
+       error!=44 && error!=45 && error!=46 && error!=47) return;
     if((int32_t)(current_time-saved_retry_at)<0) return;
     ++saved_retry_count;
     saved_retry_at=current_time+5000u;
