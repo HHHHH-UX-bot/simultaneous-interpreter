@@ -129,4 +129,14 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 3. `AT+CIPSEND` 极端超时后 ESP 仍可能停在等数据状态，只能整板断电恢复；新代码已把常见发送超时改为可恢复。
 4. API Key 仍只在运行期经 JTAG 写入 `.cloud_config`（0x1E200），未入库；凭据脚本在 `tmp/cloud/`（Git 忽略）。
 
+## 下一阶段：Opus + qwen3.5（2026-10-18 决定）
+
+用户选择“方案 1”：改用 `qwen3.5-livetranslate-flash-realtime` 的 Opus 低码率上行，解决 13–14 kB/s 上行与 44 kB/s 需求的缺口。开工前已把完整工程备份到桌面 `simultaneous-interpreter-zhzh-20261018`（含 `.git`，HEAD `b350714`，171 MB，与工作目录逐字节一致），并完成可行性验证：
+
+- `third_party/opus` 已引入 libopus v1.4（BSD-3-Clause，`source.json` 记录 commit 与逐文件 sha256），固定点配置 `FIXED_POINT + DISABLE_FLOAT_API + VAR_ARRAYS`。
+- 主机（MinGW x64）编译 128 个 C 文件并跑通编码→解码回环（16 kHz 单声道、20 ms 帧、16 kbit/s，VBR 平均约 6 B/帧，100/100 帧解码有效）。
+- Cortex-A9 `-Os` 交叉编译通过；编码器+解码器 `.text` 合计约 215 KB。
+
+关键前置（详见 [AUDIO_COMPRESSION](../design/AUDIO_COMPRESSION.md)）：`start.S` 目前关闭 MMU/Cache、栈在 OCM 顶端，Opus 需要可缓存 DDR 执行与更大的栈。因此下一步先做 MMU/Cache 与代码/栈迁移（保持显示/音频/网络回归），再接入编码器并切 qwen3.5、把 `session.update` 改为 opus/16000/server_vad 500；PCM 路径保留为回退。
+
 
