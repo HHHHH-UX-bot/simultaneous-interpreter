@@ -13,7 +13,7 @@ struct cloud_client_config {
 extern volatile struct cloud_client_config cloud_client_config;
 
 struct cloud_client_state {
-    uint32_t phase, session_sent, update_pending, response_used, sample_toggle, decimate, pcm_bytes;
+    uint32_t phase, session_sent, update_pending, update_ms, update_retries, response_used, sample_toggle, decimate, pcm_bytes;
     uint32_t utterance_started, utterance_reported, utterance_ms, now_ms, latency_ms, mask_sequence, event_sequence;
     /* T1 is measured from the server's speech-start event to the first
        recognised characters: the service's own audio timeline drops long
@@ -38,6 +38,7 @@ void cloud_client_start(uint32_t now);
 void cloud_client_session_created(void);
 void cloud_client_session_updated(void);
 void cloud_client_speech_started(uint32_t audio_start_ms);
+void cloud_client_capture_freeze(void);
 void cloud_client_stop(void);
 void cloud_client_receive(uint8_t byte);
 void cloud_client_tick(uint32_t now);

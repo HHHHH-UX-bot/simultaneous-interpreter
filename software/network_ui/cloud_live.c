@@ -168,6 +168,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
     struct cloud_pair *p=0;
     if(e->kind==CLOUD_ASR_FINAL) {
         ++cloud.live.asr_final;p=cloud_pair_find(e->item_id,0,1);
+        cloud_client_capture_freeze();
         if(p) {
             memcpy(p->source,e->text,sizeof(p->source));p->source_ready=1;
 #ifdef Z7_ASR_SUBTITLE

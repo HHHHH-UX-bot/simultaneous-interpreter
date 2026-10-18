@@ -35,8 +35,8 @@ int opus_codec_init(void) {
     int error = 0;
     encoder = opus_encoder_create(16000, 1, OPUS_APPLICATION_VOIP, &error);
     if (!encoder || error) return 0;
-    opus_encoder_ctl(encoder, OPUS_SET_BITRATE(16000));
-    opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(0));
+    opus_encoder_ctl(encoder, OPUS_SET_BITRATE(24000));
+    opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(3));
     opus_encoder_ctl(encoder, OPUS_SET_SIGNAL(OPUS_SIGNAL_VOICE));
     /* CBR keeps every 20 ms packet at 40 bytes, so a fixed batch size always
        fits one ESP CIPSEND frame. */

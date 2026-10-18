@@ -484,6 +484,14 @@ static void command_tick(void) {
         else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=0;reply[0]=0;command_deadline=current_time+30000;}
         return; // An earlier OK is not the CIPSEND prompt.
     }
+    if(network_info.phase==4 && resync) {
+        /* The AT resync probe reply belongs to the probe, not to the setup/TLS
+           state machine: swallowing it prevents a stray phase=3 transition. */
+        if(contains(reply,"\r\nOK\r\n") || contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n")) {
+            resync=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));reply_size=0;
+        }
+        return;
+    }
     int failure=contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n");
     if(!contains(reply,"\r\nOK\r\n") && !failure) return;
     if(raw_state>=6) {

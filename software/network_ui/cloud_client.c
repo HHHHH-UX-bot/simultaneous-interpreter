@@ -12,9 +12,45 @@
 #include "cloud_live.h"
 #ifdef Z7_OPUS
 #include "opus_codec.h"
+#include "../ps_bringup/cache.h"
 #include "ogg_opus.h"
 #endif
 #include <string.h>
+
+/* Microphone debug dump: the 16 kHz/16-bit PCM that is actually encoded and
+   uploaded is mirrored into a fixed DDR ring (header at 0x01D3F000, 768 KiB at
+   0x01D40000). On the ASR final the ring freezes (~24 s window around the last
+   utterance) so the host can read it over JTAG and save a WAV for listening. */
+#define AUDIO_DUMP_MAGIC 0x31445541u
+#define AUDIO_DUMP_HEADER ((volatile uint32_t *)0x01D3F000u)
+#define AUDIO_DUMP_DATA ((uint8_t *)0x01D40000u)
+#define AUDIO_DUMP_CAPACITY 0x000C0000u
+static void dump_pcm(const int16_t *samples,uint32_t count) {
+    volatile uint32_t *header=AUDIO_DUMP_HEADER;
+    if(header[0]!=AUDIO_DUMP_MAGIC) {
+        header[0]=AUDIO_DUMP_MAGIC;header[1]=0;header[2]=AUDIO_DUMP_CAPACITY;header[3]=16000u;
+        header[4]=header[5]=0;header[6]=0;
+    }
+    if(header[6]) return;
+    uint32_t bytes=count*2u,position=header[1];
+    uint32_t at=position%AUDIO_DUMP_CAPACITY;
+    uint32_t first=AUDIO_DUMP_CAPACITY-at;if(first>bytes) first=bytes;
+    memcpy(AUDIO_DUMP_DATA+at,samples,first);
+    cache_clean_range(AUDIO_DUMP_DATA+at,first);
+    if(bytes>first) {
+        memcpy(AUDIO_DUMP_DATA,(const uint8_t *)samples+first,bytes-first);
+        cache_clean_range(AUDIO_DUMP_DATA,bytes-first);
+    }
+    header[1]=position+bytes;
+}
+static uint32_t dump_deadline;
+void cloud_client_capture_freeze(void) {
+    if(AUDIO_DUMP_HEADER[0]==AUDIO_DUMP_MAGIC && !AUDIO_DUMP_HEADER[6]) {
+        AUDIO_DUMP_HEADER[5]=AUDIO_DUMP_HEADER[1];
+        AUDIO_DUMP_HEADER[6]=1;dump_deadline=0;
+        cache_clean_range((const void *)AUDIO_DUMP_HEADER,28);
+    }
+}
 
 #define AUDIO_SAMPLE   (*(volatile uint32_t *)0x43c20080u) // [16]=toggle, [15:0]=sample
 #define AUDIO_COUNT    (*(volatile uint32_t *)0x43c20084u)
@@ -39,7 +75,7 @@ static const char session_update_json[] =
     "\"session\":{\"modalities\":[\"text\"],\"sample_rate\":16000,"
     "\"input_audio_format\":\"opus\",\"output_audio_format\":\"pcm\","
     "\"input_audio_transcription\":{\"model\":\"qwen3-asr-flash-realtime\",\"language\":\"zh\"},"
-    "\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.2,\"silence_duration_ms\":500},"
+    "\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.12,\"silence_duration_ms\":500},"
     "\"translation\":{\"language\":\"zh\",\"same_language_skip_options\":{\"skip_text\":false,\"skip_audio\":true}}}}";
 #define OPUS_FRAME_BYTES 640u
 #define OPUS_QUEUE 24u
@@ -51,7 +87,7 @@ static uint32_t opus_head,opus_tail;
 #else
 static const char session_update_json[] =
     "{\"event_id\":\"session_config\",\"type\":\"session.update\","
-    "\"session\":{\"audio\":{\"input\":{\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.2,\"silence_duration_ms\":500}}},\"translation\":{\"language\":\"zh\"},\"output_modalities\":[\"text\"]}}";
+    "\"session\":{\"audio\":{\"input\":{\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.12,\"silence_duration_ms\":500}}},\"translation\":{\"language\":\"zh\"},\"output_modalities\":[\"text\"]}}";
 #endif
 
 static void append(char *out,uint32_t *used,uint32_t limit,const char *text) {
@@ -91,6 +127,7 @@ static void send_session_update(void) {
     // The previous CIPSEND may still be finishing; keep retrying until the
     // network channel accepts the frame instead of silently losing the config.
     client.update_pending=send_json(session_update_json,(uint32_t)sizeof(session_update_json)-1u)?0u:1u;
+    client.update_ms=client.now_ms;client.update_retries=0;
 }
 
 /* session.created is the first server event; only then may the update be sent
@@ -102,6 +139,7 @@ void cloud_client_session_created(void) {
 
 void cloud_client_session_updated(void) {
     if(client.phase!=CLOUD_WAITING_UPDATE) return;
+    client.update_retries=0;
     pcm_flush();
     client.phase=CLOUD_STREAMING;
     client.utterance_started=0;
@@ -112,8 +150,15 @@ void cloud_client_session_updated(void) {
    its own accepted audio and drops long silences, so a capture-time estimate
    drifts. T1 is therefore measured from the moment the speech-start event
    arrives (server VAD trigger) to the first recognised characters. */
+volatile uint32_t diag_speech_started,diag_peak;
 void cloud_client_speech_started(uint32_t audio_start_ms) {
     (void)audio_start_ms;
+    ++diag_speech_started;
+    if(AUDIO_DUMP_HEADER[0]==AUDIO_DUMP_MAGIC) {
+        uint32_t total=AUDIO_DUMP_HEADER[1];
+        AUDIO_DUMP_HEADER[4]=total>96000u?total-96000u:0u;   /* 3 s lead-in */
+        AUDIO_DUMP_HEADER[6]=0;dump_deadline=client.now_ms+9000u;
+    }
     client.utterance_started=1;
     client.utterance_reported=0;
     client.utterance_ms=client.now_ms;
@@ -303,6 +348,8 @@ static int send_ogg_page(void) {
 
 #ifdef Z7_OPUS
 static void queue_opus_frame(const int16_t *samples) {
+    dump_pcm(samples,320u);
+    for(uint32_t i=0;i<320u;++i) {int32_t v=samples[i];if(v<0) v=-v;if((uint32_t)v>diag_peak) diag_peak=(uint32_t)v;}
     uint8_t packet[128];
     int length=opus_codec_encode(samples,packet,sizeof(packet));
     if(length<=0) return;
@@ -324,8 +371,17 @@ extern const uint32_t selftest_speech_ms;
 
 void cloud_client_tick(uint32_t now) {
     client.now_ms=now;
-    if(client.phase==CLOUD_WAITING_UPDATE && client.update_pending) {
-        client.update_pending=send_json(session_update_json,(uint32_t)sizeof(session_update_json)-1u)?0u:1u;
+    if(dump_deadline && (int32_t)(now-dump_deadline)>=0) cloud_client_capture_freeze();
+    if(client.phase==CLOUD_WAITING_UPDATE) {
+        if(client.update_pending) {
+            client.update_pending=send_json(session_update_json,(uint32_t)sizeof(session_update_json)-1u)?0u:1u;
+            client.update_ms=now;
+        } else if((int32_t)(now-client.update_ms)>3000 && client.update_retries<5u) {
+            /* A dropped CIPSEND can silently lose the session.update; resend it. */
+            ++client.update_retries;
+            client.update_pending=send_json(session_update_json,(uint32_t)sizeof(session_update_json)-1u)?0u:1u;
+            client.update_ms=now;
+        }
     }
     if(client.phase!=CLOUD_STREAMING) return;
     // The PL decimates the 48 kHz codec stream to 16 kHz and buffers it; drain
