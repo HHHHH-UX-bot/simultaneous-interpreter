@@ -79,6 +79,18 @@ static enum cloud_parse_code cloud_json_text(const char *s,const jsmntok_t *t,in
     }
     out[n]=0;return n?CLOUD_OK:CLOUD_SCHEMA;
 }
+/* Appends a JSON string to an existing UTF-32 buffer (partial ASR text). */
+static enum cloud_parse_code cloud_json_text_append(const char *s,const jsmntok_t *t,int token,
+                                                    uint32_t *out,uint32_t *n) {
+    if(token<0 || t[token].type!=JSMN_STRING) return CLOUD_SCHEMA;
+    int at=t[token].start;
+    while(at<t[token].end) {
+        if(*n==UI_MAX_TEXT-1) return CLOUD_LIMIT;
+        if(!cloud_json_scalar(s,t[token].end,&at,out+*n)) return CLOUD_JSON;
+        ++*n;
+    }
+    return CLOUD_OK;
+}
 static enum cloud_parse_code cloud_json_ascii(const char *s,const jsmntok_t *t,int token,char *out) {
     if(token<0 || t[token].type!=JSMN_STRING) return CLOUD_SCHEMA;
     int at=t[token].start;uint32_t n=0;
@@ -132,6 +144,16 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         code=cloud_json_identifier(s,tokens,value,event->previous_id);if(code) return code;
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,item,"id"),event->item_id);if(code) return code;
         event->kind=CLOUD_ITEM_LINK;return CLOUD_OK;
+    }
+    if(cloud_json_equal(s,tokens+type,"conversation.item.input_audio_transcription.text")) {
+        event->kind=CLOUD_ASR_PARTIAL;
+        code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"item_id"),event->item_id);
+        if(code) return code;
+        uint32_t n=0;
+        (void)cloud_json_text_append(s,tokens,cloud_json_member(s,tokens,count,0,"text"),event->text,&n);
+        (void)cloud_json_text_append(s,tokens,cloud_json_member(s,tokens,count,0,"stash"),event->text,&n);
+        event->text[n]=0;
+        return CLOUD_OK;
     }
     if(cloud_json_equal(s,tokens+type,"conversation.item.input_audio_transcription.completed")) {
         event->kind=CLOUD_ASR_FINAL;

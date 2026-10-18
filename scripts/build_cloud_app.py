@@ -26,7 +26,7 @@ FLAGS = [
     "-O2", "-g", "-ffreestanding", "-fno-builtin", "-fno-stack-protector",
     "-fno-strict-aliasing", "-fno-short-enums", "-Wall", "-Wextra", "-Werror",
     "-std=c11", "-nostdlib", "-Wl,--build-id=none", "-Wl,--print-memory-usage",
-    "-DZ7_NETWORK_CAPABILITIES", "-DZ7_MMU_CACHE", "-DZ7_OPUS",
+    "-DZ7_NETWORK_CAPABILITIES", "-DZ7_MMU_CACHE", "-DZ7_OPUS", "-DZ7_ASR_SUBTITLE",
     "-I", str(ROOT / "software/subtitle_ui"),
     "-I", str(ROOT / "output/display"),
     "-I", str(ROOT / "third_party/wslay/lib/includes"),
@@ -107,12 +107,24 @@ SYMBOLS = [
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--gcc", type=Path, default=DEFAULT_GCC)
+    parser.add_argument("--selftest", action="store_true",
+                        help="build the microphone-less self-test ELF from the generated Chinese TTS PCM")
     args = parser.parse_args()
     gcc = args.gcc
     nm = gcc.with_name("arm-none-eabi-nm.exe")
     if not gcc.is_file() or not nm.is_file():
         raise SystemExit("ARM GCC not found: " + str(gcc))
     OUT.mkdir(parents=True, exist_ok=True)
+    flags = list(FLAGS)
+    sources = list(SOURCES)
+    elf_name = "cloud_app.elf"
+    if args.selftest:
+        generated = OUT / "selftest_pcm.c"
+        if not generated.is_file():
+            raise SystemExit("selftest PCM not generated: " + str(generated))
+        flags.append("-DZ7_SELFTEST_AUDIO")
+        sources.append("output/cloud_app/selftest_pcm.c")
+        elf_name = "cloud_app_selftest.elf"
     opus_objects = OUT / "opus_obj"
     opus_objects.mkdir(exist_ok=True)
     for stale in opus_objects.glob("*.o"):
@@ -131,8 +143,9 @@ def main():
             print("\n".join(opus_log))
             raise SystemExit("opus build failed: " + str(source))
     opus_list = sorted(str(p) for p in opus_objects.glob("*.o"))
-    cmd = [str(gcc), *FLAGS, *[str(ROOT / s) for s in SOURCES], *opus_list, "-lgcc",
-           "-o", str(OUT / "cloud_app.elf")]
+    elf_path = OUT / elf_name
+    cmd = [str(gcc), *flags, *[str(ROOT / s) for s in sources], *opus_list, "-lgcc",
+           "-o", str(elf_path)]
     proc = subprocess.run(cmd, cwd=str(ROOT), stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT)
     text = proc.stdout.decode("utf-8", "replace")
@@ -140,7 +153,7 @@ def main():
     print(text)
     if proc.returncode != 0:
         raise SystemExit("cloud_app build failed")
-    symbols = subprocess.run([str(nm), "-n", str(OUT / "cloud_app.elf")],
+    symbols = subprocess.run([str(nm), "-n", str(elf_path)],
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     table = symbols.stdout.decode("utf-8", "replace")
     (OUT / "symbols.log").write_text(table, encoding="utf-8")
@@ -152,9 +165,10 @@ def main():
         "Status": "passed",
         "BuiltAtUTC": datetime.now(timezone.utc).isoformat(),
         "Compiler": str(gcc),
-        "Flags": FLAGS,
-        "Sources": SOURCES,
-        "ELF": "output/cloud_app/cloud_app.elf",
+        "Flags": flags,
+        "Sources": sources,
+        "Selftest": bool(args.selftest),
+        "ELF": str(elf_path.relative_to(ROOT)).replace("\\", "/"),
     }
     (OUT / "build.json").write_text(
         json.dumps(record, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

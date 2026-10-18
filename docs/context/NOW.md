@@ -150,4 +150,12 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 
 待办：板端真实语音（中译中）多句连续、长时静默后首句、T1、30 分钟稳定性——需要用户在场说话；PC 侧已用 `test_en.wav` 验证同一 Ogg 流/会话配置可被识别并返回中文译文。
 
+## 2026-10-18 晚：中译中改显 ASR 原文，完成无麦克风自测
+
+- **中译中字幕口径**：源=目标语种时 qwen3.5 返回的是改写而非原文（“老师好”→“大家好”），不可用；新增 `Z7_ASR_SUBTITLE` 编译开关，字幕改为流式 ASR 原文（`text`+`stash` 累计），ASR `completed` 即提交，译文事件忽略。见 [AUDIO_COMPRESSION](../design/AUDIO_COMPRESSION.md#2026-10-18-晚中译中显示-asr-原文t1-口径修正无麦克风自测)。
+- **T1 口径修正**：`speech_started.audio_start_ms` 是服务端自己的音频位置，长静音后会与板端发送位置脱节（实测板端已发 44.2 s、服务端报 14.4 s），原音频时间轴映射会漂移并钳到 9999。改为 **T1 = speech_started 事件 → 首条 ASR 文本**（服务端 VAD 触发到首字），跨多句/长静音稳定。
+- **`input_audio_buffer.clear` 在 server_vad 下返回错误**（`Error clear input audio buffer: server_vad is enabled.`），已移除；长静音本身没问题（PC 40 s 静音、板端 30 s 静音自测后下一轮仍正常识别并提交）。
+- **无麦克风自测工具**：`scripts/generate_selftest_audio.py`（Windows 中文 TTS）+ `build_cloud_app.py --selftest` → `cloud_app_selftest.elf`，以“14.58 s 中文语音 + 30 s 静音”循环驱动整条链路；自测每周期 4 句全部 committed、云 phase=1/error=0。
+- **板端当前状态**：自测固件运行中做 30 分钟连续测试；之后恢复麦克风固件并重新配置 qwen3.5，等用户真人语音验收。ESP 偶发不响应 AT（本次通过 JTAG 发 `+++`/`AT+RST` 并重烧恢复），已知硬故障仍需断电。
+
 

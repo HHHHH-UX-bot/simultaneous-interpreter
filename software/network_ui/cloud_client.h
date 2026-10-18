@@ -12,16 +12,12 @@ struct cloud_client_config {
 };
 extern volatile struct cloud_client_config cloud_client_config;
 
-struct cloud_audio_stamp { uint32_t audio, wall; };
-
 struct cloud_client_state {
     uint32_t phase, session_sent, update_pending, response_used, sample_toggle, decimate, pcm_bytes;
     uint32_t utterance_started, utterance_reported, utterance_ms, now_ms, latency_ms, mask_sequence, event_sequence;
-    /* Latency is measured on the audio timeline: every uploaded append records
-       the end position (ms) of the stream and its local wall time, so a later
-       speech_started audio_start_ms can be mapped back to when it was captured. */
-    uint32_t audio_ms, hist_pos, utterance_wall, utterance_wall_valid;
-    struct cloud_audio_stamp hist[96];
+    /* T1 is measured from the server's speech-start event to the first
+       recognised characters: the service's own audio timeline drops long
+       silences, so mapping it back to capture wall time is not reliable. */
     uint32_t opus_ready;
     uint32_t opus_frames, opus_bytes;
     uint32_t ogg_header_step, ogg_seq, ogg_granule;

@@ -98,6 +98,26 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
     if(e->kind==CLOUD_SESSION_CREATED) {cloud_client_session_created();return 0;}
     if(e->kind==CLOUD_SESSION_UPDATED) {cloud_client_session_updated();return 0;}
     if(e->kind==CLOUD_SPEECH_STARTED) {cloud_client_speech_started(e->audio_start_ms);return 0;}
+#ifdef Z7_ASR_SUBTITLE
+    /* Same-language project (zh->zh): show the ASR transcript itself. The
+       partial event carries confirmed text + speculative stash, so the subtitle
+       grows while the user is still speaking. */
+    if(e->kind==CLOUD_ASR_PARTIAL) {
+        struct cloud_pair *p=cloud_pair_find(e->item_id,0,1);
+        if(p) {
+            for(uint32_t i=0;i<UI_MAX_TEXT;++i) p->source[i]=e->text[i];
+            p->source[UI_MAX_TEXT-1u]=0;
+            if(cloud.model->epoch==cloud.live.epoch && cloud.model->session==UI_RUNNING) {
+                for(uint32_t i=0;i<UI_MAX_TEXT;++i) cloud.model->translated[i]=e->text[i];
+                cloud.model->stage=UI_TRANSLATING;
+                ++cloud.model->change_sequence;
+            }
+        }
+        cloud_client_translation(0);
+        return 0;
+    }
+    if(e->kind==CLOUD_TRANSLATION_DELTA || e->kind==CLOUD_TRANSLATION) return 0;
+#endif
     if(e->kind==CLOUD_TRANSLATION_DELTA) {
         cloud_client_translation(0);
         /* Show the subtitle while it is being generated: append each delta to
@@ -148,7 +168,14 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
     struct cloud_pair *p=0;
     if(e->kind==CLOUD_ASR_FINAL) {
         ++cloud.live.asr_final;p=cloud_pair_find(e->item_id,0,1);
-        if(p) {memcpy(p->source,e->text,sizeof(p->source));p->source_ready=1;}
+        if(p) {
+            memcpy(p->source,e->text,sizeof(p->source));p->source_ready=1;
+#ifdef Z7_ASR_SUBTITLE
+            /* Same-language mode finalises from the transcript alone. */
+            memcpy(p->translated,p->source,sizeof(p->translated));
+            p->target_ready=1;p->complete=1;
+#endif
+        }
         for(uint32_t i=0;i<8;++i) if(cloud_same(cloud.links[i].item,e->item_id)) cloud.links[i].item[0]=0;
     } else if(e->kind==CLOUD_TRANSLATION) {
         ++cloud.live.translations;cloud_client_translation(0);p=cloud_pair_find(e->item_id,1,0);
