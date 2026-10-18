@@ -143,9 +143,9 @@ int main(void) {
     for(volatile uint32_t i=0;i<1000u;++i) {}
     if(timer()==started_ticks) fail(2);
     if(rd(VIDEO_BASE)!=0x46564231u || rd(VIDEO_BASE+0x24u)!=FB_HEIGHT*65536u+FB_WIDTH) fail(3);
-    if(ui_font_count!=7u || !ui_demo_sample_count) fail(31);
-    static const uint32_t sizes[]={14,18,20,24,28,36,44};
-    for(uint32_t i=0;i<7u;++i) if(ui_fonts[i].size!=sizes[i] || !ui_fonts[i].count) fail(31);
+    if(ui_font_count!=5u || !ui_demo_sample_count) fail(31);
+    static const uint32_t sizes[]={14,18,28,36,44};
+    for(uint32_t i=0;i<5u;++i) if(ui_fonts[i].size!=sizes[i] || !ui_fonts[i].count) fail(31);
     wr(VIDEO_BASE+4u,0);wait_value(VIDEO_BASE+4u,2u,0u,1000u,8);
     wr(VDMA_BASE,0);wait_value(VDMA_BASE+4u,1u,1u,1000u,9);
     wr(VDMA_BASE,4);wait_value(VDMA_BASE,4u,0u,1000u,4);

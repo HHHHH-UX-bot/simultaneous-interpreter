@@ -21,6 +21,7 @@
 
 // Latency register consumed by the HDMI overlay (audio_regs offset 0x88).
 #define AUDIO_LATENCY_REG 0x88u
+#define AUDIO_HISTORY 96u
 
 __attribute__((section(".cloud_config"),used)) volatile struct cloud_client_config cloud_client_config;
 int cloud_live_message(const char *json,uint32_t size,void *user);
@@ -61,7 +62,7 @@ static int send_json(const char *json,uint32_t size) {
 static void send_session_update(void) {
     static const char update[] =
         "{\"event_id\":\"session_config\",\"type\":\"session.update\","
-        "\"session\":{\"translation\":{\"language\":\"zh\"},\"output_modalities\":[\"text\"]}}";
+        "\"session\":{\"audio\":{\"input\":{\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.2,\"silence_duration_ms\":500}}},\"translation\":{\"language\":\"zh\"},\"output_modalities\":[\"text\"]}}";
     client.phase=CLOUD_WAITING_UPDATE;
     client.session_sent=1u;
     // The previous CIPSEND may still be finishing; keep retrying until the
@@ -82,21 +83,43 @@ void cloud_client_session_updated(void) {
     client.phase=CLOUD_STREAMING;
     client.utterance_started=0;
     client.utterance_reported=0;
+    client.utterance_wall_valid=0;
+    client.audio_ms=0;
+    client.hist_pos=0;
 }
 
-/* The server's VAD tells us when the utterance actually starts; measuring from
-   here gives the first-character delay (the audio lead-in is not counted). */
-void cloud_client_speech_started(void) {
+/* The server's VAD reports where in the uploaded stream the speech began.
+   Map that audio position back to the wall clock using the append history, so
+   T1 measures from when the words were captured, not from when the event
+   happened to arrive over Wi-Fi. */
+void cloud_client_speech_started(uint32_t audio_start_ms) {
     client.utterance_started=1;
     client.utterance_reported=0;
     client.utterance_ms=client.now_ms;
+    client.utterance_wall=client.now_ms;
+    client.utterance_wall_valid=0;
+    uint32_t count=client.hist_pos<AUDIO_HISTORY?client.hist_pos:AUDIO_HISTORY;
+    const struct cloud_audio_stamp *best=0;
+    for(uint32_t i=0;i<count;++i) {
+        uint32_t slot=(client.hist_pos-1u-i)%AUDIO_HISTORY;
+        const struct cloud_audio_stamp *entry=&client.hist[slot];
+        if(entry->audio<audio_start_ms) continue;
+        if(!best || entry->audio<best->audio) best=entry;
+    }
+    if(!best && count) best=&client.hist[(client.hist_pos-count)%AUDIO_HISTORY];
+    if(best) {
+        client.utterance_wall=best->wall-(best->audio-audio_start_ms);
+        client.utterance_wall_valid=1;
+    }
 }
 
-/* Stop appending after a cloud error or close. The latency readout keeps the
-   last measured value so the display does not silently go back to dashes. */
+/* Stop appending after a cloud error or close. A dead session must not leave a
+   stale T1 number on the display, so the overlay goes back to dashes. */
 void cloud_client_stop(void) {
     client.phase=CLOUD_IDLE;
     client.pcm_bytes=0;
+    client.utterance_wall_valid=0;
+    audio_regs32(AUDIO_LATENCY_REG)=0;
 }
 
 static void send_handshake(void) {
@@ -200,7 +223,14 @@ static void send_pcm(uint32_t now) {
     client.tx_len=used;++client.tx_frames;
     for(uint32_t i=0;i<sizeof(client.tx_head)-1u && i<used;++i) client.tx_head[i]=json[i];
     client.tx_head[used<sizeof(client.tx_head)-1u?used:sizeof(client.tx_head)-1u]=0;
-    send_json(json,used);
+    if(send_json(json,used)) {
+        /* The stream position advances by the audio actually queued for upload
+           (16 kHz, 16-bit mono); its wall time is what T1 is measured against. */
+        client.audio_ms+=(bytes*1000u)/32000u;
+        client.hist[client.hist_pos%AUDIO_HISTORY].audio=client.audio_ms;
+        client.hist[client.hist_pos%AUDIO_HISTORY].wall=now;
+        ++client.hist_pos;
+    }
 }
 
 void cloud_client_tick(uint32_t now) {
@@ -208,7 +238,7 @@ void cloud_client_tick(uint32_t now) {
     if(client.phase==CLOUD_WAITING_UPDATE && client.update_pending) {
         static const char update[] =
             "{\"event_id\":\"session_config\",\"type\":\"session.update\","
-            "\"session\":{\"translation\":{\"language\":\"zh\"},\"output_modalities\":[\"text\"]}}";
+            "\"session\":{\"audio\":{\"input\":{\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.2,\"silence_duration_ms\":500}}},\"translation\":{\"language\":\"zh\"},\"output_modalities\":[\"text\"]}}";
         client.update_pending=send_json(update,(uint32_t)sizeof(update)-1u)?0u:1u;
     }
     if(client.phase!=CLOUD_STREAMING) return;
@@ -226,12 +256,13 @@ void cloud_client_tick(uint32_t now) {
 }
 
 // Called from cloud_live.c when a parsed event yields translation text. Record
-// the time from this utterance's first uploaded 20 ms packet to the first
+// the delay from when the utterance's first audio was captured to the first
 // Chinese text event of the response: the measured first-character delay.
 void cloud_client_translation(uint32_t now) {
     (void)now;
     if(!client.utterance_started || client.utterance_reported) return;
-    uint32_t ms=client.now_ms-client.utterance_ms;
+    uint32_t base=client.utterance_wall_valid?client.utterance_wall:client.utterance_ms;
+    uint32_t ms=client.now_ms-base;
     client.latency_ms=ms;
     client.utterance_reported=1u;
     audio_regs32(AUDIO_LATENCY_REG)=(1u<<16)|(ms>9999u?9999u:ms);
@@ -242,4 +273,5 @@ void cloud_client_translation(uint32_t now) {
 void cloud_client_response_done(void) {
     client.utterance_started=0;
     client.utterance_reported=0;
+    client.utterance_wall_valid=0;
 }

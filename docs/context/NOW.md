@@ -115,16 +115,18 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 
 ## 云端同传收尾清单（2026-10-18 状态）
 
-2026-10-18 上午热点重开后在板上完成一次**真实英文语音→中文定稿→HDMI 显示→T1 延迟**的端到端运行：`cloud_report phase=1, error=0, messages=25, asr_final=1, translations=1, committed=1`，源文 “Hello. Hello, he...”，中文定稿 “ 好。 好， 好， 好。”，`audio_regs 0x88 = 0x00010839`（有效，2105 ms，从 speech_started 到首个 response.text.delta）；抓帧见 [capture3/screen.png](../../output/cloud_app/capture3/screen.png)。统一证据 [云端板端阶段](../../output/cloud_app/status.json)。
+2026-10-18 用户在场完成多轮**中文语音→中文（中译中）→ HDMI 实时字幕→ T1 延迟**联调，并大幅优化延迟：字幕改为**边生成边显示**（`response.text.delta` 逐字上屏，定稿再进历史记录），会话 VAD 改为 `server_vad, silence_duration_ms=500`；用户实测从开口到首字约 **1.5–3.5 s**，连续多句不再卡死，屏幕正常。证据 [云端板端阶段](../../output/cloud_app/status.json)，抓帧 [capture3/screen.png](../../output/cloud_app/capture3/screen.png)。
 
-已完成并验证：
-- `cloud_app.elf` 停 seq=1 的根因是写未实现的 `audio_regs 0x88` 触发 data abort（非链接布局）；PL 补 0x88 后应用恢复。
-- PL：0x88 传译延迟；0x8c/0x90/0x94 的 16 kHz PCM FIFO（48 kHz 3:1、1024 样本）；两行 overlay（`L1 nnnn us` + `T1 nnnn ms`）与 RGB/DE/HS/VS 同域寄存。
-- ESP：启动协商 115200→921600（分频 54）；TLS action 3 phase 8 后由云客户端接管，session.created→session.update→session.updated→45 ms PCM append 全部通过。
-- 稳定性修正：演示字库缺字改为空格替换（不再整会话失败）；CIPSEND/AT 超时 4 s→10 s；网络 fault 时主动停流。注意：AT+CIPSEND 超时后 ESP 会停在等数据状态，只有整板断电可恢复（今天发生过一次，已断电重烧恢复）。
+本日完成的关键修正：
+- **字库准确性**：28 px 字幕字体扩展为 GB2312 一级常用字（3858 字，`ui_assets` 上限 2 MiB 内 95.9%）；演示标签/示例仍用小集合；`generate_subtitle_assets.py` 去掉 fontTools 依赖，自带 TTC/`cmap` 解析，`--extend-size 28` 生成；`net_glyph_available` 只校验 28 px 字幕字体；“最近记录”/原文行也改用 28 px 字体，不再出现方框乱码。
+- **稳定性**：单个无法解析/不匹配的服务端事件不再终止会话；`response.done` 为 `cancelled/incomplete` 属正常（用户重新开口会取消上一响应），只丢弃该句；配对槽位可回收；流式 `AT+CIPSEND` 超时/ERROR 改为丢帧+发 `AT` 探活（30 s 上限），不再整会话 fault；网络 fault 时主动停流并把 T1 置为无效（显示 `----`）。
+- **T1 准确性**：按音频时间轴测量——每个上行 append 记录流位置与本地时间，`speech_started.audio_start_ms` 映射回采集时刻，T1 为“开口→首字上屏”的真实延迟；`response.done` 重置窗口。
+- **中译中**：会话 `translation.language=zh`，屏幕标签改为“中文 → 中文”，字幕只显示译文；后续再按功能拆分独立工程（英译中/中译英/英译英）。
 
-遗留：
-1. **HDMI 画面横向循环错位（新，未解决）**：抓帧与两块 DDR framebuffer 都正确，VDMA 寄存器（VSIZE=600、HSIZE/STRIDE=4096、start=0x01000000/0x01400000、park=0）读回正确；但实屏上 framebuffer 内容整体循环平移约 +180..260 px，而 PL overlay 的 L1/T1 位置正确。已试“VDMA 停机后配置再启动”的顺序，会让首帧 format_ok 失败（error 21），已回退为原“先启动再配置”顺序。根因待定位（候选：VDMA 数据相位/面板 scaler，需采集卡或换屏对照）。
-2. 字库仍是演示子集：缺字以空格代替，完整中文字库与再分发许可仍未解决。
-3. 30 min 稳定性、耳机听感、连续多句验收待做；热点与板端当前已配置并就绪。
+遗留（按优先级）：
+1. **上行带宽是当前瓶颈**：实测 ESP8266 单连接 TLS 上行约 13–14 kB/s，而 16 kHz PCM/Base64 实时需约 44 kB/s，导致部分语音帧被丢、长句/多句时偶发“说了但没识别”（`cloud_report` 仍正常，`ignored` 增加）。用户已感觉“延迟好很多”，但要商业级连续识别需要：音频压缩（Opus，qwen3.5-livetranslate 文档支持 `input_audio_format=opus`/`sample_rate=8000`，需在 A9 上实现编码或换方案）或更高吞吐链路。下一步先做短对照，不靠单次现象定论。
+2. **HDMI 画面横向循环错位（间歇）**：背景内容循环平移、overlay 位置正常；多次重烧后可恢复正常，尚未定位启动相位根因；属 VDMA/视频启动竞争候选，需采集卡或示波器级诊断。
+3. `AT+CIPSEND` 极端超时后 ESP 仍可能停在等数据状态，只能整板断电恢复；新代码已把常见发送超时改为可恢复。
 4. API Key 仍只在运行期经 JTAG 写入 `.cloud_config`（0x1E200），未入库；凭据脚本在 `tmp/cloud/`（Git 忽略）。
+
+

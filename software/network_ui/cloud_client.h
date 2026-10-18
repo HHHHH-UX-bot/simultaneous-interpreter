@@ -12,9 +12,16 @@ struct cloud_client_config {
 };
 extern volatile struct cloud_client_config cloud_client_config;
 
+struct cloud_audio_stamp { uint32_t audio, wall; };
+
 struct cloud_client_state {
     uint32_t phase, session_sent, update_pending, response_used, sample_toggle, decimate, pcm_bytes;
     uint32_t utterance_started, utterance_reported, utterance_ms, now_ms, latency_ms, mask_sequence, event_sequence;
+    /* Latency is measured on the audio timeline: every uploaded append records
+       the end position (ms) of the stream and its local wall time, so a later
+       speech_started audio_start_ms can be mapped back to when it was captured. */
+    uint32_t audio_ms, hist_pos, utterance_wall, utterance_wall_valid;
+    struct cloud_audio_stamp hist[96];
     /* Diagnostics visible to the host: the last append's JSON size and head. */
     uint32_t tx_len, tx_frames;
     char tx_head[40];
@@ -31,7 +38,7 @@ void cloud_client_start(uint32_t now);
    appended (matching the verified host-side sequence). */
 void cloud_client_session_created(void);
 void cloud_client_session_updated(void);
-void cloud_client_speech_started(void);
+void cloud_client_speech_started(uint32_t audio_start_ms);
 void cloud_client_stop(void);
 void cloud_client_receive(uint8_t byte);
 void cloud_client_tick(uint32_t now);

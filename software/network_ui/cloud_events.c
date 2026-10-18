@@ -100,6 +100,17 @@ static enum cloud_parse_code cloud_json_identifier(const char *s,const jsmntok_t
     }
     out[n]=0;return n?CLOUD_OK:CLOUD_SCHEMA;
 }
+static enum cloud_parse_code cloud_json_uint(const char *s,const jsmntok_t *t,int token,uint32_t *out) {
+    if(token<0 || t[token].type!=JSMN_PRIMITIVE) return CLOUD_SCHEMA;
+    int at=t[token].start;uint32_t value=0;
+    if(at>=t[token].end) return CLOUD_SCHEMA;
+    while(at<t[token].end) {
+        char c=s[at++];
+        if(c<'0' || c>'9' || value>429496728u) return CLOUD_SCHEMA;
+        value=value*10u+(uint32_t)(c-'0');
+    }
+    *out=value;return CLOUD_OK;
+}
 enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct cloud_event *event) {
     *event=(struct cloud_event){0};
     if(!bytes || bytes>CLOUD_JSON_BYTES) return CLOUD_LIMIT;
@@ -127,7 +138,18 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
         return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,"transcript"),event->text);
     }
-    if(cloud_json_equal(s,tokens+type,"response.text.delta")) {event->kind=CLOUD_TRANSLATION_DELTA;return CLOUD_OK;}
+    if(cloud_json_equal(s,tokens+type,"response.text.delta")) {
+        event->kind=CLOUD_TRANSLATION_DELTA;
+        /* Streaming text: item_id links the delta to its translation item and
+           delta is the incremental text shown while the response is generated. */
+        int idtok=cloud_json_member(s,tokens,count,0,"item_id");
+        if(idtok>=0) (void)cloud_json_identifier(s,tokens,idtok,event->item_id);
+        int rtok=cloud_json_member(s,tokens,count,0,"response_id");
+        if(rtok>=0) (void)cloud_json_identifier(s,tokens,rtok,event->response_id);
+        int dtok=cloud_json_member(s,tokens,count,0,"delta");
+        if(dtok<0 || cloud_json_text(s,tokens,dtok,event->text)) event->text[0]=0;
+        return CLOUD_OK;
+    }
     if(cloud_json_equal(s,tokens+type,"response.text.done")) {
         event->kind=CLOUD_TRANSLATION;
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"response_id"),event->response_id);if(code) return code;
@@ -141,7 +163,13 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         if(value<0 || tokens[value].type!=JSMN_STRING) return CLOUD_SCHEMA;
         event->completed=(uint32_t)cloud_json_equal(s,tokens+value,"completed");return CLOUD_OK;
     }
-    if(cloud_json_equal(s,tokens+type,"input_audio_buffer.speech_started")) {event->kind=CLOUD_SPEECH_STARTED;return CLOUD_OK;}
+    if(cloud_json_equal(s,tokens+type,"input_audio_buffer.speech_started")) {
+        event->kind=CLOUD_SPEECH_STARTED;
+        /* The onset offset in the uploaded stream lets the client map the event
+           back to the wall time when that audio was captured. */
+        if(cloud_json_uint(s,tokens,cloud_json_member(s,tokens,count,0,"audio_start_ms"),&event->audio_start_ms)) event->audio_start_ms=0;
+        return CLOUD_OK;
+    }
     if(cloud_json_equal(s,tokens+type,"session.created")) {event->kind=CLOUD_SESSION_CREATED;return CLOUD_OK;}
     if(cloud_json_equal(s,tokens+type,"session.updated")) {event->kind=CLOUD_SESSION_UPDATED;return CLOUD_OK;}
     if(cloud_json_equal(s,tokens+type,"session.finished")) {event->kind=CLOUD_FINISHED;return CLOUD_OK;}

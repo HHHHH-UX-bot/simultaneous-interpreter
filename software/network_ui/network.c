@@ -17,7 +17,7 @@ static const char *const capability_tags[]={"+CIPSSLSIZE:","+CIPSSLCCONF:",
 static wifi_read_fn read_reg;static wifi_write_fn write_reg;
 static struct ui_state *model;
 static uint32_t current_time,report_ms,setup_step,enabled,ipd_left,ipd_client,line_used,frame_used,frame_expected,frame_ready;
-static uint32_t command_phase,command_size,command_pos,command_deadline,reply_size,reply_line_start,ack_pending,last_request,prompt_padding;
+static uint32_t command_phase,command_size,command_pos,command_deadline,reply_size,reply_line_start,ack_pending,last_request,prompt_padding,resync,send_failures;
 static char command[320],reply[512],line[128],join_command[240];
 enum setup_state { SETUP_ECHO,SETUP_VERSION,SETUP_STOP_SERVER,SETUP_VOLATILE,
     SETUP_STATION,SETUP_JOIN,SETUP_IP,SETUP_MULTIPLEX,SETUP_IPD_SIMPLE,
@@ -77,7 +77,7 @@ static void fault(uint32_t error) {
 #ifdef Z7_NETWORK_CAPABILITIES
     if(network_capabilities.phase==1) {network_capabilities.phase=6;network_capabilities.error=error;}
 #endif
-    network_info.phase=6;network_info.error=error;command_phase=0;ack_pending=0;
+    network_info.phase=6;network_info.error=error;command_phase=0;ack_pending=0;resync=0;
     wipe(command,sizeof(command));wipe(reply,sizeof(reply));wipe(join_command,sizeof(join_command));
     if(enabled) (void)ui_control(model,UI_PAUSE);
 }
@@ -97,7 +97,7 @@ static void send_ack_command(void) {
     char text[48];uint32_t n=0;const char *prefix="AT+CIPSEND=";
     while(*prefix) text[n++]=*prefix++;
     n+=decimal(text+n,network_info.client);text[n++]=',';n+=decimal(text+n,send_size);
-    text[n++]='\r';text[n++]='\n';text[n]=0;begin_command(text,10000);
+    text[n++]='\r';text[n++]='\n';text[n]=0;begin_command(text,30000);
 }
 int network_send(const uint8_t *data,uint32_t size) {
     if(network_info.phase!=4 || command_phase || ack_pending || frame_ready || !size || size>sizeof(ack)) return 0;
@@ -113,7 +113,7 @@ int network_stream_attach(void (*receive)(uint8_t)) {
     if(!receive || (network_info.phase!=0 && network_info.phase!=8) ||
        network_config.request_sequence!=network_info.config_ack ||
        command_phase || ack_pending || raw_state || stream_receive) return 0;
-    stream_receive=receive;network_info.phase=4;network_info.client=0;
+    stream_receive=receive;network_info.phase=4;network_info.client=0;resync=0;send_failures=0;
     return 1;
 }
 int network_stream_busy(void) {return command_phase || ack_pending;}
@@ -418,7 +418,18 @@ static void receive(uint8_t byte) {
 }
 static void command_tick(void) {
     if(!command_phase) return;
-    if((int32_t)(current_time-command_deadline)>=0) {fault(27);return;}
+    if((int32_t)(current_time-command_deadline)>=0) {
+        /* A stalled streaming send is a transient Wi-Fi/TLS hiccup: drop the
+           frame and probe the AT command mode instead of killing the whole
+           session. Setup/TLS commands still fault on timeout. */
+        if(network_info.phase==4 && stream_receive) {
+            ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);
+            command_phase=ack_pending=0;command_size=command_pos=0;
+            wipe(reply,sizeof(reply));reply_size=0;
+            if(!resync) {resync=1;begin_command("AT\r\n",2000);return;}
+        }
+        fault(27);return;
+    }
     if(command_phase==1) {
         // The bounded drain may leave old RX bytes queued. Send only after
         // that backlog is empty, so it cannot certify a new transaction.
@@ -434,8 +445,11 @@ static void command_tick(void) {
         command_phase=4;reply_size=0;reply[0]=0;
     }
     if(command_phase==4) {
-        if(contains(reply,"ERROR") || contains(reply,"FAIL")) fault(28);
-        else if(contains(reply,"\r\nSEND OK\r\n")) {command_phase=ack_pending=0;wipe(reply,sizeof(reply));}
+        if(contains(reply,"ERROR") || contains(reply,"FAIL")) {
+            ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);command_phase=ack_pending=0;wipe(reply,sizeof(reply));reply_size=0;return;
+        }
+        if(contains(reply,"\r\nSEND OK\r\n")) {command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;}
+        if(resync && contains(reply,"\r\nOK\r\n")) {resync=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;}
         return;
     }
     if(command_phase!=2) return;
@@ -450,7 +464,7 @@ static void command_tick(void) {
     }
     if(network_info.phase==4 && ack_pending) {
         if(contains(reply,"ERROR") || contains(reply,"FAIL")) fault(28);
-        else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=0;reply[0]=0;command_deadline=current_time+10000;}
+        else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=0;reply[0]=0;command_deadline=current_time+30000;}
         return; // An earlier OK is not the CIPSEND prompt.
     }
     int failure=contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n");

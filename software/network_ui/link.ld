@@ -31,6 +31,8 @@ SECTIONS {
     ASSERT(SIZEOF(.cloud_config) <= 0x180, "Cloud config exceeds reserve")
     .ui_assets : { __ui_assets_start = .; KEEP(*(.ui_assets)) __ui_assets_end = .; } > FONT_DDR
     .cloud_runtime (NOLOAD) : { KEEP(*(.cloud_runtime)) } > CLOUD_DDR
+    .cloud_final 0x01A60000 (NOLOAD) : { KEEP(*(.cloud_final)) } > CLOUD_DDR
+    ASSERT(SIZEOF(.cloud_final) == 2052, "Cloud caption ABI changed")
     .cloud_masks 0x01A40000 (NOLOAD) : { KEEP(*(.cloud_masks)) } > CLOUD_DDR
     .ui_runtime (NOLOAD) : { __ui_runtime_start = .; KEEP(*(.ui_runtime)) __ui_runtime_end = .; } > SNAPSHOT_DDR
     ASSERT(SIZEOF(.ui_assets) <= 0x200000, "Font subset exceeds asset reserve")

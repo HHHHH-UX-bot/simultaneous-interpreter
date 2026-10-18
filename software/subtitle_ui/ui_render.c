@@ -74,7 +74,9 @@ static uint32_t blend(uint32_t back,uint32_t fore,uint32_t a) {
 static void put_glyph(struct paint *p,const struct ui_font *f,uint32_t cp,int x,int y,
                       uint32_t color,struct clip c) {
     const struct ui_glyph *g=glyph(f,cp);
-    if(!g) {++p->stats->missing_glyphs;g=glyph(f,0x25a1u);}
+    /* A missing codepoint falls back to the box glyph instead of failing the
+       screen; only a font without the box itself is counted as an asset error. */
+    if(!g) {g=glyph(f,0x25a1u);if(!g) {++p->stats->missing_glyphs;return;}}
     if(!g) return;
     for(uint32_t gy=0;gy<g->height;++gy) for(uint32_t gx=0;gx<g->width;++gx) {
         uint32_t index=gy*g->width+gx;
@@ -211,7 +213,7 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
         one_line(&p,label("more"),14,512,360,132,ACTION);one_line(&p,number,14,665,360,32,ACTION);
     }
     rect(&p,44,390,656,1,LINE);one_line(&p,label("source"),14,44,399,120,MUTED);
-    if(s->show_source) stats->source_lines=paragraph(&p,s->source,20,(struct clip){44,421,656,60},MUTED,
+    if(s->show_source) stats->source_lines=paragraph(&p,s->source,28,(struct clip){44,421,656,60},MUTED,
                                                   requested_page,0,0);
     one_line(&p,label("session"),18,760,100,220,INK);
     one_line(&p,label("time"),14,760,143,100,MUTED);ui_format_elapsed(elapsed_ms,number);
@@ -225,14 +227,16 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     }
     paragraph(&p,label("pending"),14,(struct clip){760,254,220,45},MUTED,0,0,0);
     one_line(&p,label("history"),14,760,303,160,MUTED);
-    if(!s->history_count) paragraph(&p,label("empty"),18,(struct clip){760,345,220,96},MUTED,0,0,0);
+    if(!s->history_count) paragraph(&p,label("empty"),28,(struct clip){760,340,220,96},MUTED,0,0,0);
     uint32_t shown=s->history_count>2u?2u:s->history_count;
     for(uint32_t i=0;i<shown;++i) {
         uint32_t index=s->history_count-shown+i;int y=322+(int)i*82;
         round_rect(&p,760,y,220,78,8,PAPER);decimal(s->final_count-shown+i+1u,number);
         one_line(&p,number,14,772,y+3,190,MUTED);
-        uint32_t pages=0;stats->history_lines+=paragraph(&p,s->history[index].translated,18,
-            (struct clip){772,y+24,196,54},INK,0,&pages,0);
+        /* The 28 px font is the one carrying the GB2312 level-1 extension; use
+           it here too so recent Chinese records are readable instead of boxes. */
+        uint32_t pages=0;stats->history_lines+=paragraph(&p,s->history[index].translated,28,
+            (struct clip){772,y+20,196,56},INK,0,&pages,0);
         if(pages>1u) {rect(&p,963,y+71,2,2,MUTED);rect(&p,969,y+71,2,2,MUTED);rect(&p,975,y+71,2,2,MUTED);}
     }
     rect(&p,0,508,UI_WIDTH,92,PAPER);rect(&p,0,508,UI_WIDTH,1,LINE);
