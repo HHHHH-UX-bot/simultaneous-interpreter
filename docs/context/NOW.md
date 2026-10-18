@@ -113,20 +113,18 @@ NAS 资料位置已核清，原件与缓存哈希一致，来源见 [MAP](MAP.md
 - Wi-Fi 文档补充：[本阶段直接链接检查](../../output/verification/wifi_documentation_validation.json)，检查九份改动文档及其直接目标，不扩展审计资料库。
 - 产品接续建档：[本次文档检查](../../output/verification/product_handoff_documentation_validation.json)，检查八份修改文档、沿用规则和直接链接；不包含业务实现、构建、烧录或业务测试。
 
-## 云端同传收尾清单（2026-10-17 夜状态）
+## 云端同传收尾清单（2026-10-18 状态）
 
-2026-10-17 夜已打通板端链路并完成最终烧录，热点随后由用户关闭，整机实屏验收改到下次（热点重开后）。统一证据 [云端板端阶段](../../output/cloud_app/status.json)；构建记录 [build.json](../../output/cloud_app/build.json)，烧录记录 [program.json](../../output/cloud_app/program.json)（`display_ok=1`、整帧 614400、L1=62 µs、over/under=0）。
+2026-10-18 上午热点重开后在板上完成一次**真实英文语音→中文定稿→HDMI 显示→T1 延迟**的端到端运行：`cloud_report phase=1, error=0, messages=25, asr_final=1, translations=1, committed=1`，源文 “Hello. Hello, he...”，中文定稿 “ 好。 好， 好， 好。”，`audio_regs 0x88 = 0x00010839`（有效，2105 ms，从 speech_started 到首个 response.text.delta）；抓帧见 [capture3/screen.png](../../output/cloud_app/capture3/screen.png)。统一证据 [云端板端阶段](../../output/cloud_app/status.json)。
 
 已完成并验证：
-- `cloud_app.elf` 停在 seq=1 的根因不是链接布局（原映射无重叠）；实际是初始化写未实现的 `audio_regs 0x88` 触发 data abort（PC=`0x10078`、LR_ABT=`0x16814`）。PL 新增 0x88 传译延迟后应用恢复，显示 seq/flips 递增、视频零错误。布局仍为 `.bss`→DDR `0x1A80000`、`.cloud_runtime` 随后、字体 `0x1800000` 起，`--print-memory-usage` 通过。
-- PL 新增 16 kHz 麦克风 FIFO：0x8c 读样本（读即弹出）、0x90 计数、0x94 溢出（写清零），48 kHz 3:1 抽取，1024 样本/64 ms。PS 不再按 1 ms 轮询 48 kHz 原始抽头（会漏采）。
-- 启动把 ESP8266 从 115200 协商到 921600（分频 54）并校验；115200 无法承载约 45.7 kB/s 的 16 kHz PCM/Base64。
-- 板上 WSS 跑通：`network_stream_attach` 允许 TLS phase 8 接管，握手、session.created→session.update→session.updated、45 ms PCM append 流式发送均无协议错误（cloud phase=1、error=0）。
-- 真实语音一次端到端提交：`asr_final=1/translations=1/committed=1`，中文定稿「不好意思，」进入 UI，HDMI 抓帧见 [screen.png](../../output/cloud_app/capture/screen.png)；UI 已默认关闭“原文”行，只显示中文译文。
-- overlay 改为右上角两行读数：`L1 nnnn us`（回环时延）与 `T1 nnnn ms`（云传译时延，0x88 bit16 有效），无效画横线；RGB 与 DE/HS/VS 在 overlay 内同一级寄存器对齐后送 TMDS，修正此前顶层分别延迟的像素错位。云传译延迟从服务端 speech_started 到首个 response.text.delta；一次读数 4299 ms（0x000110CB）。
+- `cloud_app.elf` 停 seq=1 的根因是写未实现的 `audio_regs 0x88` 触发 data abort（非链接布局）；PL 补 0x88 后应用恢复。
+- PL：0x88 传译延迟；0x8c/0x90/0x94 的 16 kHz PCM FIFO（48 kHz 3:1、1024 样本）；两行 overlay（`L1 nnnn us` + `T1 nnnn ms`）与 RGB/DE/HS/VS 同域寄存。
+- ESP：启动协商 115200→921600（分频 54）；TLS action 3 phase 8 后由云客户端接管，session.created→session.update→session.updated→45 ms PCM append 全部通过。
+- 稳定性修正：演示字库缺字改为空格替换（不再整会话失败）；CIPSEND/AT 超时 4 s→10 s；网络 fault 时主动停流。注意：AT+CIPSEND 超时后 ESP 会停在等数据状态，只有整板断电可恢复（今天发生过一次，已断电重烧恢复）。
 
-遗留（热点打开后继续）：
-1. 吞吐：UART 实测约 14.1 kB/s，仅为 16 kHz PCM 实时所需约 45.7 kB/s 的三分之一；ESP TLS 单次 CIPSEND 往返约 143 ms/1991 B。候选方案：ESP 原始透传（CIPMODE=1，历史有载荷损坏证据，需重验）、更高波特率、与服务协商更低采样/格式，或改变发送所有权；1024 样本 FIFO 长时读取出现 0x94=3767 溢出。
-2. VAD 收段：板上英文话语只有 response.text.delta 与 4299 ms 延迟，没有 speech_stopped/transcription.completed/response.text.done，未提交第二句；PC 在“连续语音+静音”下可稳定收段，推断与约 1/3 音频的断续有关。
-3. 以上未解决前不宣告实时同传验收；30 min 稳定性、耳机听感、实屏 `T1` 读数需用户在场。
-4. API Key 仍只在运行期经 JTAG 写入 `.cloud_config`（0x1E200），未入库；凭据写入脚本在 `tmp/cloud/`（Git 忽略）。
+遗留：
+1. **HDMI 画面横向循环错位（新，未解决）**：抓帧与两块 DDR framebuffer 都正确，VDMA 寄存器（VSIZE=600、HSIZE/STRIDE=4096、start=0x01000000/0x01400000、park=0）读回正确；但实屏上 framebuffer 内容整体循环平移约 +180..260 px，而 PL overlay 的 L1/T1 位置正确。已试“VDMA 停机后配置再启动”的顺序，会让首帧 format_ok 失败（error 21），已回退为原“先启动再配置”顺序。根因待定位（候选：VDMA 数据相位/面板 scaler，需采集卡或换屏对照）。
+2. 字库仍是演示子集：缺字以空格代替，完整中文字库与再分发许可仍未解决。
+3. 30 min 稳定性、耳机听感、连续多句验收待做；热点与板端当前已配置并就绪。
+4. API Key 仍只在运行期经 JTAG 写入 `.cloud_config`（0x1E200），未入库；凭据脚本在 `tmp/cloud/`（Git 忽略）。

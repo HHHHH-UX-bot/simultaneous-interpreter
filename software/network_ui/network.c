@@ -97,13 +97,13 @@ static void send_ack_command(void) {
     char text[48];uint32_t n=0;const char *prefix="AT+CIPSEND=";
     while(*prefix) text[n++]=*prefix++;
     n+=decimal(text+n,network_info.client);text[n++]=',';n+=decimal(text+n,send_size);
-    text[n++]='\r';text[n++]='\n';text[n]=0;begin_command(text,4000);
+    text[n++]='\r';text[n++]='\n';text[n]=0;begin_command(text,10000);
 }
 int network_send(const uint8_t *data,uint32_t size) {
     if(network_info.phase!=4 || command_phase || ack_pending || frame_ready || !size || size>sizeof(ack)) return 0;
     for(uint32_t i=0;i<size;++i) ack[i]=data[i];
     send_size=size;ack_pending=1;
-    if(raw_state==1) {command_phase=3;command_pos=0;command_deadline=current_time+4000;}
+    if(raw_state==1) {command_phase=3;command_pos=0;command_deadline=current_time+10000;}
     else send_ack_command();
     return 1;
 }
@@ -450,7 +450,7 @@ static void command_tick(void) {
     }
     if(network_info.phase==4 && ack_pending) {
         if(contains(reply,"ERROR") || contains(reply,"FAIL")) fault(28);
-        else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=0;reply[0]=0;command_deadline=current_time+4000;}
+        else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=0;reply[0]=0;command_deadline=current_time+10000;}
         return; // An earlier OK is not the CIPSEND prompt.
     }
     int failure=contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n");

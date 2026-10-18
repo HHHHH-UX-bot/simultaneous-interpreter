@@ -211,6 +211,8 @@ C1-6 验收版本边界：电脑仍负责 TLS/WSS 初始化、预编码音频及
 
 未通过/未放行：实测 UART 发送约 14.1 kB/s，而 16 kHz PCM/Base64 需要约 45.7 kB/s（ESP TLS 单次 CIPSEND 往返约 143 ms/1991 B），客户端在忙碌时丢帧，只有约三分之一实时音频上云；板上英文话语只产生 `response.text.delta` 与 4299 ms 读数，未出现 `speech_stopped`/`transcription.completed`/`response.text.done`，因此没有第二句定稿（PC 在“连续语音+静音”下可稳定收到完整收段事件，推断与音频断续有关）。长时读取还使 PL FIFO 溢出计数到 3767。热点已由用户关闭，整机实屏验收、30 min 稳定性与耳机听感留待下次；解决吞吐与收段前不宣告实时同传验收。API Key 仍只在运行期写入 `.cloud_config`（0x1E200），未进入 ELF、文档或 Git。
 
+2026-10-18 上午热点重开后完成一次真实英文语音的端到端运行：WSS 会话建立、45 ms PCM 持续上传、服务端识别到语音；`cloud_report` 为 `phase=1/error=0/messages=25/asr_final=1/translations=1/committed=1`，源文 “Hello. Hello, he...”，中文定稿 “ 好。 好， 好， 好。” 进入 UI（抓帧 [capture3/screen.png](../../output/cloud_app/capture3/screen.png)）；`audio_regs 0x88=0x00010839`（有效，2105 ms，从 `input_audio_buffer.speech_started` 到首个 `response.text.delta`）。同时修正：演示字库缺字用空格替代而不是终止会话（`cloud_live.c`）、CIPSEND/AT 超时 4 s→10 s、网络 fault 后主动停流（`network.c`/`main.c`）。注意 ESP 在 `AT+CIPSEND` 超时后会停在等数据状态，只能整板断电恢复。仍未解决的是 HDMI 画面横向循环错位：抓帧与 DDR framebuffer 正确、VDMA 寄存器读回正确，但实屏上 framebuffer 内容整体循环平移、PL overlay（L1/T1）位置正确；已回退试过的“停机配置再启动”顺序。证据与遗留详见 [云端板端阶段](../../output/cloud_app/status.json)。
+
 ## C2-PC 受控音频云端对照
 
 2026-10-14 电脑通过实际 WLAN 直连北京地域服务，以实时节奏发送已有的 9.025 秒公开合成英语 PCM。API 返回了完整英语原文、中文译文及完成事件，见 [本次文件结果](../../output/cloud_speech/attempts/20261014T111342583658Z/result.json)；音频来源由 [MODEL_BACKEND](MODEL_BACKEND.md#受控文件证据与噪声修复)维护，客户端由 [run_bailian_file](../../scripts/run_bailian_file.py)实现。

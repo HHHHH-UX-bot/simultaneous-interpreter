@@ -108,6 +108,9 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
     if(uart_accepted) network_tick(s,now);
 #else
     network_tick(s,now);
+    /* A network fault (AT timeout/overflow) ends the stream; stop queueing
+       audio so a dead link is visible instead of silently dropping frames. */
+    if(network_info.phase==6u) cloud_client_stop();
 #endif
     cloud_live_tick(now);
     if(network_info.phase==8u) cloud_client_start(now);

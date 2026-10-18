@@ -52,8 +52,12 @@ static void cloud_commit(void) {
         if(!p || !p->source_ready || !p->target_ready || !p->complete) return;
         if(cloud.model->epoch!=cloud.live.epoch || cloud.model->session!=UI_RUNNING) {++cloud.live.ignored;memset(p,0,sizeof(*p));continue;}
         for(uint32_t i=0;i<UI_MAX_TEXT;++i) {
-            if(p->source[i] && !net_glyph_available(p->source[i])) {cloud_fail(0x01000000u|p->source[i]);return;}
-            if(p->translated[i] && !net_glyph_available(p->translated[i])) {cloud_fail(0x01000000u|p->translated[i]);return;}
+            // The prototype font is a bounded demo subset. A live translation
+            // may contain characters outside it; showing those as spaces keeps
+            // the subtitle (and the T1 readout) usable instead of failing the
+            // whole cloud session on one missing glyph.
+            if(p->source[i] && !net_glyph_available(p->source[i])) p->source[i]=' ';
+            if(p->translated[i] && !net_glyph_available(p->translated[i])) p->translated[i]=' ';
         }
         uint32_t segment=++cloud.next_segment;
         struct ui_event event={UI_ASR_FINAL,cloud.live.epoch,segment,1,0,p->source};

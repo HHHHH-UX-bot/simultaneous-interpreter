@@ -151,6 +151,9 @@ int main(void) {
     wr(VDMA_BASE,4);wait_value(VDMA_BASE,4u,0u,1000u,4);
     initialize_guards();
     ui_demo_init(&demo,&state,now_ms());draw(0,now_ms(),0);draw(1,now_ms(),0);
+    /* Accepted bring-up order: start the VDMA, write its frame geometry and
+       addresses, then enable the video timing. Reordering this (configure while
+       halted, then start) makes the first frames fail format_ok on this board. */
     wr(VDMA_BASE,1);wr(VDMA_BASE+0x5cu,FB_BASE0);wr(VDMA_BASE+0x60u,FB_BASE1);
     wr(VDMA_BASE+0x28u,0);wr(VDMA_BASE+0x58u,FB_STRIDE);wr(VDMA_BASE+0x54u,FB_WIDTH*4u);
     wr(VDMA_BASE+0x50u,FB_HEIGHT);barrier();wr(VIDEO_BASE+4u,1);barrier();
