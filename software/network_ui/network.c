@@ -25,6 +25,10 @@ enum setup_state { SETUP_ECHO,SETUP_VERSION,SETUP_STOP_SERVER,SETUP_VOLATILE,
 static uint8_t frame[NET_FRAME_BYTES],ack[2048];
 static uint32_t send_size;
 static uint32_t peer,peer_port,raw_state,raw_deadline;
+/* A transient AT/SNTP/TLS failure must not require a re-flash: the last SSID and
+   password are kept so the whole setup can be re-armed automatically. */
+static uint8_t saved_ssid[32],saved_pass[64];
+static uint32_t saved_ssid_bytes,saved_pass_bytes,saved_retry_count,saved_retry_at;
 static void (*stream_receive)(uint8_t);
 #ifdef Z7_NETWORK_CAPABILITIES
 /* action 3: trusted cloud TLS, action 4: close and return UART ownership.
@@ -192,7 +196,7 @@ static void tls_result(int failure) {
     if(++tls_step<sizeof(tls_commands)/sizeof(tls_commands[0])) {
         if(tls_step==2) tls_time_deadline=current_time+15000u;
         tls_issue();
-    } else {network_info.phase=8;network_info.client=0;}
+    } else {network_info.phase=8;network_info.client=0;saved_retry_count=saved_retry_at=0;}
 }
 #endif
 static uint32_t parse_ip(const char *s) {
@@ -319,6 +323,11 @@ static void configuration(void) {
         join_command[n++]='"';if(part==0) {join_command[n++]=',';join_command[n++]='"';}
     }
     join_command[n++]='\r';join_command[n++]='\n';join_command[n]=0;
+    if(valid) {
+        saved_ssid_bytes=sn;saved_pass_bytes=pn;
+        for(uint32_t i=0;i<sn;++i) saved_ssid[i]=network_config.credentials[i];
+        for(uint32_t i=0;i<pn;++i) saved_pass[i]=network_config.credentials[33+i];
+    }
     for(uint32_t i=0;i<100;++i) network_config.credentials[i]=0;
     network_config.ssid_bytes=network_config.password_bytes=0;fence();network_info.config_ack=request;
     if(!valid || request!=network_config.request_sequence) {fault(11);return;}
@@ -532,9 +541,43 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
     report_ms=(uint32_t)-200;publish_report(0);
 }
 int network_owns_ui(void) {return enabled!=0;}
+#ifdef Z7_NETWORK_CAPABILITIES
+/* A transient AT/SNTP/TLS failure otherwise needs a re-flash: re-arm a fresh
+   cloud setup from the saved credentials after a short backoff. */
+static void retry_faulted(void) {
+    if(network_info.phase!=6 || !tls_mode || !saved_ssid_bytes || saved_retry_count>=6) return;
+    uint32_t error=network_info.error;
+    if(error!=29 && error!=32 && error!=34 && error!=43 && error!=44 &&
+       error!=45 && error!=46 && error!=47) return;
+    if((int32_t)(current_time-saved_retry_at)<0) return;
+    ++saved_retry_count;
+    saved_retry_at=current_time+5000u;
+    stream_receive=0;
+    tls_mode=tls_step=tls_wait_until=tls_connected=tls_closing=0;
+    enabled=0;command_phase=ack_pending=resync=0;
+    ipd_left=frame_used=frame_ready=0;line_used=0;prompt_padding=0;raw_state=0;
+    network_info.phase=0;network_info.error=0;
+    network_config.magic=0x3146434eu;
+    network_config.action=3;
+    network_config.reserved=0;
+    network_config.port=0;
+    network_config.ssid_bytes=saved_ssid_bytes;
+    network_config.password_bytes=saved_pass_bytes;
+    for(uint32_t i=0;i<100;++i) network_config.credentials[i]=0;
+    for(uint32_t i=0;i<saved_ssid_bytes;++i) network_config.credentials[i]=saved_ssid[i];
+    for(uint32_t i=0;i<saved_pass_bytes;++i) network_config.credentials[33+i]=saved_pass[i];
+    network_info.config_ack=network_config.request_sequence;
+    network_config.request_sequence=network_info.config_ack+1u;
+    fence();
+}
+#endif
+
 void network_tick(struct ui_state *state,uint32_t now) {
     model=state;current_time=now;++network_info.sequence;fence();
     configuration();network_info.overflow=read_reg(32);network_info.framing=read_reg(36);
+#ifdef Z7_NETWORK_CAPABILITIES
+    retry_faulted();
+#endif
 #ifdef Z7_NETWORK_CAPABILITIES
     if(tls_mode && tls_wait_until && network_info.phase==1 && (int32_t)(now-tls_wait_until)>=0) {
         tls_wait_until=0;tls_issue();

@@ -54,6 +54,7 @@
 - **长静音本身没有问题**：PC PCM 连续流中插入 40 s 静音后，第二轮 4 句仍正常触发 `speech_started`（audio_start_ms=52 620 起递增）；板端自测每个 30 s 静音周期后的下一轮 4 句都继续提交（committed 每周期 +4、无 error）。
 - **无麦克风自测工具**：`python scripts/generate_selftest_audio.py` 用 Windows 内置中文语音（Microsoft Huihui）生成 4 句中文 + 0.8 s 间隔的 16 kHz PCM，写入 `output/cloud_app/selftest_pcm.c`；`python scripts/build_cloud_app.py --selftest` 编出 `cloud_app_selftest.elf`，板上以“14.58 s 语音 + 30 s 静音”循环喂入编码器，可无人值守验证 Opus→Ogg→WSS→ASR→字幕→T1→历史全链路（APP_DDR 占用约 81%）。
 - **自测结果（两块周期）**：每轮 4 句全部提交（committed 4→8→…），字幕为 ASR 中文（如“今天天气非常好。”“我想喝一杯咖啡，再吃一点东西。”），云 phase=1/error=0，FIFO 无溢出；30 分钟连续自测进行中（结果记入 `docs/context/NOW.md` 与 `output/cloud_app/status.json`）。
+- **网络瞬时故障自恢复**：`network.c` 保存最近一次合法的 SSID/口令；出现 `phase=6` 且错误属于 29/32/34/43–47（AT/CWJAP/SNTP/SSL 建链失败）时，5 s 退避后用保存的凭据自动重建设置（最多 6 次，成功后清零）。此前这类瞬时失败是终态、必须重烧或断电，表现为“说着说着没反应”。
 - **待用户验收**：板端真实麦克风语音（中译中）的识别准确度、多句连续、长时静默后首句、30 分钟稳定性。
 
 ## 实施步骤（2026-10-18 状态）
