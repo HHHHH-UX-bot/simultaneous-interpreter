@@ -1,0 +1,12 @@
+{
+  "sample_rate": 16000,
+  "input_audio_format": "opus",
+  "input_audio_transcription": {
+    "language": "en"
+  },
+  "turn_detection": {
+    "type": "server_vad",
+    "threshold": 0.12,
+    "silence_duration_ms": 400
+  }
+}

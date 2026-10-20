@@ -1,0 +1,41 @@
+{
+  "scope": "Same 160000-sample local probe; uncontrolled analog background, no requested test speech during short captures; not a calibrated microphone-quality comparison",
+  "ProbeELFSHA256": "01a6cb329928a4c10a03f06643c15e0fa02447ae95e8c4dacbdc11d52563b854",
+  "bitstreams": {
+    "current_pl_short": "f83447371a3d381172ddaab26dee5dcb4da9e293918a033008b6aac40a9014e5",
+    "teammate_pl_short": "de2837f2aebc29655eb89ddd9cb7746f2b0141106d62c0588ffd675542a1c7d6",
+    "cdc_fixed_short": "b28fe4e3786fcd78bbb2c87f9f51ae3e4ae9a74bc3543cf5ba9633c6993a52b2"
+  },
+  "captures": {
+    "current_pl_short": {
+      "samples": 160000,
+      "pcm_sha256": "7887fd2e7e3dec033ad7fd73e57e5fe638c2bdedc2c6f509fea299036f222fce",
+      "fifo_overflows": 0,
+      "rms": 1218.0094127201974,
+      "dc": 5.5899875,
+      "peak": 32767,
+      "abs_over_16000": 309,
+      "rms_under1000": 35.571531116208206
+    },
+    "teammate_pl_short": {
+      "samples": 160000,
+      "pcm_sha256": "128e6c2290da8cdd0142891423f0804735c01d3d7152021df580354e93d5159e",
+      "fifo_overflows": 0,
+      "rms": 273.3485655829384,
+      "dc": -1.55439375,
+      "peak": 16542,
+      "abs_over_16000": 17,
+      "rms_under1000": 37.19091379033312
+    },
+    "cdc_fixed_short": {
+      "samples": 160000,
+      "pcm_sha256": "7241dcad1a6579d47abf71eb700eb106d5aa9e33f3b809b66a9d0098552b64ce",
+      "fifo_overflows": 0,
+      "rms": 77.6433766492674,
+      "dc": -0.366825,
+      "peak": 829,
+      "abs_over_16000": 0,
+      "rms_under1000": 77.6433766492674
+    }
+  }
+}

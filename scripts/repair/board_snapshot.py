@@ -24,7 +24,9 @@ for name,n in counts.items():
 for name,address,n in [('uart',0x43c30018,6),('uart_state',0x43c30004,2),('capture',0x43c20090,2),('usb_power',0xe0002184,1)]:
     script.append(f'puts "COUNTER {name} [mrd -force -value 0x{address:x} {n}]"')
 script.append('disconnect')
-with tempfile.TemporaryDirectory(prefix='z7-public-') as td:
+temp = Path(__file__).resolve().parents[2] / 'tmp/board_observation'
+temp.mkdir(parents=True, exist_ok=True)
+with tempfile.TemporaryDirectory(prefix='z7-public-', dir=temp) as td:
     tcl=Path(td)/'snapshot.tcl'
     tcl.write_text('\n'.join(script)+'\n',encoding='ascii')
     result=subprocess.run([str(a.xsdb),str(tcl)],capture_output=True,text=True,timeout=40)

@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-20",
+  "mode": "enzh",
+  "input": "Live MIC IN microphone, no fixed sample playback",
+  "ELFSHA256": "66f3715fd8ae3c9e79307c88ffc0b6a0ea6df5b36ec0f358aab5058b45ff353a",
+  "BitstreamSHA256": "b28fe4e3786fcd78bbb2c87f9f51ae3e4ae9a74bc3543cf5ba9633c6993a52b2",
+  "user_report": "一切正常",
+  "prompt_scope": "Corresponding live English source and Chinese translation displayed after saying Good morning. I would like a cup of coffee.",
+  "screen_recovery_report": "界面已恢复，清楚正常",
+  "touch_active": false,
+  "headphones_connected": false,
+  "scope": "First live English-to-Chinese display acceptance; not touch, subjective playback, long-run reliability or independent boot"
+}

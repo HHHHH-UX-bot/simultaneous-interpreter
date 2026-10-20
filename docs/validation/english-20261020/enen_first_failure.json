@@ -1,0 +1,47 @@
+{
+  "status": "failed",
+  "scope": "first enen synthetic input session, retained before retry",
+  "utc": "2026-10-20T04:00:17.946274+00:00",
+  "elf_sha256": "eef03d2874f3bb0bd1d139b26c0b448fe9176955227cffdb0ac37da4640aa64c",
+  "network_phase": 6,
+  "network_error": 27,
+  "asr_finals": 4,
+  "translations": 0,
+  "committed": 4,
+  "keepalive_diag": [
+    826362955,
+    2,
+    1,
+    71829,
+    86829
+  ],
+  "first_fault": [
+    48,
+    91829,
+    4,
+    14,
+    3,
+    376,
+    12,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "first_uart_fault": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "tls_failures": 0,
+  "tls_rx_overflow": 0,
+  "upload_drops": 0,
+  "user_display_acceptance": "initial black screen; recovered after screen HDMI/TOUCH reconnect; English displayed normally",
+  "root_cause": "pending; missing return bytes before local UART, subsequent recovery timeout"
+}

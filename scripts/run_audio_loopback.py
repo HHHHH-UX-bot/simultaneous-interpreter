@@ -41,6 +41,7 @@ SIM_INPUTS = [
     "sim/tb_i2s_loopback.v",
     "sim/tb_audio_latency.v",
     "sim/tb_audio_regs.v",
+    "sim/tb_audio_sample_tap.v",
     "sim/tb_audio_playback.v",
     "sim/tb_audio_overlay.v",
 ]
@@ -50,6 +51,7 @@ TESTS = [
     ("tb_i2s_loopback", "PASS_I2S_LOOPBACK"),
     ("tb_audio_latency", "PASS_AUDIO_LATENCY"),
     ("tb_audio_regs", "PASS_AUDIO_REGS"),
+    ("tb_audio_sample_tap", "PASS_AUDIO_SAMPLE_TAP"),
     ("tb_audio_playback", "PASS_AUDIO_PLAYBACK"),
     ("tb_audio_overlay", "PASS_AUDIO_OVERLAY"),
 ]
@@ -62,6 +64,7 @@ BUILD_INPUTS = RTL_INPUTS + [
     "rtl/dvi_transmitter_top.v",
     "rtl/serializer_10_to_1.v",
     "rtl/wifi_uart_axi.v",
+    "rtl/ps_wifi_uart.v",
     "rtl/wifi_uart_phy.v",
     "rtl/wifi_byte_fifo.v",
     "scripts/build_z7_nano_audio.tcl",

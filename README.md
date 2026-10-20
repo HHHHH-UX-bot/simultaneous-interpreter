@@ -1,5 +1,7 @@
 # 译声：语音中文字幕终端
 
+英语输入的英译中、英译英已接入同一工程，采用显式模式选择；本轮板测进展与限制见 [ENGLISH](docs/context/ENGLISH.md)，当前接续见 [NOW](docs/context/NOW.md)。
+
 中文独立识别现可使用共享 Zynq TLS 与 1 Mbps UART，入口见 [ZHZH](docs/context/ZHZH.md) 和 [构建/配置](docs/context/RUNBOOK.md#中译中共享-tls2026-10-20)。实际已加载副本与本 PR 共享代码检出的验证范围分别记录，保留中译英功能。
 
 新增 Z7-Nano 中文译英字幕与 lineout 译音候选：连续流修复、真实板测和验收边界见 [ZHEN](docs/context/ZHEN.md)，构建/配置见 [RUNBOOK](docs/context/RUNBOOK.md#中文译英候选2026-10-20)。原有阶段记录保留各自的日期与范围。

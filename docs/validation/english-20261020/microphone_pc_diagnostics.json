@@ -1,0 +1,86 @@
+{
+  "scope": "Before-fix recordings produced no finals, including PC-only spike interpolation/gain diagnostic; no processing was used on the successful post-fix recording",
+  "raw_before_fix": {
+    "mode": "enen",
+    "utc": "2026-10-20T04:41:12.747185+00:00",
+    "scope": "PC verified TLS + cloud on supplied audio encoded by firmware Opus/Ogg; ESP and board TLS are bypassed; microphone provenance is separate",
+    "audio_pages_sha256": "0c5ae58ed3e6aefc9a83b4eb4003217c46134f734572e9939f817b3b88d81eaa",
+    "input_pcm_sha256": "7fea500d83bb83e46b0ed49af78522916a7b900e99ea9ab13c9572403de21c7d",
+    "asr_finals": [],
+    "translation_finals": [],
+    "audio_bytes": 0,
+    "audio_done": 0,
+    "errors": [],
+    "session": {
+      "sample_rate": 16000,
+      "input_audio_format": "opus",
+      "input_audio_transcription": {
+        "language": "en"
+      },
+      "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.12,
+        "silence_duration_ms": 400
+      }
+    },
+    "session_acknowledged": true,
+    "passed": false
+  },
+  "processed_before_fix": {
+    "mode": "enen",
+    "utc": "2026-10-20T04:47:03.070343+00:00",
+    "scope": "PC verified TLS + cloud on supplied audio encoded by firmware Opus/Ogg; ESP and board TLS are bypassed; microphone provenance is separate",
+    "audio_pages_sha256": "fd316f640a7e625412248e20586143e5e673dc55b492d49841e3faf556e7266b",
+    "input_pcm_sha256": "55946d2c58b919c89e4585343eb7d39631dc1accbaea3bfc1f226722e77ba48e",
+    "asr_finals": [],
+    "translation_finals": [],
+    "audio_bytes": 0,
+    "audio_done": 0,
+    "errors": [],
+    "session": {
+      "sample_rate": 16000,
+      "input_audio_format": "opus",
+      "input_audio_transcription": {
+        "language": "en"
+      },
+      "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.12,
+        "silence_duration_ms": 400
+      }
+    },
+    "session_acknowledged": true,
+    "passed": false
+  },
+  "synthetic_positive_control": {
+    "mode": "enen",
+    "utc": "2026-10-20T04:52:45.581668+00:00",
+    "scope": "PC verified TLS + cloud on supplied audio encoded by firmware Opus/Ogg; ESP and board TLS are bypassed; microphone provenance is separate",
+    "audio_pages_sha256": "8f79e502a667b58cd9192d0d1101ea2197410d26faf9f685901dc1e586f6ac6a",
+    "input_pcm_sha256": null,
+    "asr_finals": [
+      "Good morning.",
+      "The weather is very nice today.",
+      "I would like a cup of coffee.",
+      "Please show these words on the screen."
+    ],
+    "translation_finals": [],
+    "audio_bytes": 0,
+    "audio_done": 0,
+    "errors": [],
+    "session": {
+      "sample_rate": 16000,
+      "input_audio_format": "opus",
+      "input_audio_transcription": {
+        "language": "en"
+      },
+      "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.12,
+        "silence_duration_ms": 400
+      }
+    },
+    "session_acknowledged": true,
+    "passed": true
+  }
+}

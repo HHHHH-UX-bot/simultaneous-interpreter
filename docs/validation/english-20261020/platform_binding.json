@@ -1,0 +1,8 @@
+{
+  "status": "passed",
+  "bitstream_sha256": "de2837f2aebc29655eb89ddd9cb7746f2b0141106d62c0588ffd675542a1c7d6",
+  "published_build_record": "docs/validation/zhen-20261020/vivado2018_3_build.json",
+  "matching_source_files": 22,
+  "ps_init_sha256": "90683f6490f64fe68da6518e4b0ef54e7e9dc7232945b62c4e8f61da856b0d5d",
+  "scope": "supplied Desktop bit matches published build and every recorded RTL/constraint/build input; not a fresh PL build"
+}

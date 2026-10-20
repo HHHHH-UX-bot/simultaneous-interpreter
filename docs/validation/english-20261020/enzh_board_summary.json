@@ -1,0 +1,45 @@
+{
+  "status": "passed",
+  "mode": "enzh",
+  "scope": "fixed English TTS on actual board over authenticated ARM TLS/ESP TCP; not microphone or listening acceptance",
+  "elf_sha256": "fba4e72740436f8b910ff3f2de58c740d9feb2ab1db01356a37269afa8a3d1c1",
+  "load_evidence": "board_load.json",
+  "samples": [
+    {
+      "utc": "2026-10-20T03:55:00.701702+00:00",
+      "asr_finals": 8,
+      "translations": 8,
+      "committed": 8,
+      "network_error": 0,
+      "cloud_error": 0,
+      "upload_drops": 0,
+      "uart_overflow": 0,
+      "uart_framing": 0,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "tls_overflow": 0,
+      "tls_sessions": 1,
+      "speech_overflows": 0,
+      "playback_underruns": 0
+    },
+    {
+      "utc": "2026-10-20T03:56:54.642503+00:00",
+      "asr_finals": 19,
+      "translations": 18,
+      "committed": 18,
+      "network_error": 0,
+      "cloud_error": 0,
+      "upload_drops": 0,
+      "uart_overflow": 0,
+      "uart_framing": 0,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "tls_overflow": 0,
+      "tls_sessions": 1,
+      "speech_overflows": 0,
+      "playback_underruns": 0
+    }
+  ],
+  "user_display_acceptance": "显示正确，清楚稳定",
+  "listening_acceptance": "pending; headphones disconnected"
+}

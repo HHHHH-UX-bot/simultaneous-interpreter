@@ -1,0 +1,11 @@
+{
+  "sha": "685551f42952512094241837665e7f193f177b92",
+  "merged": true,
+  "message": "Pull Request successfully merged",
+  "status": "merged",
+  "pr": 5,
+  "reviewed_head": "16615463d49212fe4b75667f03200d8156d888b8",
+  "utc": "2026-10-20T03:46:16.957337+00:00",
+  "review": "No new P1/P2 in focused independent source review; native ASR/TLS/transport/playback regressions passed",
+  "physical_scope": "This PR ELF has not been board verified in this review; old board evidence remains scoped to its original ELF"
+}

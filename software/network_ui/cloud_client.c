@@ -1,3 +1,4 @@
+#include "language_profile.h"
 // ARM-side realtime cloud client: microphone PCM -> Bailian livetranslate WSS
 // over the ESP8266 TLS link, and Chinese subtitle events back to the UI.
 //
@@ -111,7 +112,7 @@ static uint32_t selftest_next,selftest_ms;
 /* Opus path: qwen3.5-livetranslate with Opus input fits the ESP TLS uplink.
    PCM path: the previous qwen3.8 45 ms chunk stream (kept as the fallback). */
 #ifdef Z7_OPUS
-#ifdef Z7_TRANSLATE_EN
+#if defined(Z7_TRANSLATE_EN) || defined(Z7_RECOGNIZE_EN)
 #define CLOUD_TARGET_LANGUAGE "en"
 #else
 #define CLOUD_TARGET_LANGUAGE "zh"
@@ -131,7 +132,7 @@ static const char session_update_json[] =
     "{\"event_id\":\"session_config\",\"type\":\"session.update\","
     "\"session\":{\"modalities\":[" CLOUD_OUTPUT_MODALITIES "]," CLOUD_OUTPUT_VOICE "\"sample_rate\":16000,"
     "\"input_audio_format\":\"opus\",\"output_audio_format\":\"pcm\","
-    "\"input_audio_transcription\":{\"model\":\"qwen3-asr-flash-realtime\",\"language\":\"zh\"},"
+    "\"input_audio_transcription\":{\"model\":\"qwen3-asr-flash-realtime\",\"language\":\"" CLOUD_INPUT_LANGUAGE "\"},"
     "\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.12,\"silence_duration_ms\":400" CLOUD_TURN_OPTIONS "},"
     "\"translation\":{\"language\":\"" CLOUD_TARGET_LANGUAGE "\",\"same_language_skip_options\":{\"skip_text\":false,\"skip_audio\":" CLOUD_AUDIO_SKIP "}}}}";
 #define OPUS_FRAME_BYTES 640u
@@ -177,7 +178,7 @@ static const char asr_model_path[]="/api-ws/v1/realtime?model=qwen3-asr-flash-re
 static const char asr_session_update_json[] =
     "{\"event_id\":\"session_config\",\"type\":\"session.update\","
     "\"session\":{\"sample_rate\":16000,\"input_audio_format\":\"opus\","
-    "\"input_audio_transcription\":{\"language\":\"zh\"},"
+    "\"input_audio_transcription\":{\"language\":\"" CLOUD_INPUT_LANGUAGE "\"},"
     "\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.12,\"silence_duration_ms\":400}}}";
 #endif
 

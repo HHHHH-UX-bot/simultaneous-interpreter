@@ -72,6 +72,9 @@ static void received(uint8_t b) {
 }
 static void failed(int code) {
     arm_tls_diag[2]=(uint32_t)code;
+    /* Pinned Mbed TLS 3.6.7 returns this code after validating a two-byte alert. */
+    if(code==MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE)
+        arm_tls_diag[23]=ssl.MBEDTLS_PRIVATE(in_msg)[1];
     arm_tls_diag[3]=mbedtls_ssl_get_verify_result(&ssl);
     ++arm_tls_diag[10];phase=3;consumer=0;pending=0;cloud_client_stop();network_stream_failed();clean();
 }

@@ -1,0 +1,14 @@
+{
+  "scope": "Bundled ADC sample/control crossing, source bus held for full stereo frame",
+  "before": "FAIL_AUDIO_SAMPLE_TAP i=2 expected=fffd actual=80fd count=3",
+  "after": "PASS_AUDIO_SAMPLE_TAP 128 coherent samples with control/data skew",
+  "TestSHA256": "b68b386a7aec887f9463d21b888bebffd42495673dcdf82882f55a540b4d5c03",
+  "RTL_SHA256": "b4490d368a5ccd71d28ac903da0f658de87b2fc0efac763c99b5fb795624d576",
+  "route_requirement_ns": 15.0,
+  "route_slack_ns": 13.887,
+  "route_actual_ns": 1.113,
+  "endpoints": 17,
+  "extra_destination_cycles": 1,
+  "review": "Independent reviewer found coherence bug and approved delayed qualification plus route-skew assertion; custom-audio verdict finding fixed",
+  "reference": "https://docs.amd.com/r/en-US/ug903-vivado-using-constraints/About-Bus-Skew-Constraints"
+}

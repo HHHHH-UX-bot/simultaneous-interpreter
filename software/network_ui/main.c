@@ -1,3 +1,4 @@
+#include "language_profile.h"
 /* The accepted UI driver remains shared; network events replace its demo timer. */
 #include "network.h"
 #include "stream_pilot.h"
@@ -154,7 +155,7 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
 }
 static void network_demo_tick(struct ui_demo_clock *c,struct ui_state *s,uint32_t now) {
     network_background_tick(s,now);
-#ifdef Z7_TRANSLATE_EN
+#if defined(Z7_BILINGUAL) || defined(Z7_SOURCE_EN)
     /* Leave the bilingual display empty until real cloud text arrives. */
     (void)c;
 #else

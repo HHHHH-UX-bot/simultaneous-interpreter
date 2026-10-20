@@ -20,6 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "output/cloud_app"
+PROFILE = json.loads((ROOT / "PROFILE.json").read_text(encoding="utf-8")) if (ROOT / "PROFILE.json").is_file() else {}
 DEFAULT_GCC = Path(r"C:\Xilinx\SDK\2018.3\gnu\aarch32\nt\gcc-arm-none-eabi\bin\arm-none-eabi-gcc.exe")
 
 FLAGS = [
@@ -111,19 +112,24 @@ def main():
     global OUT
     parser = argparse.ArgumentParser()
     parser.add_argument("--gcc", type=Path, default=DEFAULT_GCC)
-    parser.add_argument("--mode", choices=("zhzh", "zhen"), default="zhzh",
-                        help="Chinese captions, or English translation above Chinese source")
+    parser.add_argument("--mode", choices=("zhzh", "zhen", "enzh", "enen"), default=PROFILE.get("mode", "zhzh"),
+                        help="source/target profile: zhzh, zhen, enzh or enen")
     parser.add_argument("--selftest", action="store_true",
-                        help="build the microphone-less self-test ELF from the generated Chinese TTS PCM")
-    parser.add_argument("--speech", action="store_true",help="English translated audio on lineout (requires playback PL)")
+                        help="build the microphone-less self-test ELF from the matching generated TTS PCM")
+    parser.add_argument("--speech", action="store_true",help="translated audio on lineout (requires playback PL; automatic for enzh)")
     parser.add_argument("--output-dir", type=Path, help="separate build directory, including ELF, symbols and metadata")
     parser.add_argument("--link-diagnostics", action="store_true", help="sample ESP heap at idle AT boundaries")
     parser.add_argument("--tls-passthrough", action="store_true", help="single verified TLS connection with raw duplex UART")
-    parser.add_argument("--arm-tls", action="store_true", help="experimental verified TLS on Zynq; ESP carries raw TCP")
+    parser.add_argument("--arm-tls", action="store_true", help="verified TLS on Zynq; ESP carries raw TCP")
     parser.add_argument("--drain-before-upload", action="store_true", help="experimental SSL receive-first scheduling")
     parser.add_argument("--ssl-read-until-empty", action="store_true", help="experimental SSL reads without encrypted-length queries")
     parser.add_argument("--uart-baud", type=int, choices=(460800,921600,1000000,2000000),default=2000000)
     args = parser.parse_args()
+    if PROFILE and args.mode != PROFILE["mode"]:
+        parser.error("This folder belongs to " + PROFILE["mode"] + "; use its matching project")
+    if args.mode == "enzh":
+        args.speech = True
+
     if args.arm_tls:
         if args.mode == "zhen" and not args.speech:
             parser.error("--mode zhen --arm-tls requires --speech")
@@ -131,11 +137,13 @@ def main():
     if args.mode == "zhen":
         OUT = ROOT / "output/cloud_app_zhen"
     if args.speech:
-        if args.mode != "zhen":
+        if args.mode not in ("zhen", "enzh"):
             parser.error("--speech requires --mode zhen")
         OUT = ROOT / "output/cloud_app_zhen_speech"
     if args.arm_tls and args.mode == "zhzh":
         OUT = ROOT / "output/cloud_app_zhzh_arm_tls"
+    if args.mode in ("enzh", "enen"):
+        OUT = ROOT / "output" / args.mode / ("selftest" if args.selftest else "microphone")
     if args.output_dir:
         OUT = args.output_dir.resolve()
     gcc = args.gcc
@@ -174,6 +182,11 @@ def main():
         flags.remove("-DZ7_ASR_SUBTITLE")
         flags.append("-DZ7_TRANSLATE_EN")
         flags = ["-Wl,-Map=" + str(OUT / "cloud_app.map") if flag.startswith("-Wl,-Map=") else flag for flag in flags]
+    if args.mode == "enzh":
+        flags.remove("-DZ7_ASR_SUBTITLE")
+        flags += ["-DZ7_SOURCE_EN", "-DZ7_TRANSLATE_ZH"]
+    elif args.mode == "enen":
+        flags += ["-DZ7_SOURCE_EN", "-DZ7_RECOGNIZE_EN"]
     sources = list(SOURCES)
     tls_objects=[]
     if args.arm_tls:
@@ -184,7 +197,11 @@ def main():
         at=tls_flags.index("-T"); del tls_flags[at:at+2]
         for source in sorted((ROOT / "third_party/mbedtls/library").glob("*.c")):
             obj=tls_dir/(source.stem+".o")
-            proc=subprocess.run([str(gcc),*tls_flags,"-c",str(source),"-o",str(obj)],capture_output=True,text=True)
+            # AMD's Windows launcher strips literal quotes in direct -D arguments.
+            response = tls_dir / "compile.rsp"
+            arguments = [*tls_flags,"-c",str(source),"-o",str(obj)]
+            response.write_text("\n".join('"'+a.replace('\\','\\\\').replace('"','\\"')+'"' for a in arguments)+"\n",encoding="utf-8")
+            proc=subprocess.run([str(gcc),"@"+str(response)],capture_output=True,text=True)
             if proc.returncode:
                 (OUT/"tls_build.log").write_text(proc.stdout+proc.stderr,encoding="utf-8")
                 raise SystemExit(proc.stdout+proc.stderr)
@@ -193,11 +210,11 @@ def main():
         flags.append("-DZ7_TRANSLATE_AUDIO")
     elf_name = "cloud_app.elf"
     if args.selftest:
-        generated = ROOT / "output/cloud_app/selftest_pcm.c"
+        generated = ROOT / ("output/selftest_en/selftest_pcm.c" if args.mode in ("enzh", "enen") else "output/cloud_app/selftest_pcm.c")
         if not generated.is_file():
             raise SystemExit("selftest PCM not generated: " + str(generated))
         flags.append("-DZ7_SELFTEST_AUDIO")
-        sources.append("output/cloud_app/selftest_pcm.c")
+        sources.append(generated.relative_to(ROOT).as_posix())
         elf_name = "cloud_app_selftest.elf"
     opus_objects = OUT / "opus_obj"
     opus_objects.mkdir(exist_ok=True)
@@ -249,7 +266,7 @@ def main():
         "ArmTLS": bool(args.arm_tls),
         "UARTBaud": args.uart_baud,
         "ELFSHA256": hashlib.sha256(elf_path.read_bytes()).hexdigest(),
-        "InputSHA256": {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in sources},
+        "InputSHA256": {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in sorted(set(sources) | {"scripts/build_cloud_app.py", "software/network_ui/language_profile.h", "software/network_ui/link_arm_tls.ld", "output/display/framebuffer_hw.h"} | {p.relative_to(ROOT).as_posix() for d in ("software/network_ui", "software/subtitle_ui") for p in (ROOT / d).glob("*.h")})},
         "ELF": str(elf_path.relative_to(ROOT)).replace("\\", "/"),
     }
     (OUT / "build.json").write_text(

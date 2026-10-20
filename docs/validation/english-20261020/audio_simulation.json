@@ -1,0 +1,117 @@
+{
+  "Status": "passed",
+  "AttemptId": "65b3b9e7-dd68-47d5-ae30-ed0ee10d182b",
+  "VerifiedAtUTC": "2026-10-20T04:51:17.798717+00:00",
+  "Tests": [
+    {
+      "Top": "tb_i2c_wm8731",
+      "Marker": "PASS_I2C_WM8731",
+      "Info": []
+    },
+    {
+      "Top": "tb_i2c_read",
+      "Marker": "PASS_I2C_READ",
+      "Info": []
+    },
+    {
+      "Top": "tb_i2s_loopback",
+      "Marker": "PASS_I2S_LOOPBACK",
+      "Info": [
+        "INFO loopback: bit-exact at a delay of 3 frames (192 BCLK cycles)"
+      ]
+    },
+    {
+      "Top": "tb_audio_latency",
+      "Marker": "PASS_AUDIO_LATENCY",
+      "Info": []
+    },
+    {
+      "Top": "tb_audio_regs",
+      "Marker": "PASS_AUDIO_REGS",
+      "Info": []
+    },
+    {
+      "Top": "tb_audio_sample_tap",
+      "Marker": "PASS_AUDIO_SAMPLE_TAP",
+      "Info": []
+    },
+    {
+      "Top": "tb_audio_playback",
+      "Marker": "PASS_AUDIO_PLAYBACK",
+      "Info": []
+    },
+    {
+      "Top": "tb_audio_overlay",
+      "Marker": "PASS_AUDIO_OVERLAY",
+      "Info": []
+    }
+  ],
+  "LogicHashes": [
+    {
+      "File": "rtl/i2c_master.v",
+      "SHA256": "93ea995f75e61d31ba0307c5c574e84f2599d6ee10ebab4cac477278c3af2447"
+    },
+    {
+      "File": "rtl/wm8731_init.v",
+      "SHA256": "45ba7fb0d3a381a640a75123019be05974102a8f5c2bcf36d475ce7ed7ad67a3"
+    },
+    {
+      "File": "rtl/i2s_loopback.v",
+      "SHA256": "d6f8f11802d6f12c408e37a499a5a7b15dfc2281dac885e8aca8bbaa8e44124b"
+    },
+    {
+      "File": "rtl/audio_latency.v",
+      "SHA256": "2e82b9fb37a259cfcd0b0a9558590ea8eeabef9c57a8d88cf2fd161ed976cd9c"
+    },
+    {
+      "File": "rtl/audio_regs.v",
+      "SHA256": "3ff59fd0ed539cef59e316d5884810c806964c755d5032ccca1137b690783a48"
+    },
+    {
+      "File": "rtl/audio_playback.v",
+      "SHA256": "dd3cc46c0d8194ef3e46c690a673022263cc089667dda2a7021e36d011772047"
+    },
+    {
+      "File": "rtl/audio_overlay.v",
+      "SHA256": "7a10b2918ad25793c03917bf4220581d8275dece056a120c01a519000c27e714"
+    },
+    {
+      "File": "rtl/audio_sample_tap.v",
+      "SHA256": "b4490d368a5ccd71d28ac903da0f658de87b2fc0efac763c99b5fb795624d576"
+    }
+  ],
+  "TestHashes": [
+    {
+      "File": "sim/tb_i2c_wm8731.v",
+      "SHA256": "ce705aafb9faa8b3785ca43ecf010062c6c17a8f7fbe26f3bc833e708b8be431"
+    },
+    {
+      "File": "sim/tb_i2c_read.v",
+      "SHA256": "3296f1ecb4be1a6a6339e7e531a4a0cfbe4add74a63782b16c9ffb78ec8e4f80"
+    },
+    {
+      "File": "sim/tb_i2s_loopback.v",
+      "SHA256": "3a51ebd8b83dd8f58defd1d842ed8a1e7d23000a530c8edfa719bcdc151e8a33"
+    },
+    {
+      "File": "sim/tb_audio_latency.v",
+      "SHA256": "98dc5ef4ba87a8753d70334eacf7c092d420af11449cd0073048b46ad4e93194"
+    },
+    {
+      "File": "sim/tb_audio_regs.v",
+      "SHA256": "9a855190381dd21538ddca6cb3817789db60081497810bcda51a30cb75cfedf9"
+    },
+    {
+      "File": "sim/tb_audio_sample_tap.v",
+      "SHA256": "b68b386a7aec887f9463d21b888bebffd42495673dcdf82882f55a540b4d5c03"
+    },
+    {
+      "File": "sim/tb_audio_playback.v",
+      "SHA256": "bb7d3d93871f71287878141dd18eb9f1977868f3b34849e66f8bdedd7d779239"
+    },
+    {
+      "File": "sim/tb_audio_overlay.v",
+      "SHA256": "109481a7a9def32ed4a762269301c6712c5b8adbad0657050b01f6383ab46a5f"
+    }
+  ]
+}

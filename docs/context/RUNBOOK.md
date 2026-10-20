@@ -1,5 +1,26 @@
 # 分阶段执行与验收
 
+## 英语输入模式（2026-10-20）
+
+当前状态与边界先按需查看 [ENGLISH](ENGLISH.md)。使用共享工程的显式参数，不需要根目录 `PROFILE.json`。准备显示头文件和字库的方法沿用下方已有章节；英语自测必须先有 `scripts/generate_english_selftest.py` 生成的英文样本，不能混用中文 PCM。本轮复用了资料包中保存的匹配英文样本。
+
+```text
+python -B scripts/build_cloud_app.py --gcc <ARM-GCC> --mode enzh --arm-tls --uart-baud 1000000
+python -B scripts/build_cloud_app.py --gcc <ARM-GCC> --mode enen --arm-tls --uart-baud 1000000
+python -B scripts/validate_english_profile.py --gcc <Windows-GCC> --mode enzh
+python -B scripts/validate_english_profile.py --gcc <Windows-GCC> --mode enen
+```
+
+增加 `--selftest` 生成对应固定样本 ELF；普通构建为麦克风版。输出在 `output/<mode>/{microphone,selftest}/`。本轮四套构建已执行；新的检出仍须重新准备输入并构建。首次加载采用下方 `z7_nano_audio.tcl run`，先核对板型/JTAG、位流及全部来源哈希，关闭已有云连接再系统复位；当前匹配平台只换 ELF 时可保留 PL 时钟，但同样必须先退出 ESP 透传，不要把 AT 命令送入旧 TCP 负载。
+
+运行时配置：`python -B scripts/configure_cloud_runtime.py --credentials-stdin --yes --mode <enzh|enen> --symbols <匹配符号文件> --xsdb <XSDB>`。隐藏输入为包含 `ssid`、`password`、`key` 的单行 JSON；不要将真实值写进脚本或 shell 参数。必须看到 `CLOUD_READY` 并检查实际公共计数。模式选择正确服务模型，显式传不同模型会拒绝；固定样本和麦克风符号不能混用。
+
+Vivado 2026.1 生成的 PS 初始化位于 `output/z7_nano/audio/vivado/nano_audio.gen/sources_1/bd/nano_audio/ip/nano_audio_ps7_0/ps7_init.tcl`；2018.3 保存版使用 `.srcs` 下路径。加载时传当前构建生成的文件，不能直接照搬旧目录。XSDB 出现 Tcl 错误时也可能返回进程退出码 0，仍须检查成功标记和公共计数。
+
+麦克风就绪观察：`python -B scripts/repair/check_english_microphone_ready.py --mode <enzh|enen> --xsdb <XSDB>`，默认观察对应麦克风构建；使用单独构建目录时增加 `--directory <构建目录>/ready`。只验证采集/上传和链路，不能代替真人说话与听觉验收。当前实测修正版使用 `--output-dir output/enzh/microphone_cdc` 构建；真实能力与版本边界见 ENGLISH，不混用初轮记录。
+
+电脑云端短测先执行 `prepare_english_opus.py --mode <模式> --gcc <Windows-GCC>`，再执行 `check_english_cloud.py --mode <模式>`；默认检查固定英文四句。实际录音可增加 `--input <16kHz单声道16位WAV> --output-dir <独立音频结果目录>`，随后检查器使用 `--audio-pages <该目录>/opus_pages.json --output <独立结果.json>`。自定义录音只判断完整上传后得到定稿，识别文本仍须单独核对，不能沿用固定样本的 morning/句数预期。Key 只从当前进程环境读取，不写入参数或文件。本轮已执行固定样本正例、修正前录音诊断及修正后真实录音对照；原始录音只在本机保留。
+
 ## 中译中共享 TLS（2026-10-20）
 
 行为和验证范围见 [ZHZH](ZHZH.md)。本轮已有 Python 可用，`machine` 环境不可用；使用现有 SDK 2018.3 和 Windows GCC，无依赖安装。准备输入的方法沿用下方中译英章节的 `output/display/framebuffer_hw.h`、`output/subtitle_ui/ui_assets.c`，自测另需 `output/cloud_app/selftest_pcm.c`。桌面完整保存版包含其已加载副本的匹配输入。

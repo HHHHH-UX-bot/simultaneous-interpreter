@@ -1,3 +1,4 @@
+#include "language_profile.h"
 #include "cloud_events.h"
 #define JSMN_STATIC
 #define JSMN_STRICT
@@ -74,7 +75,7 @@ static enum cloud_parse_code cloud_json_text(const char *s,const jsmntok_t *t,in
     int at=t[token].start;uint32_t n=0;
     while(at<t[token].end) {
         if(n==UI_MAX_TEXT-1) {
-#ifdef Z7_TRANSLATE_EN
+#if defined(Z7_BILINGUAL) || defined(Z7_RECOGNIZE_EN)
             for(uint32_t i=1;i<n;++i) out[i-1u]=out[i];
             --n; /* Keep the latest screenful; a long final must still commit. */
 #else
@@ -93,7 +94,7 @@ static enum cloud_parse_code cloud_json_text_append(const char *s,const jsmntok_
     int at=t[token].start;
     while(at<t[token].end) {
         if(*n==UI_MAX_TEXT-1) {
-#ifdef Z7_TRANSLATE_EN
+#if defined(Z7_BILINGUAL) || defined(Z7_RECOGNIZE_EN)
             for(uint32_t i=1;i<*n;++i) out[i-1u]=out[i];
             --*n;
 #else

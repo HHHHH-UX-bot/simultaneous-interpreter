@@ -129,7 +129,7 @@ module audio_regs #(
     // up with 48 kHz, and the raw tap only holds the latest sample).
     localparam integer PCM_FIFO_DEPTH = 1024;
     reg [15:0] pcm_fifo [0:PCM_FIFO_DEPTH-1];
-    reg [10:0] pcm_wr, pcm_rd;
+    reg [9:0] pcm_wr, pcm_rd;
     reg [11:0] pcm_count;
     reg [15:0] pcm_overflows;
     reg [1:0]  pcm_decimate;
@@ -280,7 +280,7 @@ module audio_regs #(
     // pop leaves the occupancy unchanged.
     always @(posedge clk) begin
         if (!reset_n) begin
-            pcm_wr <= 11'd0; pcm_rd <= 11'd0; pcm_count <= 12'd0;
+            pcm_wr <= 10'd0; pcm_rd <= 10'd0; pcm_count <= 12'd0;
             pcm_overflows <= 16'd0; pcm_decimate <= 2'd0; sample_toggle_d <= 1'b0;
         end else begin
             if (pcm_sample_edge) begin

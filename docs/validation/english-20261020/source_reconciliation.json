@@ -1,0 +1,9 @@
+{
+  "status": "verified",
+  "Desktop_archive_sha256": "85aa96ea27da7ef989409b34856d437d6be96901f2fd5d6f1bda88f0ce77ec7e",
+  "English_source_trees": "identical between enzh/enen",
+  "first_party_changed": 7,
+  "first_party_new": 7,
+  "AN831_schematic_sha256": "60de5187a5c21238be5ff20cf31fc68046bb60431c10478ef8fba811baba0235",
+  "scope": "scoped archive reconciliation; no bulk import of vendor caches or runtime data"
+}

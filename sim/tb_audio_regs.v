@@ -77,6 +77,7 @@ module tb_audio_regs;
         .cfg_r4(cfg_r4), .cfg_r5(cfg_r5), .cfg_r7(cfg_r7), .cfg_r8(cfg_r8));
 
     integer errors = 0;
+    integer block, sample;
     reg [31:0] rd;
 
     task axi_write;
@@ -192,6 +193,23 @@ module tb_audio_regs;
         expect_read(8'h8c, 32'h0000_5678, "pcm fifo second sample");
         expect_read(8'h90, 32'd0, "pcm fifo drained again");
 
+        // More than two complete FIFO rotations, through the real AXI pop.
+        // Distinct sample values detect invalid addresses and stale slots.
+        for (block = 0; block < 8; block = block + 1) begin
+            for (sample = 0; sample < 256; sample = sample + 1) begin
+                sample_data = 16'h2000 + block * 256 + sample;
+                repeat (3) begin @(negedge clk); sample_toggle = ~sample_toggle; end
+            end
+            expect_read(8'h90, 32'd256, "pcm wrapped batch count");
+            for (sample = 0; sample < 256; sample = sample + 1) begin
+                axi_read(8'h8c, rd);
+                if (rd !== (32'h2000 + block * 256 + sample))
+                    $fatal(1, "PCM FIFO wrap lost sample %0d: %08h", block * 256 + sample, rd);
+            end
+            expect_read(8'h90, 32'd0, "pcm wrapped batch drained");
+        end
+        expect_read(8'h94, 32'd0, "pcm wrapped batches no overflow");
+
         // Status word: [7:0] flags (live, codec_found, addr_sel[1:0], init_busy,
         // init_done, init_error, max_valid), [10:8] scl_idle/sda_idle/rb_valid
         // and [31:24] regs_written.
@@ -235,7 +253,7 @@ module tb_audio_regs;
     end
 
     initial begin
-        #200000;
+        #1000000;
         $display("FAIL_AUDIO_REGS timeout");
         $finish;
     end

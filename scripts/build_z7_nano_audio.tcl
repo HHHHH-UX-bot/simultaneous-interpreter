@@ -196,11 +196,25 @@ update_compile_order -fileset sources_1
 if {$action eq "design"} {puts PASS_Z7_NANO_AUDIO_DESIGN; close_project; exit}
 synth_design -top z7_nano_audio_top -part $board_part
 opt_design
+# The tap waits one extra 20 ns destination cycle for this held data bundle.
+# Bound data/control route skew to 15 ns; async clock groups do not check it.
+set tap_ends [get_cells -hier -regexp {.*u_sample_tap/(data1_reg\[[0-9]+\]|t1_reg)}]
+if {[llength $tap_ends] != 17} {error "Microphone CDC endpoints missing"}
+set tap_starts [all_fanin -flat -startpoints_only -only_cells -to [get_pins -of_objects $tap_ends -filter {REF_PIN_NAME == D}]]
+if {[llength $tap_starts] != 17} {error "Microphone CDC sources missing"}
+set_bus_skew -from $tap_starts -to $tap_ends 15.0
 place_design
 phys_opt_design
 route_design
 set_property BITSTREAM.CONFIG.USR_ACCESS 0x5a374e33 [current_design]
 report_timing_summary -report_unconstrained -file [file join $out reports timing.rpt]
+set tap_skew_report [report_bus_skew -return_string]
+set tap_skew_file [open [file join $out reports microphone_cdc_skew.rpt] w]
+puts $tap_skew_file $tap_skew_report
+close $tap_skew_file
+if {![regexp {Slack \(MET\)} $tap_skew_report] || [regexp {Slack \(VIOLATED\)} $tap_skew_report]} {
+    error "Microphone CDC route skew not verified"
+}
 report_drc -file [file join $out reports drc.rpt]
 report_io -file [file join $out reports io.rpt]
 report_utilization -file [file join $out reports utilization.rpt]

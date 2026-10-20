@@ -1,3 +1,4 @@
+#include "language_profile.h"
 #include "cloud_live.h"
 #ifdef Z7_ARM_TLS
 #include "arm_tls.h"
@@ -14,7 +15,7 @@
 #include "../ps_bringup/cache.h"
 #endif
 #include <string.h>
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
 #define CLOUD_PAIRS 16u
 #define CLOUD_LINKS 32u
 #else
@@ -74,7 +75,7 @@ static void health_clean(void) {
     cache_clean_range((const void *)first_wire_fault,sizeof(first_wire_fault));
 #endif
 }
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
 /* Queue state only; no identifiers or recognised text in diagnostics. */
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t caption_queue_diag[36];
 #endif
@@ -122,7 +123,7 @@ static struct cloud_pair *cloud_pair_find(const char *id,int target,int create) 
     struct cloud_pair *slot=empty;
     if(!slot) {
         ++cloud.live.ignored;
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
         ++session_diag[5];session_diag_clean();
         cloud_client_stop();cloud_fail(9);return 0; /* Never overwrite an untranslated sentence. */
 #else
@@ -132,7 +133,7 @@ static struct cloud_pair *cloud_pair_find(const char *id,int target,int create) 
     memset(slot,0,sizeof(*slot));
     slot->order=++cloud.order;cloud_id_copy(target?slot->target_id:slot->source_id,id);return slot;
 }
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
 static void cloud_preview(void) {
     if(cloud.model->epoch!=cloud.live.epoch || cloud.model->session!=UI_RUNNING) return;
     struct cloud_pair *pending=0,*latest=0;
@@ -175,7 +176,7 @@ static void cloud_commit(void) {
         struct cloud_pair *p=0;
         for(uint32_t i=0;i<CLOUD_PAIRS;++i) if(cloud.pairs[i].order && (!p || cloud.pairs[i].order<p->order)) p=cloud.pairs+i;
         if(!p || !p->source_ready || !p->target_ready || !p->complete) {
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
             cloud_preview();
 #endif
             return;
@@ -231,7 +232,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
     }
     if(e->kind==CLOUD_SPEECH_STARTED) {
         cloud_client_speech_started(e->audio_start_ms);
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
         if(cloud.model->epoch==cloud.live.epoch && cloud.model->session==UI_RUNNING) {
             /* Keep the previous subtitle readable until the next English text
                arrives; a new speech segment only changes the status. */
@@ -245,7 +246,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
     /* ASR previews are Chinese source; bilingual mode keeps them below the
        independent English translation, including before either final arrives. */
     if(e->kind==CLOUD_ASR_PARTIAL) {
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
         if(!e->text[0]) return 0; /* Empty VAD previews must not reserve queue heads. */
 #endif
         struct cloud_pair *p=cloud_pair_find(e->item_id,0,1);
@@ -255,7 +256,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
             if(cloud.model->epoch==cloud.live.epoch && cloud.model->session==UI_RUNNING) {
 #ifdef Z7_ASR_SUBTITLE
                 for(uint32_t i=0;i<UI_MAX_TEXT;++i) cloud.model->translated[i]=e->text[i];
-#elif defined(Z7_TRANSLATE_EN)
+#elif defined(Z7_BILINGUAL)
                 cloud_preview();
 #else
                 for(uint32_t i=0;i<UI_MAX_TEXT;++i)
@@ -298,7 +299,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
                 p->translated[n]=0;
             }
             if(cloud.model->epoch==cloud.live.epoch && cloud.model->session==UI_RUNNING) {
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
                 cloud_preview();
 #else
                 for(uint32_t i=0;i<UI_MAX_TEXT;++i) cloud.model->translated[i]=p->translated[i];
@@ -335,7 +336,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
         cloud_client_translation(0);
 #endif
         ++cloud.live.asr_final;
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
         if(!e->text[0]) {
             p=cloud_pair_find(e->item_id,0,0);
             if(p && !p->translated[0] && !p->response_id[0]) memset(p,0,sizeof(*p));
@@ -348,7 +349,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
             memcpy(p->source,e->text,sizeof(p->source));p->source_ready=1;
 #ifndef Z7_ASR_SUBTITLE
             if(cloud.model->epoch==cloud.live.epoch && cloud.model->session==UI_RUNNING) {
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
                 cloud_preview();
 #else
                 for(uint32_t i=0;i<UI_MAX_TEXT;++i)
@@ -398,7 +399,7 @@ void cloud_live_init(struct ui_state *model) {
     memset((void *)cloud_health,0,sizeof(cloud_health));cloud_health[0]=0x31484c43u;
     memset((void *)cloud_error_code,0,sizeof(cloud_error_code));health_now=0;health_clean();
     memset((void *)first_wire_fault,0,sizeof(first_wire_fault));health_clean();
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
     memset((void *)caption_queue_diag,0,sizeof(caption_queue_diag));
 #ifdef Z7_MMU_CACHE
     cache_clean_range((const void *)caption_queue_diag,sizeof(caption_queue_diag));
@@ -443,7 +444,7 @@ void cloud_live_begin(uint32_t now) {
     /* Live Chinese uses the 28 px font, the only size carrying the GB2312
        level-1 extension, so real translations are not reduced to spaces. */
     while(model->font_index>0) (void)ui_control(model,UI_FONT_MINUS);
-#ifdef Z7_TRANSLATE_EN
+#ifdef Z7_BILINGUAL
     /* English translation above, Chinese source below. */
     if(!model->show_source) (void)ui_control(model,UI_TOGGLE_SOURCE);
 #else

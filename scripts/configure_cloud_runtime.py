@@ -17,6 +17,7 @@ Usage: python scripts/configure_cloud_runtime.py [--dry-run]
 """
 import argparse
 import getpass
+import json
 import os
 import re
 import secrets
@@ -26,6 +27,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+PROFILE = json.loads((ROOT / "PROFILE.json").read_text(encoding="utf-8")) if (ROOT / "PROFILE.json").is_file() else {}
 XSDB = Path("C:/Xilinx/Vivado/2018.3/bin/xsdb.bat")
 NET_ADDR = 0x1E180
 CLOUD_ADDR = 0x1E200
@@ -142,20 +144,41 @@ def main() -> int:
                         help="validate packing without touching the board")
     parser.add_argument("--xsdb", type=Path, default=XSDB)
     parser.add_argument("--env", action="store_true", help="read Z7_WIFI_SSID, Z7_WIFI_PASSWORD and Z7_CLOUD_KEY without prompts")
+    parser.add_argument("--credentials-stdin", action="store_true", help="read one private JSON record without console echo")
     parser.add_argument("--symbols", type=Path, help="symbol table for the ELF actually loaded")
-    parser.add_argument("--model", choices=("asr", "translate"), default="translate")
+    parser.add_argument("--mode", choices=("zhzh", "zhen", "enzh", "enen"), default=PROFILE.get("mode"))
+    parser.add_argument("--model", choices=("asr", "translate"), help="defaults to the selected mode's model")
     parser.add_argument("--speech", action="store_true",help="use the translated-audio ELF symbol table")
     parser.add_argument("--yes", action="store_true", help="apply the requested configuration without a second confirmation")
     args = parser.parse_args()
+    if args.mode:
+        expected_model = "asr" if args.mode in ("zhzh", "enen") else "translate"
+        if args.model and args.model != expected_model:
+            parser.error("Model does not match the selected language mode")
+        args.model = expected_model
+        if args.symbols is None and args.mode in ("enzh", "enen"):
+            args.symbols = ROOT / "output" / args.mode / "microphone" / "symbols.log"
+        if args.symbols:
+            build_record = json.loads(args.symbols.with_name("build.json").read_text(encoding="utf-8"))
+            if build_record.get("Mode") != args.mode:
+                parser.error("ELF symbols belong to another language mode")
+    args.model = args.model or "translate"
 
-    ssid = (os.environ.get("Z7_WIFI_SSID", "") if args.env else input("Wi-Fi SSID: ").strip()).encode()
-    password = (os.environ.get("Z7_WIFI_PASSWORD", "") if args.env else getpass.getpass("Wi-Fi password: ")).encode()
+
+    if args.credentials_stdin:
+        from network_connect import read_credentials_line
+        private = json.loads(read_credentials_line())
+        ssid, password, key = (private[name].encode() for name in ("ssid", "password", "key"))
+        private.clear()
+    else:
+        ssid = (os.environ.get("Z7_WIFI_SSID", "") if args.env else input("Wi-Fi SSID: ").strip()).encode()
+        password = (os.environ.get("Z7_WIFI_PASSWORD", "") if args.env else getpass.getpass("Wi-Fi password: ")).encode()
+        key = (os.environ.get("Z7_CLOUD_KEY", "") if args.env else getpass.getpass("Bailian API key: ")).encode()
     host = re.search(r'#define CLOUD_HOST "(ws-[^.]+)\.', (ROOT / 'software/network_ui/network.c').read_text(encoding='utf-8'))
     workspace_default = host.group(1) if host else ''
-    workspace = ((os.environ.get("Z7_CLOUD_WORKSPACE", "") if args.env else input(f"Bailian workspace id [{workspace_default}]: ").strip()) or workspace_default).encode()
-    key = (os.environ.get("Z7_CLOUD_KEY", "") if args.env else getpass.getpass("Bailian API key: ")).encode()
+    workspace = ((os.environ.get("Z7_CLOUD_WORKSPACE", "") if args.env else "" if args.credentials_stdin else input(f"Bailian workspace id [{workspace_default}]: ").strip()) or workspace_default).encode()
     default_path = "/api-ws/v1/realtime?model=qwen3-asr-flash-realtime" if args.model == "asr" else DEFAULT_PATH
-    path = (os.environ.get("Z7_CLOUD_PATH", "") if args.env else input(f"Model path [{default_path}]: ").strip()) or default_path
+    path = (os.environ.get("Z7_CLOUD_PATH", "") if args.env else "" if args.credentials_stdin else input(f"Model path [{default_path}]: ").strip()) or default_path
     path = path.encode()
 
     if not 1 <= len(ssid) <= 32:

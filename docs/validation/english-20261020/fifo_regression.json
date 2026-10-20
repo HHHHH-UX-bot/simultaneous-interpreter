@@ -1,0 +1,8 @@
+{
+  "before": "failed at sample 1020 with unknown FIFO data",
+  "before_time_ns": 125920,
+  "after": "passed 2048 distinct samples through AXI, crossing two wraps",
+  "rtl_sha256": "3ff59fd0ed539cef59e316d5884810c806964c755d5032ccca1137b690783a48",
+  "test_sha256": "9a855190381dd21538ddca6cb3817789db60081497810bcda51a30cb75cfedf9",
+  "scope": "address wrap/order regression; full/drop and concurrent push/pop behavior unchanged"
+}
