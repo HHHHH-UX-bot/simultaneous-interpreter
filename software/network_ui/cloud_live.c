@@ -418,6 +418,25 @@ void cloud_live_init(struct ui_state *model) {
     cloud.report_ms=(uint32_t)-200;
 }
 int cloud_live_capture_enabled(void) {return capture_enabled;}
+void cloud_live_connection(int ready) {
+    if(!capture_enabled) return;
+    struct ui_state *model=cloud.model;
+    enum ui_stage next;
+    if(network_info.phase==6u || (network_info.phase==4u && cloud.live.phase==6u)) {
+        if(model->session==UI_RUNNING) (void)ui_control(model,UI_PAUSE);
+        next=UI_OFFLINE;
+    } else if(ready && network_info.phase==4u) {
+        if(model->stage!=UI_CONNECTING && model->stage!=UI_OFFLINE) return;
+        next=UI_LISTENING;
+    } else {
+        if(model->session==UI_IDLE) {
+            if(network_info.phase==0u) return;
+            (void)ui_control(model,UI_START);
+        }
+        next=UI_CONNECTING;
+    }
+    if(model->stage!=next) {model->stage=next;++model->change_sequence;}
+}
 void cloud_live_control(enum ui_command command) {
     if(command==UI_PAUSE || command==UI_CLEAR) {
         capture_enabled=0;cloud.live.phase=0;cloud_client_stop();speech_playback_stop();
@@ -426,6 +445,7 @@ void cloud_live_control(enum ui_command command) {
 #endif
     } else if(command==UI_START || command==UI_RESUME) {
         capture_enabled=1;
+        cloud.model->stage=UI_CONNECTING;++cloud.model->change_sequence;
 #ifdef Z7_ARM_TLS
         /* Explicit user resume also re-arms a fault-paused session whose
            automatic retry budget was exhausted while run intent stayed set. */
@@ -467,6 +487,9 @@ void cloud_live_begin(uint32_t now) {
 #endif
     }
     cloud.live.epoch=model->epoch;
+#ifdef Z7_ARM_TLS
+    model->stage=UI_CONNECTING;
+#endif
     if(!reconnect) memset((void *)&cloud_caption,0,sizeof(cloud_caption));
     cloud_wire_init(cloud_live_message,0);
 }

@@ -23,16 +23,18 @@ Vivado 2026.1 生成的 PS 初始化位于 `output/z7_nano/audio/vivado/nano_aud
 
 ### 英文控件与时延候选
 
-2026-10-20 已执行本机控件/字号回归、ARM 构建、实际暂停/恢复和抓屏，范围见 [ENGLISH](ENGLISH.md#当前阶段触摸控制与时延界面2026-10-20)。当前候选带 `--touch`，L1/T1 默认使用 PS 抗锯齿卡片；匹配 PL 关闭旧文字覆盖但保留同拍寄存级。
+2026-10-20 已执行本机控件/字号回归、ARM 构建、实际暂停/恢复和抓屏，范围见 [ENGLISH](ENGLISH.md#当前阶段触摸控制与时延界面2026-10-20)。当前候选增加云连接提示，见 [本阶段](ENGLISH.md#云端连接就绪提示2026-10-20)。候选带 `--touch`，L1/T1 默认使用 PS 抗锯齿卡片；匹配 PL 关闭旧文字覆盖但保留同拍寄存级。
 
 ```text
-python -B scripts/build_cloud_app.py --gcc <ARM-GCC> --mode enzh --arm-tls --uart-baud 1000000 --touch --output-dir output/enzh/touch_font
+python -B scripts/build_cloud_app.py --gcc <ARM-GCC> --mode enzh --arm-tls --uart-baud 1000000 --touch --output-dir output/enzh/connection_ui
 python -B scripts/run_z7_nano_usb_host.py build --gcc <ARM-GCC>
 python -B scripts/validate_subtitle_ui.py --gcc <Windows-GCC> --mode enzh
-python -B scripts/run_cloud_touch.py start --app-dir output/enzh/touch_font --xsdb <XSDB>
-python -B scripts/run_cloud_touch.py sample --app-dir output/enzh/touch_font --xsdb <XSDB>
-python -B scripts/run_cloud_touch.py stop --app-dir output/enzh/touch_font --xsdb <XSDB>
+python -B scripts/run_cloud_touch.py start --app-dir output/enzh/connection_ui --xsdb <XSDB>
+python -B scripts/run_cloud_touch.py sample --app-dir output/enzh/connection_ui --xsdb <XSDB>
+python -B scripts/run_cloud_touch.py stop --app-dir output/enzh/connection_ui --xsdb <XSDB>
 ```
+
+当前候选恢复识别后先观察 Connecting，等右侧“已就绪，可以开始说话。”再说话；继续按钮被接受不等于服务已就绪。等待或暂停时保留上一句。抓屏仍须暂停上传；不能为了捕捉 Ready 而长时间停住正在流式上传的 CPU。
 
 Host start 前必须完成匹配 CPU0 的实际加载，应用目录中保留 `build.json` 和该次 `load.json`：绑定 `elf_sha256`、`bitstream_sha256`、`ps7_init_sha256`、线缆、真实成功结果的项目内 `result` 路径及 `result_sha256`。结果必须有对应的 `display_ok=1`。本轮加载保存于候选的 `warm_boot/result.json`；只在同一已核对 PL 上换 ELF，不以构建哈希替代实际加载证明。新的检出需按上面的加载流程重新产生证据，不能复制历史加载记录冒充当前板卡。
 

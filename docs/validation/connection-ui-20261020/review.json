@@ -1,0 +1,8 @@
+{
+  "base": "6a900fdade0120d0ab8f8798caf3faeec7e73cbf",
+  "status": "passed after correction",
+  "scope": "independent source review of current readiness UI change; not board acceptance",
+  "finding": "P2: non-ARM TLS had no readiness publisher but shared renderer claimed Ready",
+  "resolution": "ARM-only Ready/action hints and begin-stage publication; legacy non-ARM retains Listening",
+  "remaining_important_findings": 0
+}

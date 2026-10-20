@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "cable_serial": "210241277120",
+  "elf_sha256": "3f1556772d58966391da9a187d8c85dd30d731a94d3715239f99279e27aff112",
+  "bitstream_sha256": "420e1f25496ed707fb2cb0e6f583f9f3727d47418732400d3fa7891a25f622ca",
+  "ps7_init_sha256": "90683f6490f64fe68da6518e4b0ef54e7e9dc7232945b62c4e8f61da856b0d5d",
+  "result": "output/enzh/connection_ui/warm_boot/result.json",
+  "result_sha256": "67bb92b69a18db034f4d83a3f08c9fd08176fed92decfe808b0539af68fbed1b",
+  "parent_load_sha256": "7cf109e6ed1a65d4d338f6bf8fa2b326fb6352bb10ce3f6be1671525b1808c74",
+  "method": "CPU0 warm reload, same verified PL"
+}

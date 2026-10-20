@@ -31,6 +31,9 @@ EXPORT int ui_host_draw(uint32_t scenario,uint32_t font_index,uint32_t page,uint
             struct ui_event e={UI_ASR_PARTIAL,s.epoch,3,1,0,ui_demo_samples[2u%ui_demo_sample_count].source};
             ui_apply_event(&s,&e);
         } else if(scenario==4u) ui_control(&s,UI_PAUSE);
+        else if(scenario==9u) s.stage=UI_CONNECTING;
+        else if(scenario==10u) {ui_control(&s,UI_PAUSE);s.stage=UI_OFFLINE;}
+        else if(scenario==11u) s.stage=UI_LISTENING;
         else if(scenario==5u) ui_control(&s,UI_CLEAR);
         else if(scenario==6u) ui_control(&s,UI_TOGGLE_SOURCE);
         else if(scenario==7u || scenario==8u) {
@@ -50,7 +53,7 @@ EXPORT int ui_host_from_state(const void *bytes,uint32_t size,uint32_t elapsed,u
     if(size!=sizeof(struct ui_state) || !bytes || !pixels || !stats) return 0;
     const struct ui_state *s=(const struct ui_state *)bytes;
     if(s->history_count>UI_HISTORY_MAX || s->history_count>s->final_count ||
-       s->font_index>2u || s->show_source>1u || s->session>UI_BLOCKED || s->stage>UI_FINAL) return 0;
+       s->font_index>2u || s->show_source>1u || s->session>UI_BLOCKED || s->stage>UI_OFFLINE) return 0;
     ui_render(pixels,s,elapsed,page,stats);return 1;
 }
 EXPORT void ui_host_latency(uint32_t *pixels,uint32_t readings,struct ui_render_stats *stats) {

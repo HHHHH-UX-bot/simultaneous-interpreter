@@ -320,6 +320,7 @@ static void send_handshake(void) {
     network_send((const uint8_t *)request,used);
 }
 
+int cloud_client_ready(void) {return client.phase==CLOUD_STREAMING;}
 void cloud_client_init(void) {
 #ifdef Z7_TLS_PASSTHROUGH
     for(uint32_t i=0;i<5u;++i) keepalive_diag[i]=0;

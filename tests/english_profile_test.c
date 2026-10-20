@@ -48,9 +48,16 @@ int main(void){
     memcpy((void *)cloud_client_config.path,path,sizeof(path));
 #endif
     cloud_client_start(0);client.phase=CLOUD_WAITING_SESSION;
+    network_info.phase=4;
+    cloud_live_connection(cloud_client_ready());CHECK(model.stage==UI_CONNECTING);
     blocked=1;cloud_client_session_created();CHECK(client.update_pending);
     blocked=0;cloud_client_tick(10);CHECK(!client.update_pending && session[0]);
-    printf("SESSION %s\n",session);cloud_client_session_updated();CHECK(client.phase==CLOUD_STREAMING);
+    printf("SESSION %s\n",session);
+    cloud_live_connection(cloud_client_ready());CHECK(model.stage==UI_CONNECTING);
+    cloud_client_session_updated();CHECK(client.phase==CLOUD_STREAMING);
+    cloud_live_connection(cloud_client_ready());CHECK(model.stage==UI_LISTENING);
+    uint32_t connection_seq=model.change_sequence;
+    cloud_live_connection(cloud_client_ready());CHECK(model.change_sequence==connection_seq);
     cloud_client_tick(20);CHECK(client.ogg_header_step==2);
     queue(100,1400);
     for(uint32_t now=1400;now<=3000;now+=20){queue(1,now);
@@ -63,6 +70,7 @@ int main(void){
     }
     CHECK(!upload_diag.drops && opus_tail-opus_head<20);blocked=0;
     cloud_live_begin(2000);
+    cloud_live_connection(cloud_client_ready());CHECK(model.stage==UI_LISTENING);
     event("{\"type\":\"conversation.item.input_audio_transcription.text\",\"item_id\":\"a0\",\"text\":\"Good \",\"stash\":\"morning.\"}");
 #ifdef Z7_ASR_SUBTITLE
     CHECK(model.translated[0]=='G' && !model.show_source);
@@ -171,11 +179,20 @@ int main(void){
     *(volatile uint32_t *)0x43c20090u=320;
     cloud_client_tick(4000);cloud_client_tick(4001);
     CHECK(!cloud_live_capture_enabled() && client.phase==CLOUD_IDLE && client.opus_frames==frames);
+    connection_seq=model.change_sequence;cloud_live_connection(1);
+    CHECK(model.session==UI_PAUSED && model.change_sequence==connection_seq);
     event("{\"type\":\"conversation.item.input_audio_transcription.completed\",\"item_id\":\"late\",\"transcript\":\"old session\"}");
     CHECK(model.translated[0]==retained && model.final_count==finals);
     CHECK(ui_control(&model,UI_RESUME));cloud_live_control(UI_RESUME);cloud_live_begin(4100);
+    cloud_live_connection(cloud_client_ready());CHECK(model.stage==UI_CONNECTING);
     CHECK(cloud_live_capture_enabled() && cloud.live.epoch==model.epoch);
     CHECK(model.font_index==font_choice && model.show_source==source_choice && model.final_count==finals);
+    network_info.phase=6;cloud_live_connection(0);
+    CHECK(model.stage==UI_OFFLINE && model.session==UI_PAUSED && model.translated[0]==retained);
+    connection_seq=model.change_sequence;cloud_live_connection(0);
+    CHECK(model.change_sequence==connection_seq);
+    network_info.phase=1;cloud_live_connection(0);CHECK(model.stage==UI_CONNECTING);
+    CHECK(model.translated[0]==retained && model.font_index==font_choice && model.final_count==finals);
     CHECK(ui_control(&model,UI_CLEAR));cloud_live_control(UI_CLEAR);
     CHECK(!cloud_live_capture_enabled() && model.session==UI_IDLE && !model.final_count && !model.translated[0]);
     CHECK(ui_control(&model,UI_START));cloud_live_control(UI_START);cloud_live_begin(4200);

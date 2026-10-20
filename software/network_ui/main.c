@@ -149,6 +149,9 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
     if(network_info.phase==8u) cloud_client_start(now);
 #endif
     cloud_client_tick(now);
+#ifdef Z7_ARM_TLS
+    cloud_live_connection(cloud_client_ready());
+#endif
     if(stream_pilot.request || stream_pilot.phase) stream_pilot_tick(now);
     else if(!cloud_live_owns_ui()
 #ifdef Z7_ARM_TLS

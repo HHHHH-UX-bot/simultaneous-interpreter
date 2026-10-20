@@ -204,15 +204,29 @@ void ui_format_elapsed(uint32_t ms,uint32_t text[16]) {
 }
 static const char *stage_key(const struct ui_state *s) {
 #ifdef Z7_UI_ENGLISH
+    if(s->stage==UI_CONNECTING) return "Connecting";
+    if(s->stage==UI_OFFLINE) return "Offline";
     if(s->session==UI_PAUSED) return "Paused";
-    if(s->session==UI_IDLE) return "Ready";
+    if(s->session==UI_IDLE) return "Stopped";
     switch(s->stage) {case UI_RECOGNIZING:return "Recognizing";case UI_TRANSLATING:return "Translating";
-        case UI_FINAL:return "Final";default:return "Listening";}
+        case UI_FINAL:return "Final";
+#ifdef Z7_ARM_TLS
+        default:return "Ready";}
 #else
+        default:return "Listening";}
+#endif
+#else
+    if(s->stage==UI_CONNECTING) return "connecting";
+    if(s->stage==UI_OFFLINE) return "offline";
     if(s->session==UI_PAUSED) return "paused";
-    if(s->session==UI_IDLE) return "ready";
+    if(s->session==UI_IDLE) return "standby";
     switch(s->stage) {case UI_RECOGNIZING:return "recognizing";case UI_TRANSLATING:return "translating";
-        case UI_FINAL:return "final";default:return "listening";}
+        case UI_FINAL:return "final";
+#ifdef Z7_ARM_TLS
+        default:return "service_ready";}
+#else
+        default:return "listening";}
+#endif
 #endif
 }
 #ifdef Z7_UI_ENGLISH
@@ -262,17 +276,14 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     static const uint32_t direction[]={'E','n','g','l','i','s','h',' ','-','>',' ','C','h','i','n','e','s','e',0};
     static const uint32_t mode_badge[]={'E','N',' ','-','>',' ','Z','H',0};
     static const uint32_t english_caption[]={'C','h','i','n','e','s','e',0};
-    static const uint32_t bilingual_hint[]={'E','n','g','l','i','s','h',' ','/',' ','C','h','i','n','e','s','e',' ','s','u','b','t','i','t','l','e','s',0};
 #elif defined(Z7_RECOGNIZE_EN)
     static const uint32_t direction[]={'E','n','g','l','i','s','h',' ','-','>',' ','E','n','g','l','i','s','h',0};
     static const uint32_t mode_badge[]={'E','N',' ','-','>',' ','E','N',0};
     static const uint32_t english_caption[]={'E','n','g','l','i','s','h',0};
-    static const uint32_t bilingual_hint[]={'L','i','v','e',' ','E','n','g','l','i','s','h',' ','c','a','p','t','i','o','n','s',0};
 #else
     static const uint32_t direction[]={0x4e2d,0x6587,' ',0x2192,' ','E','n','g','l','i','s','h',0};
     static const uint32_t mode_badge[]={'Z','H',' ','-','>',' ','E','N',0};
     static const uint32_t english_caption[]={'E','n','g','l','i','s','h',0};
-    static const uint32_t bilingual_hint[]={'C','h','i','n','e','s','e',' ','/',' ','E','n','g','l','i','s','h',' ','s','u','b','t','i','t','l','e','s',0};
 #endif
     one_line(&p,direction,18,156,21,320,MUTED);
 #else
@@ -311,7 +322,8 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     stats->caption_lines=paragraph(&p,caption,size,(struct clip){44,148,656,198},INK,requested_page,
                                   &stats->caption_pages,&stats->caption_page);
 #ifdef Z7_UI_ENGLISH
-    english_text(note_text,!s->translated[0]?"":(s->session==UI_PAUSED?"Paused":(s->stage==UI_FINAL?"Final":"Translating")));
+    english_text(note_text,!s->translated[0]?"":(s->session==UI_PAUSED?"Paused":
+        (s->stage==UI_FINAL?"Final":(s->stage==UI_TRANSLATING?"Translating":"Previous subtitle retained"))));
     one_line(&p,note_text,14,44,360,440,MUTED);
 #else
     one_line(&p,label(s->session==UI_PAUSED?"paused":(s->stage==UI_FINAL?"final":"retained")),14,44,360,440,MUTED);
@@ -333,10 +345,17 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     one_line(&p,number,24,898,166,80,INK);
     rect(&p,760,207,220,1,LINE);one_line(&p,label("input"),14,760,218,146,MUTED);
     for(uint32_t i=0;i<8u;++i) {
-        int h=s->session==UI_RUNNING?8+(int)((elapsed_ms/170u+i*7u)%24u):4;
+        int h=s->session==UI_RUNNING && s->stage!=UI_CONNECTING && s->stage!=UI_OFFLINE?
+            8+(int)((elapsed_ms/170u+i*7u)%24u):4;
         round_rect(&p,914+(int)i*8,246-h,4,h,2,ACTION);
     }
-#ifdef Z7_UI_ENGLISH
+#ifdef Z7_ARM_TLS
+    const char *connection=s->stage==UI_CONNECTING?"connection_wait":
+        (s->stage==UI_OFFLINE?"connection_offline":(s->session==UI_IDLE?"connection_start":
+        (s->session==UI_PAUSED?"connection_paused":"connection_ready")));
+    paragraph(&p,label(connection),14,(struct clip){760,254,220,45},MUTED,0,0,0);
+#elif defined(Z7_UI_ENGLISH)
+    static const uint32_t bilingual_hint[]={'L','i','v','e',' ','s','u','b','t','i','t','l','e','s',0};
     paragraph(&p,bilingual_hint,14,(struct clip){760,254,220,45},MUTED,0,0,0);
 #else
     paragraph(&p,label("pending"),14,(struct clip){760,254,220,45},MUTED,0,0,0);

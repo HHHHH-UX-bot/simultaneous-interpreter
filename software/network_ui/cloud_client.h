@@ -31,6 +31,7 @@ struct cloud_client_state {
 enum { CLOUD_IDLE, CLOUD_HANDSHAKE, CLOUD_WAITING_SESSION, CLOUD_WAITING_UPDATE, CLOUD_STREAMING };
 
 void cloud_client_init(void);
+int cloud_client_ready(void);
 /* Receipt-to-final diagnostics; excludes server VAD's silence window/uplink. */
 void cloud_client_speech_stopped(void);
 void cloud_client_asr_final(void);

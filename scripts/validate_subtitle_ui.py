@@ -21,7 +21,7 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--gcc',type=Path,required=True)
     parser.add_argument('--mode',choices=('enzh','enen'))
     args=parser.parse_args();OUT.mkdir(parents=True,exist_ok=True)
-    defines=[] if not args.mode else ['-DZ7_SOURCE_EN']+(['-DZ7_TRANSLATE_ZH','-DZ7_TRANSLATE_AUDIO'] if args.mode=='enzh' else ['-DZ7_ASR_SUBTITLE','-DZ7_RECOGNIZE_EN'])
+    defines=[] if not args.mode else ['-DZ7_ARM_TLS','-DZ7_SOURCE_EN']+(['-DZ7_TRANSLATE_ZH','-DZ7_TRANSLATE_AUDIO'] if args.mode=='enzh' else ['-DZ7_ASR_SUBTITLE','-DZ7_RECOGNIZE_EN'])
     record_path=OUT/('host_validation_'+args.mode+'.json' if args.mode else 'host_validation.json')
     temp=ROOT/'tmp/subtitle_ui'/('host_'+uuid.uuid4().hex[:8]);temp.mkdir(parents=True)
     record={'Status':'pending','Mode':args.mode or 'shared','SourceHashes':hashes()}
@@ -43,7 +43,7 @@ def main():
         memory=(ctypes.c_uint32*(count+padding*2))()
         pointer=ctypes.cast(ctypes.byref(memory,padding*4),ctypes.POINTER(ctypes.c_uint32))
         images=[];long_pages={}
-        for scenario in range(9):
+        for scenario in range(12):
             for font in range(3):
                 stats=Stats()
                 for i in range(padding): memory[i]=memory[count+padding+i]=0xa5c35a3c
@@ -83,7 +83,8 @@ def main():
         record.update(Status='passed',VerifiedAtUTC=datetime.now(timezone.utc).isoformat(),
             ModelBytes=library.ui_host_state_size(),FrameSize=[1024,600],Images=images,
             Cases=['idle','final/history','long text/all pages','ASR draft retaining Chinese',
-                   'paused','cleared','source hidden','negative glyph bearings','255-scalar bearing text'],FontSizes=[28,36,44],
+                   'paused','cleared','source hidden','negative glyph bearings','255-scalar bearing text',
+                   'connecting with retained caption','offline with retained caption','ready to speak'],FontSizes=[28,36,44],
             BufferCanariesVerified=True,MissingGlyphs=0,ClippedGlyphPixels=0,
             NativeLibrary=str(dll.relative_to(ROOT)).replace('\\','/'),NativeLibrarySHA256=sha(dll),
             Scope='Native C renderer and simulated model states only; no board or touch/translation test')

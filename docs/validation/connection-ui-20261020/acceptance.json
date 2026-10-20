@@ -1,0 +1,17 @@
+{
+  "utc": "2026-10-20T07:32:06.824090+00:00",
+  "status": "passed",
+  "scope": "connection readiness UI stage, not complete product reliability",
+  "elf_sha256": "3f1556772d58966391da9a187d8c85dd30d731a94d3715239f99279e27aff112",
+  "user_confirmed": [
+    "Correct ready hint, new English and Chinese from real microphone, normal display",
+    "Touch Pause -> Continue: paused, reconnecting, ready hints correct; previous subtitle retained"
+  ],
+  "final_state": "paused, cloud link/client idle, retained subtitles, CPU1 touch running",
+  "limits": [
+    "TLS fatal alert 20 recurred and recovered; root cause not fixed",
+    "Offline rendering/event behavior tested natively, physical Offline view not accepted this stage",
+    "USB intermittent zero-report risk remains",
+    "No long-duration or headphone listening acceptance; no Flash/SD changes"
+  ]
+}
