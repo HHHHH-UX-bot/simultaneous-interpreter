@@ -1,0 +1,12 @@
+{
+  "library": "0.6.0",
+  "devices": [
+    {
+      "driver": "sipeed-slogic-analyzer",
+      "vendor": "SIPEED",
+      "model": "USB TO LA",
+      "version": null,
+      "sernum": "SI 8ch"
+    }
+  ]
+}

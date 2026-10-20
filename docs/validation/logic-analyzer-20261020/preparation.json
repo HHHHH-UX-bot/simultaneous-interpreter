@@ -1,0 +1,36 @@
+{
+  "status": "device_identified_formal_signal_capture_pending",
+  "windows_usb": {
+    "status": "OK",
+    "name": "USB TO LA",
+    "vid_pid": "359f:0300",
+    "serial": "SI_8CH"
+  },
+  "vendor_model_mapping": "SLogic Combo 8",
+  "official_input_range_volts": [
+    0,
+    3.6
+  ],
+  "sources": {
+    "model_id": "https://raw.githubusercontent.com/sipeed/libsigrok/slogic-dev/src/hardware/sipeed-slogic-analyzer/slogic/slogic.h",
+    "specification": "https://wiki.sipeed.com/hardware/en/logic_analyzer/combo8/index.html",
+    "same_warning_description": "https://raw.githubusercontent.com/sipeed/libsigrok/slogic-dev/src/hardware/sipeed-slogic-analyzer/protocol.c"
+  },
+  "input_sha256": {
+    "user_archive": "d5df8aac83dee431a2b98020d1606b96066e0dc5bc81bcc886e8e9942963a358",
+    "libsigrok": "b7e9ede64da367e6d9d9b9de1633e1e7e78f112ceb768f4d01f8c03a7ff5cc85"
+  },
+  "smoke_scope": "8 channels, probes disconnected, not a UART or voltage qualification",
+  "tool_warning": {
+    "message": "WaitForMultipleObjectsEx failed",
+    "winsock_initialized_control_warning_count": 38203,
+    "control_log_sha256": "f4bc93854ebcee2ea276eb613b335c40ddd63e176f2bd2b43cf8142910995f8d",
+    "not_fixed": true
+  },
+  "wiring": {
+    "user_confirmed": "female Dupont leads only, no hook clips",
+    "probes_connected_to_board": false,
+    "needed": "three 2.54 mm one-female-to-two-male Dupont splitters, or suitable test clips"
+  },
+  "board_mutations_this_preparation": false
+}

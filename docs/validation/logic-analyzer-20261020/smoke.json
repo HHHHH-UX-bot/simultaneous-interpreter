@@ -1,0 +1,17 @@
+{
+  "sample_rate_hz": 20000000,
+  "requested_samples": 2000000,
+  "logic_bytes": 2000000,
+  "unitsizes": [
+    1
+  ],
+  "packet_types": [
+    10000,
+    10005,
+    10004,
+    10001
+  ],
+  "probes": "disconnected",
+  "reported_sample_rate_hz": 20000000,
+  "wall_seconds": 0.516
+}
