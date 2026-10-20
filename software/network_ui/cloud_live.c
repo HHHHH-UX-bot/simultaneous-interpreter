@@ -66,6 +66,7 @@ __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t session
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t cloud_health[16];
 __attribute__((section(".cloud_runtime"),used)) static volatile char cloud_error_code[CLOUD_ID_BYTES];
 static uint32_t health_now;
+static int capture_enabled;
 void cloud_frame_debug(uint32_t *out);
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t first_wire_fault[8];
 static void health_clean(void) {
@@ -395,6 +396,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
 }
 static void cloud_receive(uint8_t byte) {++cloud.live.received;cloud_wire_byte(byte);}
 void cloud_live_init(struct ui_state *model) {
+    capture_enabled=1;
     memset(&cloud,0,sizeof(cloud));cloud.model=model;cloud.live.magic=0x31564c43u;
     memset((void *)cloud_health,0,sizeof(cloud_health));cloud_health[0]=0x31484c43u;
     memset((void *)cloud_error_code,0,sizeof(cloud_error_code));health_now=0;health_clean();
@@ -415,46 +417,57 @@ void cloud_live_init(struct ui_state *model) {
     memset((void *)&cloud_report,0,sizeof(cloud_report));memset((void *)&cloud_caption,0,sizeof(cloud_caption));
     cloud.report_ms=(uint32_t)-200;
 }
+int cloud_live_capture_enabled(void) {return capture_enabled;}
+void cloud_live_control(enum ui_command command) {
+    if(command==UI_PAUSE || command==UI_CLEAR) {
+        capture_enabled=0;cloud.live.phase=0;cloud_client_stop();speech_playback_stop();
+#ifdef Z7_ARM_TLS
+        network_cloud_run(0);
+#endif
+    } else if(command==UI_START || command==UI_RESUME) {
+        capture_enabled=1;
+#ifdef Z7_ARM_TLS
+        /* Explicit user resume also re-arms a fault-paused session whose
+           automatic retry budget was exhausted while run intent stayed set. */
+        network_cloud_run(0);network_cloud_run(1);
+#endif
+    }
+}
 /* The board's cloud client owns the link and calls this once when the TLS
    session is ready, so the model/session state normally set by the host's
    cloud_report.request=1 path is entered here instead. */
 void cloud_live_begin(uint32_t now) {
     health_now=now;++cloud_health[1];health_clean();
     struct ui_state *model=cloud.model;
-#ifdef Z7_TRANSLATE_AUDIO
     uint32_t retained_source[UI_MAX_TEXT],retained_translation[UI_MAX_TEXT];
     int reconnect=cloud.live.ack==1u && (model->session==UI_RUNNING || model->session==UI_PAUSED);
     if(reconnect) {
         memcpy(retained_source,model->source,sizeof(retained_source));
         memcpy(retained_translation,model->translated,sizeof(retained_translation));
     }
-#endif
     memset(&cloud,0,sizeof(cloud));cloud.model=model;
     cloud.live.magic=0x31564c43u;cloud.live.phase=1;cloud.live.ack=1;
     cloud.report_ms=now-200u;
-#ifdef Z7_TRANSLATE_AUDIO
     if(reconnect) {
         if(model->session==UI_RUNNING) (void)ui_control(model,UI_PAUSE);
         (void)ui_control(model,UI_RESUME);
         memcpy(model->source,retained_source,sizeof(retained_source));
         memcpy(model->translated,retained_translation,sizeof(retained_translation));
     } else
-#endif
     {(void)ui_control(model,UI_CLEAR);(void)ui_control(model,UI_START);}
     /* Live Chinese uses the 28 px font, the only size carrying the GB2312
        level-1 extension, so real translations are not reduced to spaces. */
-    while(model->font_index>0) (void)ui_control(model,UI_FONT_MINUS);
+    if(!reconnect) {
+        while(model->font_index>0) (void)ui_control(model,UI_FONT_MINUS);
 #ifdef Z7_BILINGUAL
-    /* English translation above, Chinese source below. */
-    if(!model->show_source) (void)ui_control(model,UI_TOGGLE_SOURCE);
+        /* Translation above, source below. */
+        if(!model->show_source) (void)ui_control(model,UI_TOGGLE_SOURCE);
 #else
-    if(model->show_source) (void)ui_control(model,UI_TOGGLE_SOURCE);
+        if(model->show_source) (void)ui_control(model,UI_TOGGLE_SOURCE);
 #endif
+    }
     cloud.live.epoch=model->epoch;
-#ifdef Z7_TRANSLATE_AUDIO
-    if(!reconnect)
-#endif
-    memset((void *)&cloud_caption,0,sizeof(cloud_caption));
+    if(!reconnect) memset((void *)&cloud_caption,0,sizeof(cloud_caption));
     cloud_wire_init(cloud_live_message,0);
 }
 void cloud_live_tick(uint32_t now) {

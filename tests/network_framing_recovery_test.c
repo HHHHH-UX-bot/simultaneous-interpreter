@@ -48,6 +48,15 @@ int main(void) {
     check(network_info.phase==6 && network_info.error==26,"corrupt AT line invalidates session");
     for(unsigned i=0;i<10000 && network_info.phase!=8;++i) network_tick(&state,++clock_ms);
     check(network_info.phase==8 && !network_info.error && reset_count==2,"AT line corruption can recover instead of permanently freezing");
+    network_info.phase=6;network_info.error=41;network_cloud_run(0);
+    for(unsigned i=0;i<6000;++i) network_tick(&state,++clock_ms);
+    check(reset_count==2,"rejected close remains stopped while user is paused");
+    network_cloud_run(1);
+    for(unsigned i=0;i<10000 && network_info.phase!=8;++i) {
+        network_cloud_run(1);network_tick(&state,++clock_ms);
+    }
+    check(network_info.phase==8 && !network_info.error && reset_count==3,
+          "resume after rejected close verifies AT/baud before a new TLS session");
     puts("PASS_NETWORK_FRAMING_RECOVERY latched error 1946, rebooted 115200 peer and corrupt AT line recover through verified serial/TLS reset");
     return 0;
 }

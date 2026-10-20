@@ -53,3 +53,6 @@ EXPORT int ui_host_from_state(const void *bytes,uint32_t size,uint32_t elapsed,u
        s->font_index>2u || s->show_source>1u || s->session>UI_BLOCKED || s->stage>UI_FINAL) return 0;
     ui_render(pixels,s,elapsed,page,stats);return 1;
 }
+EXPORT void ui_host_latency(uint32_t *pixels,uint32_t readings,struct ui_render_stats *stats) {
+    ui_render_latency(pixels,readings,stats);
+}

@@ -35,7 +35,12 @@ static const struct ui_glyph *glyph(const struct ui_font *f,uint32_t cp) {
     return lo<f->count && f->glyphs[lo].codepoint==cp ? &f->glyphs[lo] : 0;
 }
 static uint32_t advance(const struct ui_font *f,uint32_t cp) {
-    const struct ui_glyph *g=glyph(f,cp);return g?g->advance:f->size;
+    const struct ui_glyph *g=glyph(f,cp);
+    if(g) return g->advance;
+    if(f->size!=36u && f->size!=44u) return f->size;
+    /* The live GB2312 subset is stored once at 28 px. */
+    const struct ui_font *live=font(28);g=glyph(live,cp);
+    return g?(g->advance*f->size+14u)/28u:f->size;
 }
 static uint32_t text_width(const struct ui_font *f,const uint32_t *text) {
     uint32_t width=0;
@@ -72,26 +77,50 @@ static uint32_t blend(uint32_t back,uint32_t fore,uint32_t a) {
     uint32_t blue=((back&255u)*b+(fore&255u)*a+7u)/15u;
     return (r<<16)|(g<<8)|blue;
 }
+static uint32_t coverage_at(const struct ui_font *f,const struct ui_glyph *g,int x,int y) {
+    if(x<0 || y<0 || x>=g->width || y>=g->height) return 0;
+    uint32_t index=(uint32_t)y*g->width+(uint32_t)x;
+    uint32_t packed=f->pixels[g->offset+(index>>1)];
+    return (index&1u)?(packed&15u):(packed>>4);
+}
+static void ink(struct paint *p,int x,int y,uint32_t color,uint32_t coverage,struct clip c) {
+    if(!coverage) return;
+    if(x<c.x || y<c.y || x>=c.x+c.w || y>=c.y+c.h ||
+       x<0 || y<0 || x>=(int)UI_WIDTH || y>=(int)UI_HEIGHT) {
+        ++p->stats->clipped_glyph_pixels;return;
+    }
+    uint32_t *pixel=&p->pixels[y*UI_WIDTH+x];
+    *pixel=coverage==15u?color:blend(*pixel,color,coverage);
+    ++p->stats->pixels_written;
+}
 static void put_glyph(struct paint *p,const struct ui_font *f,uint32_t cp,int x,int y,
                       uint32_t color,struct clip c) {
     const struct ui_glyph *g=glyph(f,cp);
+    if(!g && (f->size==36u || f->size==44u)) {
+        const struct ui_font *live=font(28);g=glyph(live,cp);
+        if(g) {
+            /* Bilinear coverage keeps the existing anti-aliased style without
+               duplicating the common Han subset in the 2 MiB font reserve. */
+            int left=g->x_offset*(int)f->size/28;
+            int top=g->y_offset*(int)f->size/28;
+            uint32_t w=(g->width*f->size+27u)/28u,h=(g->height*f->size+27u)/28u;
+            for(uint32_t gy=0;gy<h;++gy) for(uint32_t gx=0;gx<w;++gx) {
+                uint32_t sx=gx*28u*256u/f->size,sy=gy*28u*256u/f->size;
+                int ix=(int)(sx>>8),iy=(int)(sy>>8);
+                uint32_t fx=sx&255u,fy=sy&255u;
+                uint32_t a=coverage_at(live,g,ix,iy)*(256u-fx)+coverage_at(live,g,ix+1,iy)*fx;
+                uint32_t b=coverage_at(live,g,ix,iy+1)*(256u-fx)+coverage_at(live,g,ix+1,iy+1)*fx;
+                uint32_t coverage=(a*(256u-fy)+b*fy+32768u)>>16;
+                ink(p,x+left+(int)gx,y+top+(int)gy,color,coverage,c);
+            }
+            return;
+        }
+    }
     /* A missing codepoint falls back to the box glyph instead of failing the
        screen; only a font without the box itself is counted as an asset error. */
     if(!g) {g=glyph(f,0x25a1u);if(!g) {++p->stats->missing_glyphs;return;}}
-    if(!g) return;
     for(uint32_t gy=0;gy<g->height;++gy) for(uint32_t gx=0;gx<g->width;++gx) {
-        uint32_t index=gy*g->width+gx;
-        uint32_t packed=f->pixels[g->offset+(index>>1)];
-        uint32_t coverage=(index&1u)?(packed&15u):(packed>>4);
-        if(!coverage) continue;
-        int px=x+g->x_offset+(int)gx,py=y+g->y_offset+(int)gy;
-        if(px<c.x || py<c.y || px>=c.x+c.w || py>=c.y+c.h ||
-           px<0 || py<0 || px>=(int)UI_WIDTH || py>=(int)UI_HEIGHT) {
-            ++p->stats->clipped_glyph_pixels;continue;
-        }
-        uint32_t *pixel=&p->pixels[py*UI_WIDTH+px];
-        *pixel=coverage==15u?color:blend(*pixel,color,coverage);
-        ++p->stats->pixels_written;
+        ink(p,x+g->x_offset+(int)gx,y+g->y_offset+(int)gy,color,coverage_at(f,g,(int)gx,(int)gy),c);
     }
 }
 static void draw_line(struct paint *p,const struct ui_font *f,const uint32_t *text,
@@ -197,6 +226,28 @@ static void button(struct paint *p,int x,int w,const uint32_t *text,int selected
     if(!selected) round_rect(p,x+1,531,w-2,54,7,PAPER);
     int tx=x+(w-(int)text_width(font(18),text))/2;
     one_line(p,text,18,tx,546,w-12,selected?PAPER:INK);
+}
+uint32_t ui_latency_pack(uint32_t loop_us,int loop_valid,uint32_t text_ms,int text_valid) {
+    uint32_t l=loop_us>9999u?0x4000u|9999u:loop_us;
+    uint32_t t=text_ms>9999u?0x4000u|9999u:text_ms;
+    return (loop_valid?(0x8000u|l):0u) | ((text_valid?(0x8000u|t):0u)<<16);
+}
+void ui_render_latency(uint32_t *pixels,uint32_t readings,struct ui_render_stats *stats) {
+    struct paint p={pixels,stats};
+    static const uint32_t labels[2][8]={{'L','1',' ','L','O','O','P',0},{'T','1',' ','T','E','X','T',0}};
+    static const uint32_t units[2][3]={{'u','s',0},{'m','s',0}};
+    for(uint32_t i=0;i<2u;++i) {
+        int x=492+(int)i*112;uint32_t value=(readings>>(i*16u))&0xffffu;
+        round_rect(&p,x,8,104,48,8,LINE);round_rect(&p,x+1,9,102,46,7,0xf1f6f6u);
+        one_line(&p,labels[i],14,x+10,11,84,MUTED);
+        uint32_t number[16]={'-','-',0};
+        if(value&0x8000u) {
+            decimal(value&0x3fffu,number);
+            if(value&0x4000u) {uint32_t n=0;while(number[n])++n;number[n++]='+';number[n]=0;}
+        }
+        one_line(&p,number,18,x+10,30,62,(value&0x8000u)?ACTION:MUTED);
+        one_line(&p,units[i],14,x+78,33,20,MUTED);
+    }
 }
 void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
                uint32_t requested_page,struct ui_render_stats *stats) {

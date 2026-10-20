@@ -1,0 +1,29 @@
+{
+  "status": "protocol_gates_passed_touch_still_failed",
+  "scope": "First guarded reset attempt before PC single-Host control; current raw reports stayed zero and stop timed out",
+  "generation": 3899740,
+  "cpu1_elf_sha256": "8dcba4af7f4ea35579325c2250b48818a2bee4ea787ebaf3c91701833575a400",
+  "trace_fields": [
+    "magic",
+    "entered",
+    "command_before",
+    "halted_status",
+    "port_after_reset",
+    "running_status",
+    "last_duration_ms",
+    "completed"
+  ],
+  "trace": [
+    827609938,
+    2,
+    559933,
+    54400,
+    2147489797,
+    50308,
+    55,
+    2
+  ],
+  "reference": "AMD EN247 AR47540",
+  "touch_acceptance": false,
+  "user_result": "No touch response; no new speech required because prior subtitle retained"
+}

@@ -45,6 +45,7 @@ int opus_codec_encode(const int16_t *pcm,uint8_t *out,uint32_t n) {
 int test_attach(void (*receive)(uint8_t)) {(void)receive;return 1;}
 void network_stream_failed(void) {++transport_failures;}
 void network_stop(void) {}
+void network_cloud_run(int run) {(void)run;}
 void stream_pilot_set_receiver(void (*receive)(uint8_t)) {(void)receive;}
 int test_send(const uint8_t *data,uint32_t n) {
 #ifdef Z7_TRANSLATE_AUDIO

@@ -1,0 +1,6 @@
+{
+  "status": "passed",
+  "scope": "Actual board reset routine against mock registers, normal order and three hardware timeout boundaries; no USB electrical or board acceptance",
+  "source_sha256": "de01a9ef1cc82c5e1b62dbc1ef33c41ddce180efc934f1e3212d4d4a171516a6",
+  "native_result": "PASS_USB_RESET_ORDER cases=4"
+}

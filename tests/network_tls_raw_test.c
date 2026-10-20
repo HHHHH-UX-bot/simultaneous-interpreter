@@ -5,12 +5,13 @@ static char raw_command[320];
 static unsigned raw_used,transparent,plus_count,single,auth,sni,cn,passthrough;
 static unsigned sent,expected_sent,received,expected_received;
 static unsigned raw_closes;
+static unsigned close_error,uart_clears;
 static uint8_t uplink[2048],downlink[4096];
 static void raw_receive(uint8_t byte) {
     check(received<expected_received && byte==downlink[received],"raw TLS downlink byte exact");++received;
 }
 static void raw_write(uint32_t offset,uint32_t value) {
-    if(offset!=16) {tls_write(offset,value);return;}
+    if(offset!=16) {if(offset==12 && value==15)++uart_clears;tls_write(offset,value);return;}
     if(transparent) {
         if(sent<expected_sent) {check(value==uplink[sent],"raw TLS uplink byte exact");++sent;return;}
         check(value=='+',"only guarded escape after the queued raw upload");
@@ -34,7 +35,10 @@ static void raw_write(uint32_t offset,uint32_t value) {
 #endif
         enqueue("\r\nOK\r\n> ");transparent=1;
     } else if(!strcmp(raw_command,"AT+CIPMODE=0\r\n")) enqueue("\r\nOK\r\n");
-    else if(!strcmp(raw_command,"AT+CIPCLOSE\r\n")) {++close_queries;++raw_closes;enqueue("\r\nCLOSED\r\nOK\r\n");}
+    else if(!strcmp(raw_command,"AT+CIPCLOSE\r\n")) {
+        ++close_queries;++raw_closes;
+        enqueue(close_error?"\r\nERROR\r\n":"\r\nCLOSED\r\nOK\r\n");close_error=0;
+    }
     else {
 #ifdef Z7_ARM_TLS
         if(!strncmp(raw_command,"AT+CIPSTART=",12)) check(!strncmp(raw_command,"AT+CIPSTART=\"TCP\",",18),"ARM TLS uses TCP on the ESP");
@@ -68,9 +72,51 @@ int main(void) {
     check(network_info.phase==8 && !network_info.error && transparent && connect_queries==2,"close then reopen verified TLS for a fresh WebSocket");
     check(raw_closes==1,"fault recovery really closes the single TLS socket");
     network_config.action=4;network_config.request_sequence++;
-    for(unsigned i=0;i<10000 && network_info.phase!=0;++i) network_tick(&state,++clock_ms);
+    for(unsigned i=0;i<10000;++i) {
+        network_cloud_run(1);network_tick(&state,++clock_ms);
+    }
     check(network_info.phase==0 && !transparent && !network_info.error,"host can quiesce raw TLS before reprogramming");
     check(raw_closes==2,"host shutdown really closes the single TLS socket");
+    unsigned before_queries=connect_queries;
+    network_cloud_run(0);
+    for(unsigned i=0;i<6000;++i) network_tick(&state,++clock_ms);
+    check(network_info.phase==0 && connect_queries==before_queries,"pause stays closed without retrying");
+    network_cloud_run(1);
+    for(unsigned i=0;i<20000 && network_info.phase!=8;++i) {
+        network_cloud_run(1);network_tick(&state,++clock_ms);
+    }
+    check(network_info.phase==8 && connect_queries==before_queries+1 && !network_info.error,"resume opens a new cloud transport from saved Wi-Fi");
+    check(network_stream_attach(raw_receive),"resumed session can adopt transport");
+    network_cloud_run(0);
+    for(unsigned i=0;i<10000 && network_info.phase!=0;++i) network_tick(&state,++clock_ms);
+    check(network_info.phase==0 && !transparent && !network_info.error,"user pause closes actual raw socket");
+    network_cloud_run(1);
+    for(unsigned i=0;i<20000 && network_info.phase!=8;++i) {
+        network_cloud_run(1);network_tick(&state,++clock_ms);
+    }
+    check(network_stream_attach(raw_receive),"second resumed session adopts transport");
+    before_queries=connect_queries;
+    network_cloud_run(0);network_cloud_run(1);
+    for(unsigned i=0;i<20000;++i) {
+        network_cloud_run(1);network_tick(&state,++clock_ms);
+    }
+    check(network_info.phase==8 && connect_queries==before_queries+1 && !network_info.error,
+          "quick pause/resume finishes close before exactly one reconnect");
+    network_cloud_run(0);
+    for(unsigned i=0;i<10000 && network_info.phase!=0;++i) network_tick(&state,++clock_ms);
+    check(network_info.phase==0 && !transparent,"leave simulator in AT mode before a new boot");
+    network_cloud_run(1);
+    for(unsigned i=0;i<20000 && network_info.phase!=8;++i) {
+        network_cloud_run(1);network_tick(&state,++clock_ms);
+    }
+    close_error=1;network_cloud_run(0);
+    for(unsigned i=0;i<10000 && network_info.phase!=6;++i) network_tick(&state,++clock_ms);
+    check(network_info.phase==6 && network_info.error==41,"rejected close is a visible failure");
+    unsigned before_clears=uart_clears;
+    for(unsigned i=0;i<6000;++i) network_tick(&state,++clock_ms);
+    check(uart_clears==before_clears,"pause does not restart after rejected close");
+    network_cloud_run(1);network_tick(&state,++clock_ms);
+    check(uart_clears==before_clears+1,"resume re-establishes serial ownership after rejected close");
 #ifdef Z7_ARM_TLS
     start_raw(1);check(network_info.phase==6 && network_info.error==44 && !transparent,"DNS failure never enters TCP raw mode");
 #else

@@ -18,6 +18,7 @@ void cache_clean_range(const void *p,unsigned n){(void)p;(void)n;}
 int opus_codec_init(void){return 1;}
 int opus_codec_encode(const int16_t *p,uint8_t *out,uint32_t n){(void)p;if(n<60)return -1;memset(out,0,60);out[0]=0x48;return 60;}
 void network_stop(void){}
+void network_cloud_run(int run){(void)run;}
 void network_stream_failed(void){++failures;}
 void stream_pilot_set_receiver(void (*p)(uint8_t)){(void)p;}
 int arm_tls_attach(void (*p)(uint8_t)){(void)p;return 1;}
@@ -96,6 +97,53 @@ int main(void){
 #else
     CHECK(!stats.source_lines);
 #endif
+    /* Real common Han outside the demo subset must remain readable at every
+       selectable size, rather than becoming the same two replacement boxes. */
+    struct ui_state font_model=model;
+    uint32_t *font_image=malloc(UI_WIDTH*UI_HEIGHT*sizeof(*font_image));CHECK(font_image!=0);
+    unsigned previous_height=0;
+    for(unsigned size=0;size<3u;++size) {
+        font_model.font_index=size;
+        memset(font_model.translated,0,sizeof(font_model.translated));
+        font_model.translated[0]=0x5496; /* 咖 */
+        font_model.translated[1]=0x5561; /* 啡 */
+        ui_render(font_image,&font_model,3000,0,&stats);
+        CHECK(!stats.missing_glyphs && !stats.clipped_glyph_pixels);
+        unsigned top=346,bottom=0,soft=0;
+        for(unsigned y=148;y<346;++y)for(unsigned x=44;x<700;++x) {
+            unsigned color=font_image[y*UI_WIDTH+x];
+            if(color!=0xffffffu) {if(y<top)top=y;if(y>bottom)bottom=y;if(color!=0x172a38u)++soft;}
+        }
+        CHECK(bottom>top && bottom-top>previous_height && soft>20u);previous_height=bottom-top;
+        font_model.translated[0]=font_model.translated[1]=0x25a1;
+        ui_render(pixels,&font_model,3000,0,&stats);
+        unsigned different=0;
+        for(unsigned y=148;y<346;++y)for(unsigned x=44;x<700;++x)
+            different+=font_image[y*UI_WIDTH+x]!=pixels[y*UI_WIDTH+x];
+        CHECK(different>100u);
+    }
+    free(font_image);ui_render(pixels,&model,3000,0,&stats);
+    CHECK(ui_latency_pack(62,1,850,1)==0x8352803eu);
+    CHECK(ui_latency_pack(10000,1,65535,1)==0xe70fe70fu);
+    CHECK(ui_latency_pack(62,0,850,0)==0);
+    uint32_t *base=malloc(UI_WIDTH*UI_HEIGHT*sizeof(*base));CHECK(base!=0);
+    memcpy(base,pixels,UI_WIDTH*UI_HEIGHT*sizeof(*base));
+    ui_render_latency(pixels,ui_latency_pack(62,1,850,1),&stats);
+    unsigned changed=0,soft_ink=0;
+    for(unsigned y=0;y<UI_HEIGHT;++y)for(unsigned x=0;x<UI_WIDTH;++x){
+        unsigned at=y*UI_WIDTH+x;
+        if(base[at]==pixels[at])continue;
+        CHECK(y>=8u && y<56u && ((x>=492u && x<596u)||(x>=604u && x<708u)));
+        ++changed;
+        if(pixels[at]!=0xd7e1e5u && pixels[at]!=0xf1f6f6u && pixels[at]!=0x006c68u && pixels[at]!=0x526575u)++soft_ink;
+    }
+    CHECK(changed>7000u && soft_ink>100u && !stats.missing_glyphs && !stats.clipped_glyph_pixels);
+    for(unsigned i=0;i<2u;++i) {
+        memcpy(base,pixels,UI_WIDTH*UI_HEIGHT*sizeof(*base));
+        ui_render_latency(base,i?ui_latency_pack(10000,1,65535,1):0,&stats);
+        CHECK(!stats.missing_glyphs && !stats.clipped_glyph_pixels);
+    }
+    free(base);
     const char *image=getenv("PROFILE_PREVIEW");CHECK(image!=0);FILE *f=fopen(image,"wb");CHECK(f!=0);
     CHECK(fwrite(pixels,sizeof(*pixels),UI_WIDTH*UI_HEIGHT,f)==UI_WIDTH*UI_HEIGHT);fclose(f);free(pixels);
 #ifdef Z7_RECOGNIZE_EN
@@ -115,6 +163,30 @@ int main(void){
         CHECK(model.translated[UI_MAX_TEXT-2u]=='Z' && !model.translated[UI_MAX_TEXT-1u]);
     }
 #endif
+    uint32_t retained=model.translated[0],finals=model.final_count;
+    CHECK(ui_control(&model,UI_FONT_PLUS));
+    uint32_t font_choice=model.font_index,source_choice=model.show_source;
+    CHECK(ui_control(&model,UI_PAUSE));cloud_live_control(UI_PAUSE);
+    uint32_t frames=client.opus_frames;
+    *(volatile uint32_t *)0x43c20090u=320;
+    cloud_client_tick(4000);cloud_client_tick(4001);
+    CHECK(!cloud_live_capture_enabled() && client.phase==CLOUD_IDLE && client.opus_frames==frames);
+    event("{\"type\":\"conversation.item.input_audio_transcription.completed\",\"item_id\":\"late\",\"transcript\":\"old session\"}");
+    CHECK(model.translated[0]==retained && model.final_count==finals);
+    CHECK(ui_control(&model,UI_RESUME));cloud_live_control(UI_RESUME);cloud_live_begin(4100);
+    CHECK(cloud_live_capture_enabled() && cloud.live.epoch==model.epoch);
+    CHECK(model.font_index==font_choice && model.show_source==source_choice && model.final_count==finals);
+    CHECK(ui_control(&model,UI_CLEAR));cloud_live_control(UI_CLEAR);
+    CHECK(!cloud_live_capture_enabled() && model.session==UI_IDLE && !model.final_count && !model.translated[0]);
+    CHECK(ui_control(&model,UI_START));cloud_live_control(UI_START);cloud_live_begin(4200);
+    CHECK(cloud_live_capture_enabled() && cloud.live.epoch==model.epoch && !model.final_count);
+    *(volatile uint32_t *)0x43c20090u=0;
+    client.now_ms=5000;cloud_client_speech_started(0);
+    CHECK(*(volatile uint32_t *)0x43c20088u==0);
+    client.now_ms=5234;cloud_client_translation(0);
+    CHECK(*(volatile uint32_t *)0x43c20088u==0x100eau);
+    client.now_ms=5300;cloud_client_speech_started(0);
+    CHECK(*(volatile uint32_t *)0x43c20088u==0);
     network_info.phase=4;const uint8_t ping[]={0x89u,1u,'x'};
     for(unsigned i=0;i<sizeof(ping);++i) {cloud_wire_byte(ping[i]);}
     cloud_live_tick(3001);CHECK(pongs==1);

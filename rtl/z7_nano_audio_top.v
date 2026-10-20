@@ -213,11 +213,13 @@ module z7_nano_audio_top (
         .count0(pin_count0), .count1(pin_count1),
         .count2(pin_count2), .count3(pin_count3));
 
-    // --- latency readout over the existing picture -------------------------
+    // --- aligned video pipeline -------------------------------------------
+    // PS renders latency cards with the UI's anti-aliased font. Keep the same
+    // registered stage, with the legacy pixel-font overlay disabled.
     // The overlay registers RGB and DE/HS/VS together, so the serialiser sees
     // the same aligned timing as the accepted framebuffer path.
     wire video_hs_overlay, video_vs_overlay, video_de_overlay;
-    audio_overlay u_overlay(
+    audio_overlay #(.ENABLE(0)) u_overlay(
         .pixel_clk(pixel_clk), .reset_n(sys_rst_n & locked),
         .video_hs(video_hs), .video_vs(video_vs), .video_de(video_de),
         .video_rgb_in(video_rgb),

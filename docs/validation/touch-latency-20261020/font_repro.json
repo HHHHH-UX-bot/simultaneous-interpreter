@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "scope": "Regression with common-Han scaling disabled reproduces replacement-box rendering; no board test",
+  "variant": "36/44 live glyph scaling disabled; all other current code retained",
+  "variant_sha256": "a5d882f8ebc3a98839a3907d07e27773c34d869a716ec4021f8ff3f1c5c5fabb",
+  "test_sha256": "48d187c6d3b2bdcdf9eac3a1812f12c92ae40a609add600fb01579ff9ba2f327",
+  "exit_code": 1,
+  "failure": "failed line 117"
+}

@@ -43,4 +43,6 @@ int network_stream_detach(void);
 void network_stream_failed(void);
 /* Finish the queued raw block, escape passthrough and close its TCP link. */
 void network_stop(void);
+/* User capture intent: quiesce the owned stream, or reopen from saved Wi-Fi. */
+void network_cloud_run(int run);
 #endif

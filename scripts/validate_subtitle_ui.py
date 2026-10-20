@@ -6,7 +6,7 @@ from PIL import Image
 
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'output/subtitle_ui'
-COMMON=('software/subtitle_ui/ui_model.h','software/subtitle_ui/ui_model.c',
+COMMON=('software/network_ui/language_profile.h','software/subtitle_ui/ui_model.h','software/subtitle_ui/ui_model.c',
     'software/subtitle_ui/ui_assets.h','output/subtitle_ui/ui_assets.c',
     'software/subtitle_ui/ui_render.h','software/subtitle_ui/ui_render.c',
     'software/subtitle_ui/ui_demo.h','software/subtitle_ui/ui_demo.c')
@@ -19,14 +19,17 @@ class Stats(ctypes.Structure):
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--gcc',type=Path,required=True)
+    parser.add_argument('--mode',choices=('enzh','enen'))
     args=parser.parse_args();OUT.mkdir(parents=True,exist_ok=True)
+    defines=[] if not args.mode else ['-DZ7_SOURCE_EN']+(['-DZ7_TRANSLATE_ZH','-DZ7_TRANSLATE_AUDIO'] if args.mode=='enzh' else ['-DZ7_ASR_SUBTITLE','-DZ7_RECOGNIZE_EN'])
+    record_path=OUT/('host_validation_'+args.mode+'.json' if args.mode else 'host_validation.json')
     temp=ROOT/'tmp/subtitle_ui'/('host_'+uuid.uuid4().hex[:8]);temp.mkdir(parents=True)
-    record={'Status':'pending','SourceHashes':hashes()}
+    record={'Status':'pending','Mode':args.mode or 'shared','SourceHashes':hashes()}
     try:
         dll=temp/'ui_host.dll'
         files=('software/subtitle_ui/ui_model.c','software/subtitle_ui/ui_render.c',
                'software/subtitle_ui/ui_demo.c','software/subtitle_ui/ui_host.c','output/subtitle_ui/ui_assets.c')
-        command=[str(args.gcc),'-shared','-O2','-g','-Wall','-Wextra','-Werror','-std=c11',
+        command=[str(args.gcc),'-shared','-O2','-g','-Wall','-Wextra','-Werror','-std=c11',*defines,
                  '-I',str(ROOT/'software/subtitle_ui'),*[str(ROOT/p) for p in files],'-o',str(dll)]
         result=subprocess.run(command,cwd=temp,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=120)
         (OUT/'host_build.log').write_text(result.stdout+result.stderr,encoding='utf-8')
@@ -87,6 +90,6 @@ def main():
         directory.close();print('PASS_SUBTITLE_HOST_RENDER',flush=True)
     except Exception as error:
         record.update(Status='failed',Error=str(error));print(error,flush=True)
-    finally: (OUT/'host_validation.json').write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding='utf-8')
+    finally: record_path.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding='utf-8')
     return 0 if record['Status']=='passed' else 1
 if __name__=='__main__': raise SystemExit(main())

@@ -21,6 +21,25 @@ Vivado 2026.1 生成的 PS 初始化位于 `output/z7_nano/audio/vivado/nano_aud
 
 电脑云端短测先执行 `prepare_english_opus.py --mode <模式> --gcc <Windows-GCC>`，再执行 `check_english_cloud.py --mode <模式>`；默认检查固定英文四句。实际录音可增加 `--input <16kHz单声道16位WAV> --output-dir <独立音频结果目录>`，随后检查器使用 `--audio-pages <该目录>/opus_pages.json --output <独立结果.json>`。自定义录音只判断完整上传后得到定稿，识别文本仍须单独核对，不能沿用固定样本的 morning/句数预期。Key 只从当前进程环境读取，不写入参数或文件。本轮已执行固定样本正例、修正前录音诊断及修正后真实录音对照；原始录音只在本机保留。
 
+### 英文控件与时延候选
+
+2026-10-20 已执行本机控件/字号回归、ARM 构建、实际暂停/恢复和抓屏，范围见 [ENGLISH](ENGLISH.md#当前阶段触摸控制与时延界面2026-10-20)。当前候选带 `--touch`，L1/T1 默认使用 PS 抗锯齿卡片；匹配 PL 关闭旧文字覆盖但保留同拍寄存级。
+
+```text
+python -B scripts/build_cloud_app.py --gcc <ARM-GCC> --mode enzh --arm-tls --uart-baud 1000000 --touch --output-dir output/enzh/touch_font
+python -B scripts/run_z7_nano_usb_host.py build --gcc <ARM-GCC>
+python -B scripts/validate_subtitle_ui.py --gcc <Windows-GCC> --mode enzh
+python -B scripts/run_cloud_touch.py start --app-dir output/enzh/touch_font --xsdb <XSDB>
+python -B scripts/run_cloud_touch.py sample --app-dir output/enzh/touch_font --xsdb <XSDB>
+python -B scripts/run_cloud_touch.py stop --app-dir output/enzh/touch_font --xsdb <XSDB>
+```
+
+Host start 前必须完成匹配 CPU0 的实际加载，应用目录中保留 `build.json` 和该次 `load.json`：绑定 `elf_sha256`、`bitstream_sha256`、`ps7_init_sha256`、线缆、真实成功结果的项目内 `result` 路径及 `result_sha256`。结果必须有对应的 `display_ok=1`。本轮加载保存于候选的 `warm_boot/result.json`；只在同一已核对 PL 上换 ELF，不以构建哈希替代实际加载证明。新的检出需按上面的加载流程重新产生证据，不能复制历史加载记录冒充当前板卡。
+
+`run_cloud_touch` 不配置 PL、不加载 CPU0、不写联网凭据；它复用既有 CPU1 生命周期，将当前云应用加载身份、CPU1 构建及 generation 绑定在应用目录的 `touch_live.json`。启动检查当前来源哈希；取样/停止不因后续源码编辑而失去停止能力。超时或取消会尝试停止明确拥有的实例，未确认停止则保留 unconfirmed；若发生 USB DMA Halt 超时，禁止继续覆盖 OCM/重配平台，先核对实际所有权并单独恢复控制器，不能反复执行 start。
+
+取样成功只表示枚举、心跳与共享队列身份正常；还必须检查原始 `report_count`、tap/ACK 和用户实屏操作。本轮曾在 sample 成功时零原始报告，因此目前不能将该脚本的 PASS 当成触摸验收。抓屏需先暂停上传；快照 v2 由 `compare_z7_nano_capture.compare` 配合当前 `host_validation_enzh.json` 重建同一次 L1/T1 读数。A+/A− 的验收必须有中央非空译文，标题和固定原文不随其变化。
+
 ## 中译中共享 TLS（2026-10-20）
 
 行为和验证范围见 [ZHZH](ZHZH.md)。本轮已有 Python 可用，`machine` 环境不可用；使用现有 SDK 2018.3 和 Windows GCC，无依赖安装。准备输入的方法沿用下方中译英章节的 `output/display/framebuffer_hw.h`、`output/subtitle_ui/ui_assets.c`，自测另需 `output/cloud_app/selftest_pcm.c`。桌面完整保存版包含其已加载副本的匹配输入。

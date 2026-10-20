@@ -42,6 +42,20 @@ module tb_audio_overlay;
         .overlay_pixel(overlay_pixel), .text_pixels(text_pixels));
 
     integer errors = 0;
+    wire [23:0] bypass_rgb;
+    wire bypass_hs,bypass_vs,bypass_de;
+    audio_overlay #(.ENABLE(0)) bypass (
+        .pixel_clk(pixel_clk),.reset_n(reset_n),.video_hs(video_hs),.video_vs(video_vs),
+        .video_de(video_de),.video_rgb_in(video_rgb_in),.latency_us(latency_us),.live_us(live_us),
+        .latency_ms(latency_ms),.live_ms(live_ms),.freeze(1'b0),.video_rgb_out(bypass_rgb),
+        .video_hs_out(bypass_hs),.video_vs_out(bypass_vs),.video_de_out(bypass_de),
+        .overlay_pixel(),.text_pixels());
+    always @(posedge pixel_clk) if(reset_n) begin
+        #1;
+        if(bypass_rgb!==video_rgb_in || bypass_hs!==video_hs || bypass_vs!==video_vs || bypass_de!==video_de) begin
+            $display("FAIL overlay bypass pixel/sync alignment");errors=errors+1;
+        end
+    end
     integer drawn_inside, outside_bad, inside_bad;
     integer i, x, y;
 

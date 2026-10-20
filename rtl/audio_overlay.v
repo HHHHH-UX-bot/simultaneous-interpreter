@@ -15,6 +15,7 @@
 // shifted the picture by one pixel against the serialiser.)
 module audio_overlay #(
     parameter H_ACTIVE     = 1024,
+    parameter ENABLE       = 1,
     parameter X_ORIGIN     = 896,      // H_ACTIVE - 8 - 120
     parameter Y_ORIGIN     = 48,
     parameter MAX_SHOWN    = 9999,
@@ -216,7 +217,7 @@ module audio_overlay #(
     wire [4:0] glyph = blank ? 5'd0 :
                        (in_digits && !valid_line) ? dash_row : glyph_row(glyph_code, grow);
     wire       glyph_bit = !blank && (gcol < 3'd5) && glyph[3'd4 - gcol];
-    wire       draw = in_h && in_v && glyph_bit;
+    wire       draw = ENABLE && in_h && in_v && glyph_bit;
 
     always @(posedge pixel_clk) begin
         if (!reset_n) begin

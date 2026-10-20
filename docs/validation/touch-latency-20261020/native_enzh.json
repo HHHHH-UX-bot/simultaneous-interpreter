@@ -1,0 +1,49 @@
+{
+  "status": "passed",
+  "mode": "enzh",
+  "native_result": "PASS_ENGLISH_PROFILE checks=14589 finals=500",
+  "session": {
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "Tina",
+    "sample_rate": 16000,
+    "input_audio_format": "opus",
+    "output_audio_format": "pcm",
+    "input_audio_transcription": {
+      "model": "qwen3-asr-flash-realtime",
+      "language": "en"
+    },
+    "turn_detection": {
+      "type": "server_vad",
+      "threshold": 0.12,
+      "silence_duration_ms": 400,
+      "create_response": true,
+      "interrupt_response": false
+    },
+    "translation": {
+      "language": "zh",
+      "same_language_skip_options": {
+        "skip_text": false,
+        "skip_audio": false
+      }
+    }
+  },
+  "scope": "real C config/event/UI/client with mock codec and TLS boundary; no board or recognition quality test",
+  "input_sha256": {
+    "tests/english_profile_test.c": "48d187c6d3b2bdcdf9eac3a1812f12c92ae40a609add600fb01579ff9ba2f327",
+    "software/network_ui/ogg_opus.c": "87f2ea21dea6347b66b50e09cc7478a81307ef86afba6b83079b8f4ea4964389",
+    "software/network_ui/cloud_events.c": "99e0719f8612391e3478bf55072b36c5d576110f5e04c57483fd78ae6cfc7ba6",
+    "software/network_ui/cloud_wire.c": "5aee969cb3c0ac340aa05edf1e7dadc5e3229710acbff82dc89ae8a81f4375f1",
+    "software/network_ui/cloud_frame.c": "05d1d7a8f4bf018b2ca15c7cab34516104800b6058c135986ad11c1a9ec7d3f3",
+    "software/network_ui/speech_playback.c": "65d1d37d06863ab7be36fb13b227eee48795f21d2602a4f009db83be3ee8e3b5",
+    "software/network_ui/protocol.c": "19b5f8d10382e963ee3eaccc42138f33bd9637b6e108d4943e3c9801db10c204",
+    "software/subtitle_ui/ui_model.c": "54b23c8b77c62f13b132d761c413295482125e58275e8835f78c7cc6dfa76f2b",
+    "software/subtitle_ui/ui_render.c": "df4c5ff90ac7fcc2a9359589097982673f59c7a0fe4d76af07ec46af79bfe254",
+    "output/subtitle_ui/ui_assets.c": "c4274a35229313067bda3e97a912c9211f189ccf43a85d66e76c5686011f2f19",
+    "software/network_ui/cloud_client.c": "c92e00fc4e65696c07ba80ee1fcee0bb7b5859c25f25116c29da250489490cd0",
+    "software/network_ui/cloud_live.c": "13eb22faf947b7c30479f6e25ced93fe313338eb21748284fa972df019f974bf",
+    "software/network_ui/language_profile.h": "8e79f418b6edf9564fa0089862a73b59622ff1c0a77bdb55a3704fefd57b0360"
+  }
+}

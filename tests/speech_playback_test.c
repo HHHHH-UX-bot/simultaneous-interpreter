@@ -122,6 +122,16 @@ int main(void) {
     uint32_t n=make_message(53760,6);CHECK(receive(message,n,NULL)==0);
     speech_playback_done();advance(1);
     CHECK((regs[0x9c/4]&2u) && received==53766);
+    // User stop differs from disconnect: discard pending hardware and software
+    // audio immediately, and no later tick may restart that old tail.
+    send_audio(53766,7680);advance(2);CHECK(queued && regs[0xa4/4]);
+    speech_playback_stop();
+    CHECK(!queued && !regs[0xa4/4] && !(regs[0x9c/4]&2u));
+    uint32_t played=regs[0xac/4];advance(1000);
+    CHECK(regs[0xac/4]==played && !queued && !(regs[0x9c/4]&2u));
+    expected_at=61446;n=make_message(61446,6);CHECK(receive(message,n,NULL)==0);
+    speech_playback_done();advance(1);
+    CHECK(regs[0x9c/4]&2u);
     puts("PASS_SPEECH_PLAYBACK real WS/JSON/base64, signed PCM order, >4k events, 12s ring wrap, jitter without underruns, prefill and short tails");
     return 0;
 }

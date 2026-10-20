@@ -1,0 +1,20 @@
+{
+  "status": "accepted_scoped_functions",
+  "scope": "Actual HDMI style, subtitle font sizing via touch, repeated Host input, and microphone recognition checked separately; no cold-boot/long-term/audio listening acceptance",
+  "cpu0_elf_sha256": "3d2064ddbf0c92964607f750b2136bc32823689ecda196cb913c3a83bfaf1f26",
+  "cpu1_elf_sha256": "8dcba4af7f4ea35579325c2250b48818a2bee4ea787ebaf3c91701833575a400",
+  "user_results": {
+    "latency_cards": "Clear, stable and visually consistent",
+    "font_touch": "Touch and subtitle size changes normal",
+    "host_restart": "Touch effective, recognition initially no output",
+    "microphone_after_ready": "New English and Chinese appeared"
+  },
+  "final_state": "CPU0 keeps subtitles paused, cloud closed; CPU1 touch remains resident",
+  "pending": [
+    "Intermittent zero USB reports / RS-clear halt timeout cause",
+    "TLS fatal alert 20 and transport timeout cause",
+    "Explicit UI connection-ready indication",
+    "Repeated cold starts and long-duration link",
+    "Headphone listening and persistent boot"
+  ]
+}

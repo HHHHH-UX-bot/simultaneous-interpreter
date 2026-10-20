@@ -28,7 +28,7 @@ FLAGS = [
     "-O2", "-g", "-ffreestanding", "-fno-builtin", "-fno-stack-protector",
     "-fno-strict-aliasing", "-fno-short-enums", "-Wall", "-Wextra", "-Werror",
     "-std=c11", "-nostdlib", "-Wl,--build-id=none", "-Wl,--print-memory-usage",
-    "-DZ7_NETWORK_CAPABILITIES", "-DZ7_MMU_CACHE", "-DZ7_OPUS", "-DZ7_ASR_SUBTITLE",
+    "-DZ7_NETWORK_CAPABILITIES", "-DZ7_MMU_CACHE", "-DZ7_OPUS", "-DZ7_ASR_SUBTITLE", "-DZ7_LATENCY_UI",
     "-I", str(ROOT / "software/subtitle_ui"),
     "-I", str(ROOT / "output/display"),
     "-I", str(ROOT / "third_party/wslay/lib/includes"),
@@ -116,6 +116,7 @@ def main():
                         help="source/target profile: zhzh, zhen, enzh or enen")
     parser.add_argument("--selftest", action="store_true",
                         help="build the microphone-less self-test ELF from the matching generated TTS PCM")
+    parser.add_argument("--touch",action="store_true",help="enable the Z7-Nano CPU1 touch consumer")
     parser.add_argument("--speech", action="store_true",help="translated audio on lineout (requires playback PL; automatic for enzh)")
     parser.add_argument("--output-dir", type=Path, help="separate build directory, including ELF, symbols and metadata")
     parser.add_argument("--link-diagnostics", action="store_true", help="sample ESP heap at idle AT boundaries")
@@ -188,6 +189,9 @@ def main():
     elif args.mode == "enen":
         flags += ["-DZ7_SOURCE_EN", "-DZ7_RECOGNIZE_EN"]
     sources = list(SOURCES)
+    if args.touch:
+        flags += ["-DZ7_NANO_TOUCH","-I",str(ROOT/"software/z7_nano_usb")]
+        sources.append("software/subtitle_ui/ui_touch.c")
     tls_objects=[]
     if args.arm_tls:
         sources.append("software/network_ui/arm_tls.c")
@@ -250,7 +254,8 @@ def main():
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     table = symbols.stdout.decode("utf-8", "replace")
     (OUT / "symbols.log").write_text(table, encoding="utf-8")
-    for name, address in SYMBOLS:
+    layout = SYMBOLS + ([("touch_feedback", 0x1e040)] if args.touch else [])
+    for name, address in layout:
         m = re.search(r"^([0-9a-fA-F]+)\s+\w\s+" + re.escape(name) + r"\r?$", table, re.M)
         if not m or int(m.group(1), 16) != address:
             raise SystemExit("layout mismatch: " + name)
@@ -261,12 +266,13 @@ def main():
         "Flags": flags,
         "Sources": sources,
         "Selftest": bool(args.selftest),
+        "Touch": bool(args.touch),
         "Mode": args.mode,
         "Speech": bool(args.speech),
         "ArmTLS": bool(args.arm_tls),
         "UARTBaud": args.uart_baud,
         "ELFSHA256": hashlib.sha256(elf_path.read_bytes()).hexdigest(),
-        "InputSHA256": {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in sorted(set(sources) | {"scripts/build_cloud_app.py", "software/network_ui/language_profile.h", "software/network_ui/link_arm_tls.ld", "output/display/framebuffer_hw.h"} | {p.relative_to(ROOT).as_posix() for d in ("software/network_ui", "software/subtitle_ui") for p in (ROOT / d).glob("*.h")})},
+        "InputSHA256": {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in sorted(set(sources) | {"scripts/build_cloud_app.py", "software/network_ui/language_profile.h", "software/network_ui/link_arm_tls.ld", "software/z7_nano_usb/touch_link.h", "output/display/framebuffer_hw.h"} | {p.relative_to(ROOT).as_posix() for d in ("software/network_ui", "software/subtitle_ui") for p in (ROOT / d).glob("*.h")})},
         "ELF": str(elf_path.relative_to(ROOT)).replace("\\", "/"),
     }
     (OUT / "build.json").write_text(

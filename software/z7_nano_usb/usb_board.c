@@ -35,6 +35,26 @@ void usb_wait(uintptr_t address,uint32_t mask,uint32_t expected,uint32_t error) 
         if(tusb_time_millis_api()-start>=500u) usb_fail(error);
     }
 }
+volatile uint32_t usb_reset_trace[8];
+void usb_port_reset(void) {
+    /* Zynq EN247 AR47540: do not send the first SOF until the PHY has
+       completed port reset. Complete this interval synchronously so the
+       stack does not leave an already reset FS device without SOFs. */
+    uint32_t start=tusb_time_millis_api(),command=usb_read(USB_BASE+0x140u);
+    usb_reset_trace[0]=0x31545352u;++usb_reset_trace[1];usb_reset_trace[2]=command;
+    usb_write(USB_BASE+0x140u,command&~1u);
+    usb_wait(USB_BASE+0x144u,0x1000u,0x1000u,0x106u);
+    usb_reset_trace[3]=usb_read(USB_BASE+0x144u);
+    /* Clear W1C change bits and Port Enable when asserting Port Reset. */
+    uint32_t port=usb_read(USB_BASE+0x184u)&~0x2eu;
+    usb_write(USB_BASE+0x184u,port|0x100u);
+    usb_wait(USB_BASE+0x184u,0x100u,0,0x107u);
+    usb_reset_trace[4]=usb_read(USB_BASE+0x184u);
+    usb_write(USB_BASE+0x140u,command|1u);
+    usb_wait(USB_BASE+0x144u,0x1000u,0,0x108u);
+    usb_reset_trace[5]=usb_read(USB_BASE+0x144u);
+    usb_reset_trace[6]=tusb_time_millis_api()-start;++usb_reset_trace[7];
+}
 static uint8_t ulpi(uint8_t address,bool write,uint8_t value) {
     if(!(usb_read(USB_BASE+0x170u)&0x08000000u)) {
         usb_write(USB_BASE+0x170u,0x80000000u);

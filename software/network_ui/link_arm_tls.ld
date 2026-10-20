@@ -27,6 +27,8 @@ SECTIONS {
     .tls_runtime (NOLOAD) : { KEEP(*(.tls_runtime)) } > TLS_DDR
     .mailbox 0x0001E000 (NOLOAD) : { KEEP(*(.mailbox)) } > OCM
     ASSERT(SIZEOF(.mailbox) == 0x40, "Display mailbox ABI changed")
+    .touch_feedback 0x0001E040 (NOLOAD) : { KEEP(*(.touch_feedback)) } > OCM
+    ASSERT(SIZEOF(.touch_feedback) <= 0x40, "Touch feedback exceeds reserve")
     .ui_mailbox 0x0001E080 (NOLOAD) : { KEEP(*(.ui_mailbox)) } > OCM
     ASSERT(SIZEOF(.ui_mailbox) <= 0x40, "UI mailbox exceeds reserve")
     .ui_command 0x0001E0C0 (NOLOAD) : { KEEP(*(.ui_command)) } > OCM

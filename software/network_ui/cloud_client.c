@@ -292,6 +292,7 @@ void cloud_client_speech_started(uint32_t audio_start_ms) {
     client.utterance_started=1;
     client.utterance_reported=0;
     client.utterance_ms=client.now_ms;
+    audio_regs32(AUDIO_LATENCY_REG)=0;
 }
 
 /* Stop appending after a cloud error or close. A dead session must not leave a
@@ -435,10 +436,7 @@ static void send_pcm(uint32_t now) {
     client.tx_len=used;++client.tx_frames;
     for(uint32_t i=0;i<sizeof(client.tx_head)-1u && i<used;++i) client.tx_head[i]=json[i];
     client.tx_head[used<sizeof(client.tx_head)-1u?used:sizeof(client.tx_head)-1u]=0;
-    if(send_json(json,used)) {
-        /* The stream position advances by the audio actually queued for upload
-           (16 kHz, 16-bit mono); its wall time is what T1 is measured against. */
-    }
+    (void)send_json(json,used);
 }
 #else
 /* Opus path: encode each 20 ms frame, package OPUS_BATCH packets (200 ms) into
@@ -564,7 +562,14 @@ void cloud_client_tick(uint32_t now) {
             client.update_ms=now;
         }
     }
-    if(client.phase!=CLOUD_STREAMING) return;
+    if(client.phase!=CLOUD_STREAMING) {
+        /* Keep the hardware FIFO empty while paused/offline; discard locally,
+           without encoding, queueing or sending microphone audio. */
+        uint32_t discard=audio_regs32(AUDIO_FIFO_COUNT);
+        if(discard>256u) discard=256u;
+        while(discard--) (void)audio_regs32(AUDIO_FIFO_DATA);
+        return;
+    }
     // The PL decimates the 48 kHz codec stream to 16 kHz and buffers it; drain
     // in bursts. The bound keeps one service callback short, and 256 samples
     // (16 ms) per call is more than the ~16 that arrive per millisecond.
@@ -653,9 +658,8 @@ void cloud_client_tick(uint32_t now) {
 #endif
 }
 
-// Called from cloud_live.c when a parsed event yields translation text. Record
-// the delay from when the utterance's first audio was captured to the first
-// Chinese text event of the response: the measured first-character delay.
+// First ASR/translation text received after the server speech-start event.
+// This measures event receipt to event receipt, not microphone-to-screen time.
 void cloud_client_translation(uint32_t now) {
     (void)now;
     if(!client.utterance_started || client.utterance_reported) return;
@@ -663,11 +667,10 @@ void cloud_client_translation(uint32_t now) {
     uint32_t ms=client.now_ms-base;
     client.latency_ms=ms;
     client.utterance_reported=1u;
-    audio_regs32(AUDIO_LATENCY_REG)=(1u<<16)|(ms>9999u?9999u:ms);
+    audio_regs32(AUDIO_LATENCY_REG)=(1u<<16)|(ms>65535u?65535u:ms);
 }
 
-// A completed response ends the measurement window; the next uploaded packet
-// starts a fresh first-character measurement.
+// The next server speech-start event opens a fresh measurement window.
 void cloud_client_response_done(void) {
     client.utterance_started=0;
     client.utterance_reported=0;

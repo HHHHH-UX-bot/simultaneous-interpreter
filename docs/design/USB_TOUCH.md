@@ -33,9 +33,9 @@ python -B scripts/run_z7_nano_usb.py run-probe
 
 ## M4-1 设备枚举与 HID 描述符
 
-Host 实现复用 [TinyUSB](https://github.com/hathach/tinyusb) 0.21.0 的 EHCI 与 HID，添加 Zynq 控制器适配；原始提交为 `dae3f9a366bfcddbf9dcf1b48d7500286a849539`。所用子集和上下游哈希见 [UPSTREAM](../../software/third_party/tinyusb/UPSTREAM.json)，保留 [MIT LICENSE](../../software/third_party/tinyusb/LICENSE)。本项目只修改 EHCI 的五处硬件等待以增加超时，其余传输与描述符逻辑沿用该版本。
+Host 实现复用 [TinyUSB](https://github.com/hathach/tinyusb) 0.21.0 的 EHCI 与 HID，添加 Zynq 控制器适配；原始提交为 `dae3f9a366bfcddbf9dcf1b48d7500286a849539`。所用子集和上下游哈希见 [UPSTREAM](../../software/third_party/tinyusb/UPSTREAM.json)，保留 [MIT LICENSE](../../software/third_party/tinyusb/LICENSE)。本项目修改 EHCI 的五处硬件等待以增加超时，并增加下述 Zynq 端口复位门禁；描述符和传输调度逻辑沿用该版本。
 
-[Host 应用](../../software/z7_nano_usb/host.c)在 CPU1 低 OCM 工作，保存设备、配置、HID 报告描述符与最近 16 条原始报告，不直接驱动 UI。[适配](../../software/z7_nano_usb/usb_board.c)使用已有全局计时器，轮询 EHCI 事件，不启用 GIC 或重置 CPU0/DDR。2026-10-13 实际枚举与 120 秒观察通过，见 [Host 记录](../../output/z7_nano/usb/host_run.json)。屏幕 USB 身份为 `1a86:e5e3`，full-speed、一个 HID 接口、端点 `0x82`，最大包 64 字节，报告描述符 390 字节。
+[Host 应用](../../software/z7_nano_usb/host.c)在 CPU1 低 OCM 工作，保存设备、配置、HID 报告描述符与最近 16 条原始报告，不直接驱动 UI。[适配](../../software/z7_nano_usb/usb_board.c)使用已有全局计时器，轮询 EHCI 事件，不启用 GIC 或重置 CPU0/DDR。2026-10-13 实际枚举与 120 秒观察通过，见 [Host 记录](../../output/z7_nano/usb/host_run.json)。屏幕 USB 身份为 `1a86:e5e3`，full-speed、一个 HID 接口、端点 `0x82`，最大包 64 字节，报告描述符 390 字节。2026-10-20 当前英文候选的间歇零报告及复位顺序对照见下节，不能由历史通过推定当前可用。
 
 首轮固件在组装紧凑格式的端点描述符时执行未对齐写入，CPU1 进入数据异常；ARM 编译加入 `-mno-unaligned-access` 后控制请求正常。随后双 USB 连接仍出现真实断开事件。用户发现 POWER USB 接电脑也能传触摸，断开该线后同一固件枚举成功；当前接线由 [迁移专题](BOARD_MIGRATION.md#当前接线与实施方向)维护。该对照支持双 Host 连接造成干扰的判断，屏幕内部电路并未核实，不能声称两个口的数据线已确认直接并联。
 
@@ -95,6 +95,16 @@ JTAG 信息发现存在异步时序：抓屏在 CPU 暂停前曾因缺少 cable 
 本轮没有复现黑线/渐暗。91 次枚举后供电采样同样得到 Function Control `0x45`、OTG Control `0x27`、Interrupt Status `0x14`，PORTSC 供电位始终为 1；原始 [CSV](../../output/z7_nano/usb/host_attempts/20261013T135143830934Z/power_trace.csv)已保存。因此 VbusValid 单独为 0 不能区分正常与故障，供电不足和软件根因都未证明；采样带来的读/唤醒及时序影响也未排除。间歇暗屏仍未解决。
 
 短时测试完成后 CPU1/DMA 已停止，CPU0 显示继续。持续运行采用下方单独验收的常驻入口。
+
+## 2026-10-20 英文候选的零报告对照
+
+旧版与新编译 Host 都曾收到真实触摸报告并改变字号状态，之后同一程序再次启动却出现枚举正常、心跳推进、零原始报告。失败 QH 对应 FS/EP2/64 字节，S-mask=`01`、C-mask=`1c`、直连 HubAddr=0；overlay token `0x00408981` 表示 Active、ERR、CErr=2，SplitXState 实际为 0。不能把它误解为已证明卡在 complete-split，也不能只按版本归因。
+
+[AMD EN247 第16页 AR47540](https://docs.amd.com/api/khub/documents/nvT6Go3MRJkASZYoi2lamA/content)要求端口复位的 ULPI 后处理完成前不启用 USBCMD.RS，以避免首个 SOF 损坏。现有 EHCI 初始化先启 RS，随后复位端口，缺少这项规避。板级适配现同步执行清 RS → 确认 HCH → 置 PR → 有限等待 PR 读回 0 → 立即恢复 RS；不跨 TinyUSB 的 50 ms 异步回调保持停止。改动只由 `Z7_USB_RESET_GUARD` 在本板启用，原上游哈希保持，局部修改哈希单独更新。
+
+实际函数的寄存器顺序与三处超时回归通过，首次上板两次复位均完成 HCH/PR 门禁，最后一次耗时 55 ms；但随后用户再次反馈无触摸，原始报告仍为零，普通停机也仍超时。因此这项时序规避不是当前故障的已证实根因或完整修复，不能据此放行可靠性。核对当前 generation 后已停止 CPU1，并单独复位 USB0 确认 DMA Halt；CPU0 保持暂停和最后译文。
+
+同一 TOUCH 数据线临时只接电脑一个 Host，用户确认触摸可用，随后接回 FPGA。新的当前 Host 收到 112 条报告，用户确认保留的真实中文随 A−/A+ 改变；接着正常停止、DMA Halt、重启均通过，再收到 172 条报告，继续/暂停及字号输入有实际记录。此对照支持设备/数据线能工作，但电脑与板卡供电路径不同，未据此排除板端电气因素，也未证明官方复位门禁已消除原间歇故障。当前证据入口见 [英文阶段](../context/ENGLISH.md#当前阶段触摸控制与时延界面2026-10-20)。
 
 ## 常驻触摸与断电恢复
 

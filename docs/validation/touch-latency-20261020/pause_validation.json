@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "scope": "actual paused link remains closed; microphone locally drained, no upload/encoding; no recording-quality claim",
+  "first_utc": "2026-10-20T05:58:43.398182+00:00",
+  "last_utc": "2026-10-20T05:59:32.308608+00:00",
+  "upload_pages": 18,
+  "capture_overflows": 0,
+  "elf_sha256": "d588f9424a9731a0a0ece4a551c9239458c229bf4e4c705d44e32243bdaa0e68"
+}

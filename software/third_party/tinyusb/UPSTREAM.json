@@ -64,7 +64,7 @@
     "src/host/usbh_pvt.h": "959aa6028452d9c638703fceed702b5abea03243584b7eb894d3316ceef9a1bc",
     "src/osal/osal.h": "c9bd3d35f7436c47287bc481041f9af6aeec605f1e0291e3a76bd95bfc04f4d9",
     "src/osal/osal_none.h": "d6eed8e3a3c7a25fc7d57bdded71ce2f56aa82564d7a1dd07cba525239bc1b8f",
-    "src/portable/ehci/ehci.c": "9cc93f115a8587faaf4110979032a8597def8ccfe9362a9ddd5e4dd12998db77",
+    "src/portable/ehci/ehci.c": "6d33f75f6ebd834ec0ecbe95f17c6b8ff11eada11936238256324697dcd00b55",
     "src/portable/ehci/ehci.h": "7797996300d9c3300228a3e0e5cc8c96750598a40356f3c8f6102fdaf5ef5036",
     "src/portable/ehci/ehci_api.h": "e8862d4f00a98e44716678a20fa4f75749d022c36f451a6717bced9427d87b5a",
     "src/tusb.c": "b5f0e8ca00ba6e63914583f7b4711c540a125c261b261216f89e5136fda2ac6f",
@@ -72,6 +72,6 @@
     "src/tusb_option.h": "452216f8caa674e6987f7565186dc100d02a177f3a655c7cb6e506e68e0ee67f"
   },
   "local_changes": {
-    "src/portable/ehci/ehci.c": "Add usb_board.h and bound five hardware status polls; no descriptor or transfer logic changes"
+    "src/portable/ehci/ehci.c": "Add usb_board.h, bound five hardware status polls, route opt-in Zynq root-port reset through EN247 AR47540 run/stop guard; descriptor and transfer scheduling unchanged"
   }
 }

@@ -232,6 +232,11 @@ uint32_t hcd_frame_number(uint8_t rhport) {
 void hcd_port_reset(uint8_t rhport) {
   (void) rhport;
 
+#ifdef Z7_USB_RESET_GUARD
+  usb_port_reset();
+  return;
+#endif
+
   ehci_registers_t* regs = ehci_data.regs;
 
   // skip if already in reset

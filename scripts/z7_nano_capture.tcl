@@ -33,7 +33,8 @@ set capture_failed [catch {
     if {$current>1} {error "Invalid framebuffer index"}
     set snapshot [expr {0x1b00000+$current*11448}]
     set header [mrd -force -value $snapshot 8]
-    if {[lrange $header 0 3] ne [list [expr {0x55495331}] 1 11448 11384]} {error "Wrong active snapshot"}
+    if {[lindex $header 0]!=0x55495331 || [lindex $header 1] ni {1 2} ||
+        [lrange $header 2 3] ne {11448 11384}} {error "Wrong active snapshot"}
     set base [expr {$current?0x01400000:0x01000000}]
     mrd -force -bin -file [file join $folder snapshot.bin] $snapshot 2862
     mrd -force -bin -file [file join $folder framebuffer.bin] $base 614400

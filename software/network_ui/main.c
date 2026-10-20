@@ -129,6 +129,9 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
     if(now-service_ms<1u) return;
     service_ms=now;
     speech_playback_tick(now);
+#ifdef Z7_ARM_TLS
+    network_cloud_run(cloud_live_capture_enabled());
+#endif
 #ifdef Z7_UART_921600
     if(wifi_info.phase==2u) uart_accepted=1;
     if(uart_accepted) network_tick(s,now);
@@ -140,8 +143,8 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
 #endif
     cloud_live_tick(now);
 #ifdef Z7_ARM_TLS
-    arm_tls_tick(now);
-    if(arm_tls_ready()) cloud_client_start(now);
+    if(cloud_live_capture_enabled() || network_info.phase!=8u) arm_tls_tick(now);
+    if(cloud_live_capture_enabled() && arm_tls_ready()) cloud_client_start(now);
 #else
     if(network_info.phase==8u) cloud_client_start(now);
 #endif
@@ -162,8 +165,23 @@ static void network_demo_tick(struct ui_demo_clock *c,struct ui_state *s,uint32_
     if(!network_owns_ui() && !cloud_live_owns_ui()) ui_demo_tick(c,s,now);
 #endif
 }
+#ifdef Z7_LATENCY_UI
+static uint32_t cloud_latency_read(void) {
+    static uint32_t shown;
+    volatile uint32_t *audio=(volatile uint32_t *)0x43c20000u;
+    if(!(audio[0x2cu/4u]&4u)) {
+        uint32_t text=audio[0x88u/4u];
+        shown=ui_latency_pack(audio[0x08u/4u],audio[0x04u/4u]&1u,text&0xffffu,text&0x10000u);
+    }
+    return shown;
+}
+#define UI_LATENCY_READING cloud_latency_read
+#endif
 #define ui_demo_init network_demo_init
 #define ui_demo_tick network_demo_tick
 #define UI_BACKGROUND_TICK network_background_tick
+#ifdef Z7_ARM_TLS
+#define UI_CONTROL_ACCEPTED cloud_live_control
+#endif
 #include "../subtitle_ui/main.c"
 static void render_service(void) {network_background_tick(&state,now_ms());}

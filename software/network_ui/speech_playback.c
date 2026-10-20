@@ -106,6 +106,9 @@ static void finish_stream(void) {
 }
 void speech_playback_done(void) {finish_stream();++speech_diag.done_events;speech_trace(2u,0u,queued+SPEECH_REG(0xa4));}
 void speech_playback_disconnect(void) {finish_stream();}
+/* A user stop discards both queues; the next session gets fresh playback
+   counters. A network disconnect can still drain its completed phrase. */
+void speech_playback_stop(void) {speech_playback_init();}
 void speech_playback_tick(uint32_t now) {
     play_now=now;
     if(!available) return;
@@ -144,5 +147,6 @@ void speech_playback_init(void) {}
 int speech_playback_audio(const char *s,uint32_t n) {(void)s;(void)n;return 1;}
 void speech_playback_done(void) {}
 void speech_playback_disconnect(void) {}
+void speech_playback_stop(void) {}
 void speech_playback_tick(uint32_t now) {(void)now;}
 #endif

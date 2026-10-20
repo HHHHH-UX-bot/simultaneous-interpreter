@@ -114,6 +114,9 @@ static void process_command(void) {
         accepted=ui_control(&state,(enum ui_command)(command-1u));
     if(accepted && state.session==UI_RUNNING && demo.phase==4u && command>=5u)
         demo.marked_ms=now_ms();
+#ifdef UI_CONTROL_ACCEPTED
+    if(accepted) UI_CONTROL_ACCEPTED((enum ui_command)(command-1u));
+#endif
     ui_command.result=accepted?1u:2u;ui_command.observed_epoch=state.epoch;
     barrier();ui_command.ack_sequence=request;barrier();
 }
@@ -122,6 +125,9 @@ static void process_controls(void) {
 #ifdef Z7_NANO_TOUCH
     uint32_t command=ui_touch_poll((const volatile struct touch_link *)TOUCH_LINK_ADDRESS,&touch_feedback,&state);
     if(command>=5u && state.session==UI_RUNNING && demo.phase==4u) demo.marked_ms=now_ms();
+#ifdef UI_CONTROL_ACCEPTED
+    if(command) UI_CONTROL_ACCEPTED((enum ui_command)(command-1u));
+#endif
 #endif
 }
 static void draw(uint32_t index,uint32_t elapsed,uint32_t page) {
@@ -129,8 +135,14 @@ static void draw(uint32_t index,uint32_t elapsed,uint32_t page) {
     snapshot->magic=0x55495331u;snapshot->version=1;snapshot->bytes=sizeof(*snapshot);
     snapshot->model_bytes=sizeof(state);snapshot->elapsed_ms=elapsed;snapshot->requested_page=page;
     snapshot->generation=++generation;snapshot->reserved=0;snapshot->state=state;
+#ifdef UI_LATENCY_READING
+    snapshot->version=2;snapshot->reserved=UI_LATENCY_READING();
+#endif
     uint32_t start=now_ms();
     ui_render((uint32_t *)(index?FB_BASE1:FB_BASE0),&snapshot->state,elapsed,page,&snapshot->stats);
+#ifdef UI_LATENCY_READING
+    ui_render_latency((uint32_t *)(index?FB_BASE1:FB_BASE0),snapshot->reserved,&snapshot->stats);
+#endif
     last_render_ms=now_ms()-start;if(last_render_ms>max_render_ms) max_render_ms=last_render_ms;
     if(snapshot->stats.missing_glyphs || snapshot->stats.clipped_glyph_pixels) fail(32);
     barrier();check_guards();

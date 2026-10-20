@@ -1,0 +1,92 @@
+{
+  "status": "unresolved",
+  "scope": "Distinct actual Host sessions; successful reports and user font-state changes do not imply later startup is fixed",
+  "trials": [
+    {
+      "source": "output/touch_latency_20261020/host_ab/sample/result.json",
+      "generation": 2162660,
+      "report_count": 222,
+      "host_phase": 4,
+      "host_error": 0,
+      "cpu0_elf_sha256": "d588f9424a9731a0a0ece4a551c9239458c229bf4e4c705d44e32243bdaa0e68",
+      "cpu1_elf_sha256": "0e49e107123064df321027aaae32d8589ed16ab6c076abf5989224a545814871",
+      "touch_reports": 222,
+      "tap_writes": 14,
+      "accepted_controls": [
+        0,
+        0,
+        0,
+        0,
+        6,
+        6,
+        0
+      ]
+    },
+    {
+      "source": "output/enzh/touch_controls/touch/20261020T062722703048Z/result.json",
+      "generation": 2683892,
+      "report_count": 118,
+      "host_phase": 4,
+      "host_error": 0,
+      "cpu0_elf_sha256": "d588f9424a9731a0a0ece4a551c9239458c229bf4e4c705d44e32243bdaa0e68",
+      "cpu1_elf_sha256": "44694ef341acb439ce9a2df340ff22125d3066816f0ff8ae4674a661581fc849",
+      "touch_reports": 118,
+      "tap_writes": 7,
+      "accepted_controls": [
+        0,
+        0,
+        0,
+        0,
+        8,
+        9,
+        0
+      ]
+    },
+    {
+      "source": "output/enzh/touch_font/touch/20261020T063601650613Z/result.json",
+      "generation": 3084224,
+      "report_count": 0,
+      "host_phase": 4,
+      "host_error": 0,
+      "cpu0_elf_sha256": "3d2064ddbf0c92964607f750b2136bc32823689ecda196cb913c3a83bfaf1f26",
+      "cpu1_elf_sha256": "44694ef341acb439ce9a2df340ff22125d3066816f0ff8ae4674a661581fc849",
+      "touch_reports": 0,
+      "tap_writes": 0,
+      "accepted_controls": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "source": "output/enzh/touch_font/touch/20261020T064859600076Z/result.json",
+      "generation": 3899740,
+      "report_count": 0,
+      "host_phase": 4,
+      "host_error": 0,
+      "cpu0_elf_sha256": "3d2064ddbf0c92964607f750b2136bc32823689ecda196cb913c3a83bfaf1f26",
+      "cpu1_elf_sha256": "8dcba4af7f4ea35579325c2250b48818a2bee4ea787ebaf3c91701833575a400",
+      "touch_reports": 0,
+      "tap_writes": 0,
+      "accepted_controls": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "user_results": [
+    "Old Host: font state changes",
+    "Current rebuilt Host: font state changes",
+    "Final font CPU0: real translation present but no touch response"
+  ],
+  "stop_result": "RS-clear Halt timeout occurred with old and rebuilt Host; explicit owned reset confirmed Halted. Rebuilt Host later stopped normally. Cause unresolved."
+}

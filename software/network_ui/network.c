@@ -42,6 +42,7 @@ static uint8_t saved_ssid[32],saved_pass[64];
 static uint32_t saved_ssid_bytes,saved_pass_bytes;
 #ifdef Z7_NETWORK_CAPABILITIES
 static uint32_t saved_retry_count,saved_retry_at;
+static int cloud_suspended,cloud_resume_pending;
 #endif
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
 static uint32_t uart_sync_needed,uart_recovery,uart_recovery_pos,uart_recovery_deadline;
@@ -940,6 +941,9 @@ static void raw_cleanup(void) {
 }
 void network_init(wifi_read_fn r,wifi_write_fn w) {
     read_reg=r;write_reg=w;
+#ifdef Z7_NETWORK_CAPABILITIES
+    cloud_suspended=cloud_resume_pending=0;
+#endif
     for(uint32_t i=0;i<5u;++i) link_quality[i]=0;
 #ifdef Z7_STREAM_TRANSPORT
     volatile uint32_t *duplex_words=(volatile uint32_t *)&duplex_diag;
@@ -986,6 +990,7 @@ int network_owns_ui(void) {return enabled!=0;}
 /* A transient AT/SNTP/TLS failure otherwise needs a re-flash: re-arm a fresh
    cloud setup from the saved credentials after a short backoff. */
 static void retry_setup(void) {
+    if(cloud_suspended) return;
     /* Counters are sticky. A stale UART error must not invalidate the new
        configuration between re-arming it and its next service tick. */
     write_reg(12,8);network_info.overflow=network_info.framing=0;
@@ -1016,6 +1021,20 @@ static void retry_setup(void) {
     network_info.config_ack=network_config.request_sequence;
     network_config.request_sequence=network_info.config_ack+1u;
     fence();
+}
+void network_cloud_run(int run) {
+    if(!run) {
+        cloud_suspended=1;cloud_resume_pending=0;network_stop();return;
+    }
+    if(cloud_suspended) {
+        cloud_suspended=0;cloud_resume_pending=1;
+        saved_retry_count=0;saved_retry_at=current_time;
+    }
+    /* A quick resume waits for the guarded close. Normal background ticks
+       must not reopen a transport explicitly quiesced by the host loader. */
+    if(cloud_resume_pending && network_info.phase==0 && saved_ssid_bytes) {
+        cloud_resume_pending=0;retry_setup();
+    } else if(network_info.phase==4 || network_info.phase==8) cloud_resume_pending=0;
 }
 #ifdef Z7_STREAM_TRANSPORT
 static void recover_uart(void) {
@@ -1052,14 +1071,14 @@ static void recover_uart(void) {
 }
 #endif
 static void retry_faulted(void) {
-    if(network_info.phase!=6 || !tls_mode || !saved_ssid_bytes || saved_retry_count>=6) return;
+    if(cloud_suspended || network_info.phase!=6 || !tls_mode || !saved_ssid_bytes || saved_retry_count>=6) return;
     uint32_t error=network_info.error;
     if(error!=26 && error!=27 && error!=28 && error!=29 && error!=32 && error!=34 && error!=43 &&
-       error!=44 && error!=45 && error!=46 && error!=47 && error!=48 && error!=24 && error!=42) return;
+       error!=44 && error!=45 && error!=46 && error!=47 && error!=48 && error!=24 && error!=41 && error!=42) return;
     if((int32_t)(current_time-saved_retry_at)<0) return;
     ++saved_retry_count;saved_retry_at=current_time+5000u;
 #ifdef Z7_STREAM_TRANSPORT
-    if(error==26u || error==32u || error==34u || ((error==28u || error==29u || error==43u) && saved_retry_count>=3u)) {
+    if(error==26u || error==32u || error==34u || error==41u || ((error==28u || error==29u || error==43u) && saved_retry_count>=3u)) {
         stream_receive=0;uart_sync_needed=uart_recovery=0;
         link_recovering=1;link_recovery_started=current_time;
         ++link_recovery_diag[1];link_recovery_diag[6]=error;
