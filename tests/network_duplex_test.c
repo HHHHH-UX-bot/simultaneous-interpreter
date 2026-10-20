@@ -15,7 +15,7 @@ static void consume(uint8_t value) {
     if(value!=expected) {puts("bad payload");exit(1);}++received;
     if(remaining && injected) ++received_during_send;
 }
-#ifdef Z7_TRANSLATE_AUDIO
+#ifdef Z7_STREAM_TRANSPORT
 void cache_clean_range(const void *start,unsigned bytes) {(void)start;(void)bytes;}
 #endif
 static uint32_t read_reg(uint32_t offset) {
@@ -59,7 +59,7 @@ int main(void) {
     if(!network_stream_busy()) {puts("physical TX ownership released early");return 6;}
     phy_busy=0;network_tick(&ui,200);
     if(network_stream_busy() || received!=40960 || tx_used!=sizeof(audio) || memcmp(audio,tx,sizeof(audio))) return 4;
-#ifdef Z7_TRANSLATE_AUDIO
+#ifdef Z7_STREAM_TRANSPORT
     if(!received_during_send) {puts("downlink blocked during paced payload TX");return 5;}
 #endif
     puts("PASS_NETWORK_DUPLEX microphone CIPSEND progresses with continuous IPD; all incoming and outgoing bytes exact");

@@ -22,7 +22,9 @@ static void modem_write(uint32_t off,uint32_t value) {
     else if(!strcmp(modem_command,"AT\r\n")) enqueue("\r\nOK\r\n");
     else if(!strcmp(modem_command,"AT+RST\r\n")) {++reset_count;peer=434;enqueue("\r\nOK\r\n");}
     else if(!strcmp(modem_command,WIFI_STREAM_UART_COMMAND)) {peer=WIFI_STREAM_DIVISOR;enqueue("\r\nOK\r\n");}
-    else if(!strcmp(modem_command,"AT+UART_CUR?\r\n")) enqueue("\r\n+UART_CUR:2000000,8,1,0,0\r\nOK\r\n");
+    else if(!strcmp(modem_command,"AT+UART_CUR?\r\n")) {
+        char response[80];snprintf(response,sizeof(response),"\r\n+UART_CUR:%u,8,1,0,0\r\nOK\r\n",WIFI_STREAM_BAUD);enqueue(response);
+    }
     else for(unsigned i=0;i<used;++i) tls_write(16,(uint8_t)modem_command[i]);
     used=0;
 }
@@ -38,7 +40,7 @@ int main(void) {
     check(network_info.phase==6 && network_info.error==32,"framing invalidates failed session");
     for(unsigned i=0;i<10000 && network_info.phase!=8;++i) network_tick(&state,++clock_ms);
     check(network_info.phase==8 && !network_info.error && !framing,"sticky framing no longer prevents reconnection");
-    check(reset_count==1 && divisor==25 && peer==25,"one volatile modem reset and verified high speed");
+    check(reset_count==1 && divisor==WIFI_STREAM_DIVISOR && peer==WIFI_STREAM_DIVISOR,"one volatile modem reset and verified high speed");
     check(network_stream_attach(discard),"cloud can resume after full TLS recovery");
     char corrupt_line[200];memset(corrupt_line,'x',sizeof(corrupt_line));
     enqueue_bytes((const uint8_t *)corrupt_line,sizeof(corrupt_line));

@@ -7,15 +7,30 @@
 #ifndef Z7_TRANSLATE_EN
 #define Z7_ASR_SUBTITLE
 #endif
+#ifdef Z7_ARM_TLS
+#include "../software/network_ui/network.h"
+#endif
 #include "../software/subtitle_ui/ui_render.h"
 #include "../software/network_ui/cloud_client.c"
 #include "../software/network_ui/cloud_live.c"
+#ifdef Z7_ARM_TLS
+#undef network_send
+#undef network_stream_attach
+#define test_send arm_tls_send
+#define test_attach arm_tls_attach
+#else
+#define test_send network_send
+#define test_attach network_stream_attach
+#endif
 
 volatile struct network_status network_info;
 volatile struct stream_pilot_status stream_pilot;
 static int blocked;
 static unsigned transport_failures;
 static unsigned checks;
+#ifndef Z7_TRANSLATE_EN
+static unsigned sent_pong;
+#endif
 #ifdef Z7_SELFTEST_AUDIO
 const int16_t selftest_pcm[320]={0};
 const uint32_t selftest_samples=320,selftest_speech_ms=20;
@@ -27,17 +42,20 @@ int opus_codec_encode(const int16_t *pcm,uint8_t *out,uint32_t n) {
     (void)pcm;if(n<60) return -1;
     memset(out,0,60);out[0]=0x48;return 60;
 }
-int network_stream_attach(void (*receive)(uint8_t)) {(void)receive;return 1;}
+int test_attach(void (*receive)(uint8_t)) {(void)receive;return 1;}
 void network_stream_failed(void) {++transport_failures;}
 void network_stop(void) {}
 void stream_pilot_set_receiver(void (*receive)(uint8_t)) {(void)receive;}
-int network_send(const uint8_t *data,uint32_t n) {
+int test_send(const uint8_t *data,uint32_t n) {
 #ifdef Z7_TRANSLATE_AUDIO
     CHECK(n<=1024); /* Speech-mode uploads stay within the small SSL window. */
 #else
     CHECK(n<=2048);
 #endif
     if(blocked) return 0;
+#ifndef Z7_TRANSLATE_EN
+    if(n && data[0]==0x8au) ++sent_pong;
+#endif
     if(n && data[0]==0x81) {
         printf("FRAME ");for(uint32_t i=0;i<n;++i) printf("%02x",data[i]);puts("");
     }
@@ -178,6 +196,24 @@ int main(void) {
 #endif
 #endif
     cloud_live_init(&model);CHECK(text_log.count==0);
+#ifndef Z7_TRANSLATE_EN
+    cloud_live_begin(7000);
+    /* Recycle bounded utterance/history slots over many consecutive finals. */
+    for(unsigned i=0;i<500u;++i) {
+        char event[192];
+        int n=snprintf(event,sizeof(event),"{\"type\":\"conversation.item.input_audio_transcription.completed\",\"item_id\":\"long%u\",\"transcript\":\"\\u4f60\\u597d\"}",i);
+        CHECK(n>0 && n<(int)sizeof(event));
+        CHECK(cloud_live_message(event,(uint32_t)n,0)==0);
+        CHECK(cloud.live.committed==i+1u && !cloud.live.error);
+    }
+    CHECK(model.translated[0]==0x4f60 && model.translated[1]==0x597d);
+    /* A server Ping must be acknowledged on the authenticated channel. */
+    network_info.phase=4;
+    const uint8_t ping_frame[]={0x89u,1u,'x'};
+    for(unsigned i=0;i<sizeof(ping_frame);++i) cloud_wire_byte(ping_frame[i]);
+    cloud_live_tick(7001);CHECK(sent_pong==1);
+    cloud_live_init(&model);
+#endif
 #ifdef Z7_TRANSLATE_EN
 #ifdef Z7_TRANSLATE_AUDIO
     CHECK(strstr(session_update_json,"\"interrupt_response\":false")!=NULL);

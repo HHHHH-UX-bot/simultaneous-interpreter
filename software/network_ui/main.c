@@ -39,7 +39,7 @@ static int uart_at(const char *text,uint32_t window_ms) {
    base64 is about 46 kB/s. Negotiate the module up to 921600 (divider 54) and
    fall back to the previous rate if the module does not follow. */
 static void uart_link_setup(void) {
-#ifdef Z7_TRANSLATE_AUDIO
+#ifdef Z7_STREAM_TRANSPORT
     const uint32_t rates[]={434u,WIFI_STREAM_DIVISOR,54u};
     for(uint32_t i=0;i<3u;++i) {
         uart_flush();uart_write(8,rates[i]);

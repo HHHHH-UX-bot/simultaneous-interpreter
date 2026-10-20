@@ -11,6 +11,7 @@ Usage:
   python -B scripts/build_cloud_app.py [--gcc <arm-none-eabi-gcc>]
 """
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -124,8 +125,8 @@ def main():
     parser.add_argument("--uart-baud", type=int, choices=(460800,921600,1000000,2000000),default=2000000)
     args = parser.parse_args()
     if args.arm_tls:
-        if not args.speech:
-            parser.error("--arm-tls requires --speech")
+        if args.mode == "zhen" and not args.speech:
+            parser.error("--mode zhen --arm-tls requires --speech")
         args.tls_passthrough=True
     if args.mode == "zhen":
         OUT = ROOT / "output/cloud_app_zhen"
@@ -133,6 +134,8 @@ def main():
         if args.mode != "zhen":
             parser.error("--speech requires --mode zhen")
         OUT = ROOT / "output/cloud_app_zhen_speech"
+    if args.arm_tls and args.mode == "zhzh":
+        OUT = ROOT / "output/cloud_app_zhzh_arm_tls"
     if args.output_dir:
         OUT = args.output_dir.resolve()
     gcc = args.gcc
@@ -149,8 +152,8 @@ def main():
     if args.link_diagnostics:
         flags.append("-DZ7_LINK_DIAGNOSTICS")
     if args.tls_passthrough:
-        if not args.speech:
-            parser.error("--tls-passthrough currently requires --speech")
+        if not args.speech and not args.arm_tls:
+            parser.error("--tls-passthrough requires --speech or --arm-tls")
         flags.append("-DZ7_TLS_PASSTHROUGH")
     if args.drain_before_upload:
         if not args.speech or args.tls_passthrough:
@@ -244,6 +247,9 @@ def main():
         "Mode": args.mode,
         "Speech": bool(args.speech),
         "ArmTLS": bool(args.arm_tls),
+        "UARTBaud": args.uart_baud,
+        "ELFSHA256": hashlib.sha256(elf_path.read_bytes()).hexdigest(),
+        "InputSHA256": {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in sources},
         "ELF": str(elf_path.relative_to(ROOT)).replace("\\", "/"),
     }
     (OUT / "build.json").write_text(
