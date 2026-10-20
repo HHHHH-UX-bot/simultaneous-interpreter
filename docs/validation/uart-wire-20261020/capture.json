@@ -1,0 +1,18 @@
+{
+  "status": "captured",
+  "device": "359f:0300 / SLogic Combo 8",
+  "sample_rate_hz": 20000000,
+  "channels": [
+    0,
+    1
+  ],
+  "samples": 4000000,
+  "packing": "four samples per byte, earliest sample in bits 1:0",
+  "bytes": 1000000,
+  "bulk_transfers": 4,
+  "wall_seconds": 0.219,
+  "sample_seconds": 0.2,
+  "sha256": "febe423369788ceffe7a8614d188276af8787e2c5373e509322d8a95d6ab7d78",
+  "method": "vendor Combo8 start command and synchronous libusb bulk; no GLib session",
+  "dll_sha256": "39a8be2a8c628c2a6146a3a1a85758a5f7fe44045fe425c9bf5897a11ea1b46c"
+}

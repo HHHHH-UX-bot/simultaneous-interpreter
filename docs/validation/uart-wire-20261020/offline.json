@@ -1,0 +1,51 @@
+{
+  "status": "offline_prepared_waiting_jtag_enumeration",
+  "date": "2026-10-20",
+  "user_reported_two_test_wires_connected": true,
+  "user_reported_board_power_and_jtag_restored": true,
+  "windows_jtag_device_detected": false,
+  "xsdb_target_list_empty": true,
+  "analyzer_detected": true,
+  "hardware_programmed": false,
+  "controlled_uart_sample_sent": false,
+  "controlled_waveform_passed": false,
+  "decoder_tests": {
+    "passed": 5,
+    "all_value_test_bytes": 33041
+  },
+  "source_sha256": {
+    "scripts/repair/slogic_capture.py": "55c067c05ffca95cf6010710108af88b4aa376141043cbc17db85ae0f562296f",
+    "scripts/repair/uart_wire_decode.py": "139e834fbe1d1be6d3204a42fbd5d8d0c0d4052425ab6a3915d8f1b766a938c0",
+    "scripts/repair/build_uart_wire_test.py": "ebcdedc00ad43be09770f6efec20905386a202d3eb558b0ca1a386322b4b19cb",
+    "software/uart_wire_test/main.c": "9bf60a481ac80027af452217666974f618c74b4cbcb3170555ef4fb73d8ddb84",
+    "tests/test_uart_wire_decode.py": "065d1b17fa50c3b28b334308c68d73d2ad0d74fc68be2db4225881adf62b8f09"
+  },
+  "stimuli": {
+    "short": {
+      "bytes": 8192,
+      "sha256": "dc1c9ce57f91b8748d91b902178134645ecef7f57ffe0d72ca0aa52bff7626fd",
+      "divider": 50,
+      "paced": 0,
+      "fnv1a": 3337200436
+    },
+    "burst": {
+      "bytes": 262144,
+      "sha256": "3b66cbc21aea3d292406d80a8a6dce58c242c767b1deb8d3dd18bae8165143d2",
+      "divider": 50,
+      "paced": 0,
+      "fnv1a": 722122511
+    },
+    "paced": {
+      "bytes": 65536,
+      "sha256": "76c16a88ae1ab3c93fef338e41a804b3e7b2f0da28f520dd2ec14cce38341015",
+      "divider": 50,
+      "paced": 1,
+      "fnv1a": 4084477208
+    }
+  },
+  "limits": [
+    "single-end receiver differs from ESP electrical load",
+    "capture tool smoke is not controlled UART signal qualification",
+    "last known paused state cannot certify hardware after reported power cycle"
+  ]
+}
