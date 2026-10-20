@@ -1,0 +1,10 @@
+test_all_values_and_ring_boundaries (test_uart_wire_decode.UARTWireDecodeTest.test_all_values_and_ring_boundaries) ... ok
+test_idle_and_truncated_capture (test_uart_wire_decode.UARTWireDecodeTest.test_idle_and_truncated_capture) ... ok
+test_missing_or_mutated_byte_is_rejected (test_uart_wire_decode.UARTWireDecodeTest.test_missing_or_mutated_byte_is_rejected) ... ok
+test_stop_error_is_not_success (test_uart_wire_decode.UARTWireDecodeTest.test_stop_error_is_not_success) ... ok
+test_two_channel_packing (test_uart_wire_decode.UARTWireDecodeTest.test_two_channel_packing) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.653s
+
+OK
