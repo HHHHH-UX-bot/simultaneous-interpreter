@@ -46,7 +46,7 @@ static void tls_close(void) {
     for(uint32_t i=0;i<80 && network_info.phase!=0 && network_info.phase!=6;++i) tick();
 }
 #ifndef NETWORK_TLS_TEST_NO_MAIN
-#ifdef Z7_TRANSLATE_AUDIO
+#ifdef Z7_STREAM_TRANSPORT
 void cache_clean_range(const void *start,unsigned bytes) {(void)start;(void)bytes;}
 #endif
 static void tls_receive(uint8_t byte) {(void)byte;}

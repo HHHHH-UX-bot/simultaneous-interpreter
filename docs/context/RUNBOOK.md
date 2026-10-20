@@ -1,5 +1,20 @@
 # 分阶段执行与验收
 
+## 中译中共享 TLS（2026-10-20）
+
+行为和验证范围见 [ZHZH](ZHZH.md)。本轮已有 Python 可用，`machine` 环境不可用；使用现有 SDK 2018.3 和 Windows GCC，无依赖安装。准备输入的方法沿用下方中译英章节的 `output/display/framebuffer_hw.h`、`output/subtitle_ui/ui_assets.c`，自测另需 `output/cloud_app/selftest_pcm.c`。桌面完整保存版包含其已加载副本的匹配输入。
+
+```text
+python -B scripts/build_cloud_app.py --mode zhzh --arm-tls --uart-baud 1000000 --output-dir output/zhzh/microphone
+python -B scripts/build_cloud_app.py --mode zhzh --arm-tls --uart-baud 1000000 --selftest --output-dir output/zhzh/selftest
+python -B scripts/validate_zhzh_transport.py --gcc <Windows-native-GCC>
+python -B scripts/validate_asr_accuracy.py --gcc <Windows-native-GCC> --mode zhzh --arm-tls
+```
+
+使用 `scripts/configure_cloud_runtime.py --env --yes --model asr --symbols <匹配-symbols.log>` 配置独立中文 ASR，不能依赖配置脚本原有的翻译模式默认值。仅通过进程环境提供 `Z7_WIFI_SSID`、`Z7_WIFI_PASSWORD`、`Z7_CLOUD_KEY`，调用后清除；配置器注入一次性随机种子和 UTC。ESP8266 需要 2.4 GHz 网络，凭据不写入文件。
+
+后续有授权才加载：核验 xc7z010/JTAG 身份、bit/PS 初始化和 ELF/符号，先以 `network_config` action 4 关闭旧透传会话，再使用下方共享的 `z7_nano_audio.tcl run` 流程；该流程在完整替换 PL 前复位系统并打开 USB0 屏幕供电。`scripts/repair/check_zhzh_microphone_ready.py --directory <麦克风构建目录>/ready` 只观察已知麦克风 ELF 的公共计数，不能用于自测 ELF 或替代真人识别验收。本次 PR 没有重新运行加载、配置或板端检查，以保留用户试用状态。
+
 当前授权范围见 [NOW](NOW.md)。以下是执行方法和放行条件，不是自动执行授权；未实现的硬件/模型命令不写成可运行入口。对应事实和资料见 [MAP](MAP.md)，风险见 [RISKS](RISKS.md)。
 
 2026-10-13 当前硬件已更换为 Z7-Nano 7010，新板按 [BOARD_MIGRATION](../design/BOARD_MIGRATION.md) 的 M 阶段执行。下面原 P2b/W 阶段的板级命令针对 RevB，不绕过身份保护操作新板。电脑模型阶段保持其原范围。

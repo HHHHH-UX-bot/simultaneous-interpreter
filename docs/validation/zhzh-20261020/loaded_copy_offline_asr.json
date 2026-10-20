@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "scope": "offline actual C client/muxer/event/UI with mock codec and transport; not recognition quality",
+  "native_result": "PASS_ASR_ACCURACY checks=1638",
+  "ogg_pages_crc_and_48khz_timeline": 17,
+  "session_profiles": 2,
+  "vad_silence_ms": 400,
+  "mock_backlog_recovery": "100 frames drain below 20 in 1.6 s with 200 ms/send; zero drops",
+  "board_quality": "not measured",
+  "profile": "arm_tls",
+  "continuous_asr_finals": 500,
+  "server_ping_pong": "passed",
+  "input_sha256": {
+    "tests/asr_accuracy_test.c": "1c2bc617d623ccb5109cf217db72205843a7c4c0e9c06b51516b3ba61bf2f6ad",
+    "software/network_ui/ogg_opus.c": "87f2ea21dea6347b66b50e09cc7478a81307ef86afba6b83079b8f4ea4964389",
+    "software/network_ui/cloud_events.c": "ea392d8505c15dcd3b12dc1f3889a0099e33bdaef05963aec1f8c981f95b61df",
+    "software/network_ui/cloud_wire.c": "b992c12009aa04408ef82e1d9996717ab5e2b5be7b8709684f89f73e21937459",
+    "software/network_ui/cloud_frame.c": "b97c68100ee36952278d91ae1ff42d57ea77410b7936566e873f4eff8657e80a",
+    "software/network_ui/protocol.c": "19b5f8d10382e963ee3eaccc42138f33bd9637b6e108d4943e3c9801db10c204",
+    "software/subtitle_ui/ui_model.c": "54b23c8b77c62f13b132d761c413295482125e58275e8835f78c7cc6dfa76f2b",
+    "output/subtitle_ui/ui_assets.c": "c4274a35229313067bda3e97a912c9211f189ccf43a85d66e76c5686011f2f19",
+    "software/network_ui/cloud_client.c": "cd5aa84083984a062aeff94b1cabde908dab17d0ee70ec026225b5a9ec20a81e",
+    "software/network_ui/cloud_live.c": "1953964a88f778d1e45c1a968451a384588ced218bf88a681c2c469185352489"
+  },
+  "evidence_scope": "Historical offline regression of the actual loaded working copy"
+}

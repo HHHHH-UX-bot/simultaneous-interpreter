@@ -2,6 +2,10 @@
 #define NETWORK_UI_NETWORK_H
 #include "../ps_wifi/wifi_at_probe.h"
 #include "protocol.h"
+/* Stream transport is shared by ASR and translated audio. */
+#if !defined(Z7_STREAM_TRANSPORT) && (defined(Z7_TRANSLATE_AUDIO) || defined(Z7_ARM_TLS))
+#define Z7_STREAM_TRANSPORT
+#endif
 struct network_status {
     uint32_t magic,sequence,phase,error,config_ack,sta_ip,client,accepted;
     uint32_t rejected,last_request,last_code,received_bytes,overflow,framing,echo_verified,epoch;

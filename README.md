@@ -1,5 +1,7 @@
 # 译声：语音中文字幕终端
 
+中文独立识别现可使用共享 Zynq TLS 与 1 Mbps UART，入口见 [ZHZH](docs/context/ZHZH.md) 和 [构建/配置](docs/context/RUNBOOK.md#中译中共享-tls2026-10-20)。实际已加载副本与本 PR 共享代码检出的验证范围分别记录，保留中译英功能。
+
 新增 Z7-Nano 中文译英字幕与 lineout 译音候选：连续流修复、真实板测和验收边界见 [ZHEN](docs/context/ZHEN.md)，构建/配置见 [RUNBOOK](docs/context/RUNBOOK.md#中文译英候选2026-10-20)。原有阶段记录保留各自的日期与范围。
 
 目标是音频模块经 Zynq 采集与必要前处理，通过 ESP8266/Wi-Fi 访问云端语音翻译服务，把中文字幕显示在 HDMI 屏幕上，并支持 USB 触摸交互。最终使用时不依赖电脑；当前选择阿里云百炼实时语音翻译一体方案，见 [DECISIONS](docs/context/DECISIONS.md#d13-云端语音翻译与独立终端)和[云端方案](docs/design/CLOUD_SPEECH.md)。

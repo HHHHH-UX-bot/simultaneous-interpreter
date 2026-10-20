@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "result": "PASS_SELFTEST_CLOCK reconnect does not burst offline audio",
+  "mode": "zhzh",
+  "arm_tls": true,
+  "scope": "executed native reconnect clock check; no board"
+}

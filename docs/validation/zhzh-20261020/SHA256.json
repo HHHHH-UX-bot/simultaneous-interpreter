@@ -1,0 +1,14 @@
+{
+  "board_microphone_load.json": "cc0e389d065f7eb684ccc86d7eced3234b8d29d4db3a09c2532073d28384780f",
+  "board_microphone_ready.json": "e73b70d99cc6026260dda5c09715280c0eed5c458b1dbb0f584dbcfc8c5df828",
+  "checkout_asr_arm_tls.json": "294d76f43dabac3247ead504f8e88e02ff4c8a6ee6a1066e1978eff234ca02cc",
+  "checkout_microphone_build.json": "0fe640822f9b9a102347432cfc74e79bb68fb8329654c02aa2c75a5d1c1cb642",
+  "checkout_selftest_build.json": "9b62d1f8887705d9df6e88ad588506fbd56c94b11abba9a84e0249265c6d67c1",
+  "checkout_selftest_clock.json": "b877c246b7fd4153f67b4b1a4f55be0b14a9ab8eb6d9526a8a0a71f74565eabb",
+  "checkout_speech_network.json": "4f248e591580c8eb7a019314e5b634ddba9f96df694f9ac2311a105ff66a92f2",
+  "checkout_transport.json": "cb1296ce2b3dbb30271b379a1eabc50dcec6c1989606866ebfafed772eb1d1a8",
+  "checkout_zhen_events.json": "0497b6b3ae19a659593f692dd321477301cb2b9b6c8057af8398730adfc87377",
+  "loaded_copy_offline_asr.json": "33952de861e11e05c9aa50375f9e91fd3f2795fb2c9d4f84df4652baf6946ba2",
+  "README.md": "73c09995522237c391a120e805b42bc41dd13e0d0dc6cae04555cab4dfc97be4",
+  "tls_engine_unchanged.json": "902662c68ffede117b9953d6fd69db17aaea6759f0716edfb0a32c32c6fcae6d"
+}

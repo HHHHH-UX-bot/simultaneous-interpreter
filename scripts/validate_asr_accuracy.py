@@ -15,7 +15,10 @@ def main():
     parser.add_argument("--speech", action="store_true")
     parser.add_argument("--selftest-clock", action="store_true")
     parser.add_argument("--tls-passthrough", action="store_true")
+    parser.add_argument("--arm-tls", action="store_true", help="verify ASR data and Ping/Pong use the TLS boundary")
     args = parser.parse_args()
+    if args.arm_tls:
+        args.tls_passthrough = True
     temp = ROOT / "tmp/asr_accuracy"
     out = ROOT / ("output/zhen" if args.mode == "zhen" else "output/asr_accuracy")
     temp.mkdir(parents=True, exist_ok=True)
@@ -37,6 +40,8 @@ def main():
         command.insert(1,"-DZ7_SELFTEST_AUDIO")
     if args.tls_passthrough:
         command.insert(1,"-DZ7_TLS_PASSTHROUGH")
+    if args.arm_tls:
+        command.insert(1,"-DZ7_ARM_TLS")
     result = subprocess.run(command, capture_output=True)
     (out / "native_build.log").write_bytes(result.stdout + result.stderr)
     result.check_returncode()
@@ -100,7 +105,9 @@ def main():
               "native_result": result.stdout.decode().splitlines()[-1],
               "ogg_pages_crc_and_48khz_timeline": len(pages), "session_profiles": len(updates),
               "vad_silence_ms": vad_silence_ms, "mock_backlog_recovery": "100 frames drain below 20 in 1.6 s with "+("100 ms/send, frames <=1 KiB" if args.speech else "200 ms/send")+"; zero drops",
-              "board_quality": "not measured"}
+              "board_quality": "not measured",
+              "arm_tls_boundary": args.arm_tls,
+              "continuous_asr_finals": 500 if args.mode == "zhzh" else "not this profile"}
     if args.mode == "zhen":
         import struct
         import zlib

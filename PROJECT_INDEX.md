@@ -7,6 +7,7 @@
 | 任务或问题 | 权威入口 | 职责 |
 |---|---|---|
 | 使用或修改中文译英字幕、译音、Zynq TLS | [ZHEN](docs/context/ZHEN.md) | 当前能力、故障修复、板测证据、代码和操作入口 |
+| 使用中译中独立识别、共享 TLS 或核对当前板端版本 | [ZHZH](docs/context/ZHZH.md) | 中文 ASR 行为、当前使用方式、两种证据来源及验收边界 |
 | 确认适用规则与阶段验证要求 | [AGENTS](AGENTS.md) | 长期协作与读写规则 |
 | 了解用途、打开原型 | [README](README.md) | 使用入口 |
 | 接续工作、查进展与下一步 | [NOW](docs/context/NOW.md) | 当前状态与验证证据 |
