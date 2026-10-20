@@ -1,0 +1,137 @@
+{
+  "status": "passed",
+  "scope": "every recorded microphone build input; generated UI assets are local ignored prerequisites, not published font files",
+  "inputs": {
+    "software/ps_bringup/start.S": {
+      "board_build_sha256": "40445495bee0f2292d0222b453207d8ae83628ee78fa3d647d96d1afc5df7e29",
+      "pr_sha256": "40445495bee0f2292d0222b453207d8ae83628ee78fa3d647d96d1afc5df7e29",
+      "matches": true
+    },
+    "software/ps_bringup/cache.c": {
+      "board_build_sha256": "4954083f77aa9f5fe83a126d0e92ed645b5f574d3e92488a8145fc1b390917d4",
+      "pr_sha256": "4954083f77aa9f5fe83a126d0e92ed645b5f574d3e92488a8145fc1b390917d4",
+      "matches": true
+    },
+    "software/network_ui/main.c": {
+      "board_build_sha256": "4271b0187b858990b1dd1969cafe564344329800cb5f30563d6ab3e1b0ae61c4",
+      "pr_sha256": "4271b0187b858990b1dd1969cafe564344329800cb5f30563d6ab3e1b0ae61c4",
+      "matches": true
+    },
+    "software/network_ui/network.c": {
+      "board_build_sha256": "bffd4099c41f330bde29006dd477d2d1fa4b5b3ae651e7488d9a9a9364091d4d",
+      "pr_sha256": "bffd4099c41f330bde29006dd477d2d1fa4b5b3ae651e7488d9a9a9364091d4d",
+      "matches": true
+    },
+    "software/network_ui/wifi_recover.c": {
+      "board_build_sha256": "6c22fa2942ca43e5e75dae3192675138e43ec7e59a96cb9711c9cb690b9f82ed",
+      "pr_sha256": "6c22fa2942ca43e5e75dae3192675138e43ec7e59a96cb9711c9cb690b9f82ed",
+      "matches": true
+    },
+    "software/network_ui/protocol.c": {
+      "board_build_sha256": "19b5f8d10382e963ee3eaccc42138f33bd9637b6e108d4943e3c9801db10c204",
+      "pr_sha256": "19b5f8d10382e963ee3eaccc42138f33bd9637b6e108d4943e3c9801db10c204",
+      "matches": true
+    },
+    "software/network_ui/cloud_events.c": {
+      "board_build_sha256": "76b93d2c05033af98be9f77febe69424dd5849d77db674fb20cf987ce9282c70",
+      "pr_sha256": "76b93d2c05033af98be9f77febe69424dd5849d77db674fb20cf987ce9282c70",
+      "matches": true
+    },
+    "software/network_ui/cloud_wire.c": {
+      "board_build_sha256": "5aee969cb3c0ac340aa05edf1e7dadc5e3229710acbff82dc89ae8a81f4375f1",
+      "pr_sha256": "5aee969cb3c0ac340aa05edf1e7dadc5e3229710acbff82dc89ae8a81f4375f1",
+      "matches": true
+    },
+    "software/network_ui/cloud_live.c": {
+      "board_build_sha256": "7538561eb8bfb2b920b813385e11f0936371a366f299ffedd38ac784c19e7b3b",
+      "pr_sha256": "7538561eb8bfb2b920b813385e11f0936371a366f299ffedd38ac784c19e7b3b",
+      "matches": true
+    },
+    "software/network_ui/cloud_client.c": {
+      "board_build_sha256": "8e68c95a32d1693f637416b6786e70723bc228cde9c66cd7ad53f00518192f8e",
+      "pr_sha256": "8e68c95a32d1693f637416b6786e70723bc228cde9c66cd7ad53f00518192f8e",
+      "matches": true
+    },
+    "software/network_ui/speech_playback.c": {
+      "board_build_sha256": "83f6f14d10e22f4cbab7356cb2f475f8a34f1f70e28852e7f43068d80cb046a5",
+      "pr_sha256": "83f6f14d10e22f4cbab7356cb2f475f8a34f1f70e28852e7f43068d80cb046a5",
+      "matches": true
+    },
+    "software/network_ui/cloud_frame.c": {
+      "board_build_sha256": "05d1d7a8f4bf018b2ca15c7cab34516104800b6058c135986ad11c1a9ec7d3f3",
+      "pr_sha256": "05d1d7a8f4bf018b2ca15c7cab34516104800b6058c135986ad11c1a9ec7d3f3",
+      "matches": true
+    },
+    "software/network_ui/stream_pilot.c": {
+      "board_build_sha256": "26d2509e67109077cf818803321ee29708bec3aba1659fdaf1856eaace408f77",
+      "pr_sha256": "26d2509e67109077cf818803321ee29708bec3aba1659fdaf1856eaace408f77",
+      "matches": true
+    },
+    "software/network_ui/opus_codec.c": {
+      "board_build_sha256": "009bf2d3a606306bc73ccca87e2c00f9837a210b28c5168800e438a2826ba97f",
+      "pr_sha256": "009bf2d3a606306bc73ccca87e2c00f9837a210b28c5168800e438a2826ba97f",
+      "matches": true
+    },
+    "software/network_ui/ogg_opus.c": {
+      "board_build_sha256": "87f2ea21dea6347b66b50e09cc7478a81307ef86afba6b83079b8f4ea4964389",
+      "pr_sha256": "87f2ea21dea6347b66b50e09cc7478a81307ef86afba6b83079b8f4ea4964389",
+      "matches": true
+    },
+    "software/ps_wifi/wifi_at_probe.c": {
+      "board_build_sha256": "bc9afc9549011bc9c9d1543f6f24147d353a765584765be4508e20426b04025d",
+      "pr_sha256": "bc9afc9549011bc9c9d1543f6f24147d353a765584765be4508e20426b04025d",
+      "matches": true
+    },
+    "software/subtitle_ui/ui_model.c": {
+      "board_build_sha256": "54b23c8b77c62f13b132d761c413295482125e58275e8835f78c7cc6dfa76f2b",
+      "pr_sha256": "54b23c8b77c62f13b132d761c413295482125e58275e8835f78c7cc6dfa76f2b",
+      "matches": true
+    },
+    "software/subtitle_ui/ui_render.c": {
+      "board_build_sha256": "fdf035d286c90b3df50fbb9792b14dedb7d89a2af7e8845b4ac08e561942a0b0",
+      "pr_sha256": "fdf035d286c90b3df50fbb9792b14dedb7d89a2af7e8845b4ac08e561942a0b0",
+      "matches": true
+    },
+    "software/subtitle_ui/ui_demo.c": {
+      "board_build_sha256": "a7e41d3ea231b8ab92da4044c1d6de526d9503107ae2ea7c18b374993fd6b614",
+      "pr_sha256": "a7e41d3ea231b8ab92da4044c1d6de526d9503107ae2ea7c18b374993fd6b614",
+      "matches": true
+    },
+    "software/subtitle_ui/runtime.c": {
+      "board_build_sha256": "71658f271ba7eb8da00cda1533742f5a7bf889b1083161fb681a363a97e2272a",
+      "pr_sha256": "71658f271ba7eb8da00cda1533742f5a7bf889b1083161fb681a363a97e2272a",
+      "matches": true
+    },
+    "output/subtitle_ui/ui_assets.c": {
+      "board_build_sha256": "c4274a35229313067bda3e97a912c9211f189ccf43a85d66e76c5686011f2f19",
+      "pr_sha256": "c4274a35229313067bda3e97a912c9211f189ccf43a85d66e76c5686011f2f19",
+      "matches": true
+    },
+    "software/network_ui/arm_tls.c": {
+      "board_build_sha256": "a3ba00d64741c04663501efbfeb2ad9e9bdc6e20d4dbaf1dfc4b46a7cb4fda01",
+      "pr_sha256": "a3ba00d64741c04663501efbfeb2ad9e9bdc6e20d4dbaf1dfc4b46a7cb4fda01",
+      "matches": true
+    },
+    "software/network_ui/tls_config.h": {
+      "board_build_sha256": "e9dfc82a996c7a740b6c7114c206faab109a8ef59a8691bc243b512c6648c930",
+      "pr_sha256": "e9dfc82a996c7a740b6c7114c206faab109a8ef59a8691bc243b512c6648c930",
+      "matches": true
+    },
+    "software/network_ui/tls_root.h": {
+      "board_build_sha256": "5798be910cac2974ba78c20629cef29c765d66b57638c5d52a4e3805423494ea",
+      "pr_sha256": "5798be910cac2974ba78c20629cef29c765d66b57638c5d52a4e3805423494ea",
+      "matches": true
+    },
+    "software/network_ui/arm_tls.h": {
+      "board_build_sha256": "2462cd139c7189cb774e0c57ffe63e30934b0b9a72d6e9e0f8a4247b8807a181",
+      "pr_sha256": "2462cd139c7189cb774e0c57ffe63e30934b0b9a72d6e9e0f8a4247b8807a181",
+      "matches": true
+    },
+    "software/network_ui/link_arm_tls.ld": {
+      "board_build_sha256": "b32d47d3737a88f9b67d7ad84df6699a502febcf768d881bac2825a93255d22d",
+      "pr_sha256": "b32d47d3737a88f9b67d7ad84df6699a502febcf768d881bac2825a93255d22d",
+      "matches": true
+    }
+  },
+  "not_in_checkout": []
+}

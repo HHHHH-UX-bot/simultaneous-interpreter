@@ -14,7 +14,8 @@ void ogg_opus_init(void);
 uint32_t ogg_opus_head(uint8_t *out, uint32_t capacity, uint32_t serial);
 uint32_t ogg_opus_tags(uint8_t *out, uint32_t capacity, uint32_t serial);
 /* One audio page with count packets (each < 255 bytes). granule is the
-   cumulative sample position at 16 kHz after the last packet. */
+   cumulative sample position at 48 kHz after the last packet, independent of
+   the encoder input rate (RFC 7845). A 20 ms packet adds 960 samples. */
 uint32_t ogg_opus_page(uint8_t *out, uint32_t capacity, int end_of_stream,
                        uint32_t granule, uint32_t serial, uint32_t sequence,
                        const uint8_t *const *packets, const uint8_t *lengths,

@@ -40,11 +40,13 @@ SOURCES = [
     "software/ps_bringup/cache.c",
     "software/network_ui/main.c",
     "software/network_ui/network.c",
+    "software/network_ui/wifi_recover.c",
     "software/network_ui/protocol.c",
     "software/network_ui/cloud_events.c",
     "software/network_ui/cloud_wire.c",
     "software/network_ui/cloud_live.c",
     "software/network_ui/cloud_client.c",
+    "software/network_ui/speech_playback.c",
     "software/network_ui/cloud_frame.c",
     "software/network_ui/stream_pilot.c",
     "software/network_ui/opus_codec.c",
@@ -105,21 +107,90 @@ SYMBOLS = [
 
 
 def main():
+    global OUT
     parser = argparse.ArgumentParser()
     parser.add_argument("--gcc", type=Path, default=DEFAULT_GCC)
+    parser.add_argument("--mode", choices=("zhzh", "zhen"), default="zhzh",
+                        help="Chinese captions, or English translation above Chinese source")
     parser.add_argument("--selftest", action="store_true",
                         help="build the microphone-less self-test ELF from the generated Chinese TTS PCM")
+    parser.add_argument("--speech", action="store_true",help="English translated audio on lineout (requires playback PL)")
+    parser.add_argument("--output-dir", type=Path, help="separate build directory, including ELF, symbols and metadata")
+    parser.add_argument("--link-diagnostics", action="store_true", help="sample ESP heap at idle AT boundaries")
+    parser.add_argument("--tls-passthrough", action="store_true", help="single verified TLS connection with raw duplex UART")
+    parser.add_argument("--arm-tls", action="store_true", help="experimental verified TLS on Zynq; ESP carries raw TCP")
+    parser.add_argument("--drain-before-upload", action="store_true", help="experimental SSL receive-first scheduling")
+    parser.add_argument("--ssl-read-until-empty", action="store_true", help="experimental SSL reads without encrypted-length queries")
+    parser.add_argument("--uart-baud", type=int, choices=(460800,921600,1000000,2000000),default=2000000)
     args = parser.parse_args()
+    if args.arm_tls:
+        if not args.speech:
+            parser.error("--arm-tls requires --speech")
+        args.tls_passthrough=True
+    if args.mode == "zhen":
+        OUT = ROOT / "output/cloud_app_zhen"
+    if args.speech:
+        if args.mode != "zhen":
+            parser.error("--speech requires --mode zhen")
+        OUT = ROOT / "output/cloud_app_zhen_speech"
+    if args.output_dir:
+        OUT = args.output_dir.resolve()
     gcc = args.gcc
     nm = gcc.with_name("arm-none-eabi-nm.exe")
     if not gcc.is_file() or not nm.is_file():
         raise SystemExit("ARM GCC not found: " + str(gcc))
     OUT.mkdir(parents=True, exist_ok=True)
     flags = list(FLAGS)
+    if args.arm_tls:
+        flags += ["-DZ7_ARM_TLS", "-ffunction-sections", "-fdata-sections", "-Wl,--gc-sections",
+                  '-DMBEDTLS_CONFIG_FILE="tls_config.h"', "-I", str(ROOT / "software/network_ui"),
+                  "-I", str(ROOT / "third_party/mbedtls/include")]
+        flags = [str(ROOT / "software/network_ui/link_arm_tls.ld") if f==str(ROOT / "software/network_ui/link.ld") else f for f in flags]
+    if args.link_diagnostics:
+        flags.append("-DZ7_LINK_DIAGNOSTICS")
+    if args.tls_passthrough:
+        if not args.speech:
+            parser.error("--tls-passthrough currently requires --speech")
+        flags.append("-DZ7_TLS_PASSTHROUGH")
+    if args.drain_before_upload:
+        if not args.speech or args.tls_passthrough:
+            parser.error("--drain-before-upload requires --speech without --tls-passthrough")
+        flags.append("-DZ7_SSL_DRAIN_FIRST")
+    if args.ssl_read_until_empty:
+        if not args.speech or args.tls_passthrough:
+            parser.error("--ssl-read-until-empty requires --speech without --tls-passthrough")
+        flags.append("-DZ7_SSL_NO_LENGTH_QUERY")
+    if args.uart_baud==921600:
+        flags.append("-DZ7_UART_LEGACY_STREAM")
+    elif args.uart_baud==460800:
+        flags.append("-DZ7_UART_460800_STREAM")
+    elif args.uart_baud==1000000:
+        flags.append("-DZ7_UART_1M_STREAM")
+    flags = ["-Wl,-Map=" + str(OUT / "cloud_app.map") if flag.startswith("-Wl,-Map=") else flag for flag in flags]
+    if args.mode == "zhen":
+        flags.remove("-DZ7_ASR_SUBTITLE")
+        flags.append("-DZ7_TRANSLATE_EN")
+        flags = ["-Wl,-Map=" + str(OUT / "cloud_app.map") if flag.startswith("-Wl,-Map=") else flag for flag in flags]
     sources = list(SOURCES)
+    tls_objects=[]
+    if args.arm_tls:
+        sources.append("software/network_ui/arm_tls.c")
+        tls_dir=OUT / "tls_obj"
+        tls_dir.mkdir(exist_ok=True)
+        tls_flags=[f for f in flags if not f.startswith("-Wl,") and f!="-Werror"]
+        at=tls_flags.index("-T"); del tls_flags[at:at+2]
+        for source in sorted((ROOT / "third_party/mbedtls/library").glob("*.c")):
+            obj=tls_dir/(source.stem+".o")
+            proc=subprocess.run([str(gcc),*tls_flags,"-c",str(source),"-o",str(obj)],capture_output=True,text=True)
+            if proc.returncode:
+                (OUT/"tls_build.log").write_text(proc.stdout+proc.stderr,encoding="utf-8")
+                raise SystemExit(proc.stdout+proc.stderr)
+            tls_objects.append(str(obj))
+    if args.speech:
+        flags.append("-DZ7_TRANSLATE_AUDIO")
     elf_name = "cloud_app.elf"
     if args.selftest:
-        generated = OUT / "selftest_pcm.c"
+        generated = ROOT / "output/cloud_app/selftest_pcm.c"
         if not generated.is_file():
             raise SystemExit("selftest PCM not generated: " + str(generated))
         flags.append("-DZ7_SELFTEST_AUDIO")
@@ -144,9 +215,11 @@ def main():
             raise SystemExit("opus build failed: " + str(source))
     opus_list = sorted(str(p) for p in opus_objects.glob("*.o"))
     elf_path = OUT / elf_name
-    cmd = [str(gcc), *flags, *[str(ROOT / s) for s in sources], *opus_list, "-lgcc",
+    cmd = [str(gcc), *flags, *[str(ROOT / s) for s in sources], *opus_list, *tls_objects, "-lgcc",
            "-o", str(elf_path)]
-    proc = subprocess.run(cmd, cwd=str(ROOT), stdout=subprocess.PIPE,
+    response=OUT/"link.rsp"
+    response.write_text("\n".join('"'+arg.replace('\\','\\\\').replace('"','\\"')+'"' for arg in cmd[1:])+"\n",encoding="utf-8")
+    proc = subprocess.run([str(gcc),"@"+str(response)], cwd=str(ROOT), stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT)
     text = proc.stdout.decode("utf-8", "replace")
     (OUT / "build.log").write_text(" ".join(cmd) + "\n\n" + text, encoding="utf-8")
@@ -168,6 +241,9 @@ def main():
         "Flags": flags,
         "Sources": sources,
         "Selftest": bool(args.selftest),
+        "Mode": args.mode,
+        "Speech": bool(args.speech),
+        "ArmTLS": bool(args.arm_tls),
         "ELF": str(elf_path.relative_to(ROOT)).replace("\\", "/"),
     }
     (OUT / "build.json").write_text(

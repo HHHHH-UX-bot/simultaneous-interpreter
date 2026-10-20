@@ -10,6 +10,7 @@ MEMORY {
     FONT_DDR (r) : ORIGIN = 0x01800000, LENGTH = 0x200000
     SNAPSHOT_DDR (rw) : ORIGIN = 0x01B00000, LENGTH = 0x10000
     CLOUD_DDR (rw) : ORIGIN = 0x01A00000, LENGTH = 0x100000
+    PLAYBACK_DDR (rw) : ORIGIN = 0x02000000, LENGTH = 0x100000
 }
 SECTIONS {
     .vectors : { KEEP(*(.vectors)) } > OCM
@@ -40,6 +41,7 @@ SECTIONS {
     ASSERT(SIZEOF(.cloud_mailbox) <= 0x40, "Cloud public ABI changed")
     .ui_assets : { __ui_assets_start = .; KEEP(*(.ui_assets)) __ui_assets_end = .; } > FONT_DDR
     .cloud_runtime (NOLOAD) : { KEEP(*(.cloud_runtime)) } > CLOUD_DDR
+    .playback_runtime (NOLOAD) : { KEEP(*(.playback_runtime)) } > PLAYBACK_DDR
     .cloud_final 0x01A60000 (NOLOAD) : { KEEP(*(.cloud_final)) } > CLOUD_DDR
     ASSERT(SIZEOF(.cloud_final) == 2052, "Cloud caption ABI changed")
     .cloud_masks 0x01A40000 (NOLOAD) : { KEEP(*(.cloud_masks)) } > CLOUD_DDR

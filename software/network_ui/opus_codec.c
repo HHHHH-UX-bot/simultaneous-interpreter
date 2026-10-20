@@ -35,13 +35,21 @@ int opus_codec_init(void) {
     int error = 0;
     encoder = opus_encoder_create(16000, 1, OPUS_APPLICATION_VOIP, &error);
     if (!encoder || error) return 0;
+    /* Retain the 24 kbit/s accuracy baseline. Uplink stalls are absorbed by
+       the packet queue; pacing and queue diagnostics are in cloud_client.c. */
     opus_encoder_ctl(encoder, OPUS_SET_BITRATE(24000));
-    opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(3));
+    opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(5));
     opus_encoder_ctl(encoder, OPUS_SET_SIGNAL(OPUS_SIGNAL_VOICE));
-    /* CBR keeps every 20 ms packet at 40 bytes, so a fixed batch size always
-       fits one ESP CIPSEND frame. */
+    /* CBR caps voiced 20 ms packets at 60 bytes, keeping batch sizes bounded.
+       Audio mode may return smaller DTX packets for silence. */
     opus_encoder_ctl(encoder, OPUS_SET_VBR(0));
+#ifdef Z7_TRANSLATE_AUDIO
+    /* Keep 24 kbit/s voiced frames; send Opus comfort-noise packets during
+       silence so translated PCM does not compete with padded silent uploads. */
+    opus_encoder_ctl(encoder, OPUS_SET_DTX(1));
+#else
     opus_encoder_ctl(encoder, OPUS_SET_DTX(0));
+#endif
     opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(0));
     opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(0));
     return 1;

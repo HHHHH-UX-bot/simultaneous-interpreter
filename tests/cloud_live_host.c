@@ -12,6 +12,7 @@ static uint32_t now,reply_size;
 static uint8_t reply[2048];
 void stream_pilot_set_receiver(void (*receive)(uint8_t)) {receive_byte=receive;}
 int network_send(const uint8_t *data,uint32_t bytes) {memcpy(reply,data,bytes);reply_size=bytes;return 1;}
+void network_stream_failed(void) {}
 void cloud_host_start(void) {
     memset((void *)&network_info,0,sizeof(network_info));memset((void *)&stream_pilot,0,sizeof(stream_pilot));
     ui_init(&model);now=0;reply_size=0;cloud_live_init(&model);

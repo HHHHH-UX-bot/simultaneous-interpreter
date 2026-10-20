@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "scope": "offline actual C client/muxer/event/UI with mock codec and transport; not recognition quality",
+  "native_result": "PASS_ASR_ACCURACY checks=262",
+  "ogg_pages_crc_and_48khz_timeline": 26,
+  "session_profiles": 2,
+  "vad_silence_ms": 400,
+  "mock_backlog_recovery": "100 frames drain below 20 in 1.6 s with 100 ms/send, frames <=1 KiB; zero drops",
+  "board_quality": "not measured",
+  "layout": "English translation above Chinese source; actual native renderer; no missing glyphs",
+  "waiting": "initial translation content is blank; retain previous English through new speech and Chinese ASR until next English replaces it"
+}

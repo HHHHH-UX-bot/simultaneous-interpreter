@@ -79,6 +79,8 @@ module z7_nano_audio_top (
     wire [15:0] sample_data;
     wire        sample_toggle;
     wire [31:0] sample_count;
+    wire playback_dac, playback_enable, loopback_dac;
+    assign i2s_dacdat=playback_enable ? playback_dac : loopback_dac;
 
 
 
@@ -115,6 +117,8 @@ module z7_nano_audio_top (
         .video_hs(video_hs), .video_vs(video_vs), .video_de(video_de), .video_rgb(video_rgb),
         .sample_data(sample_data), .sample_toggle(sample_toggle),
         .sample_count(sample_count),
+        .playback_bclk(i2s_bclk),.playback_lrclk(i2s_dadlrc),
+        .playback_dac(playback_dac),.playback_enable(playback_enable),
         .esp_tx(esp_tx), .esp_rx(esp_rx),
         .live(audio_live), .codec_found(codec_found), .codec_addr_sel(codec_addr_sel),
         .init_busy(init_busy), .init_done(init_done), .init_error(init_error),
@@ -176,7 +180,7 @@ module z7_nano_audio_top (
     i2s_loopback #(.FIFO_DEPTH(2), .AW(1)) u_loopback(
         .clk_sys(pixel_clk), .reset_n_sys(sys_rst_n & locked),
         .bclk(i2s_bclk), .adclrc(i2s_adclrc), .dadlrc(i2s_dadlrc),
-        .adcdat(i2s_adcdat), .dacdat(i2s_dacdat),
+        .adcdat(i2s_adcdat), .dacdat(loopback_dac),
         .adc_left_sample(adc_left_sample), .adc_sample_toggle(adc_sample_toggle),
         .occ_frames(occ_frames), .latency_cycles(latency_cycles),
         .adc_frames(adc_frames), .dac_frames(dac_frames),

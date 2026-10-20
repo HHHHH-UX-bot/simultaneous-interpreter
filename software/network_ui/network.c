@@ -1,4 +1,8 @@
 #include "network.h"
+#ifdef Z7_TRANSLATE_AUDIO
+#include "../ps_bringup/cache.h"
+#include "wifi_recover.h"
+#endif
 _Static_assert(sizeof(struct network_status)==64,"Network public ABI");
 _Static_assert(sizeof(struct network_configuration)==128,"Network private configuration ABI");
 volatile struct network_status network_info;
@@ -20,7 +24,14 @@ static uint32_t current_time,report_ms,setup_step,enabled,ipd_left,ipd_client,li
 static uint32_t command_phase,command_size,command_pos,command_deadline,reply_size,reply_line_start,ack_pending,last_request,prompt_padding,resync,send_failures;
 static char command[320],reply[512],line[128],join_command[240];
 enum setup_state { SETUP_ECHO,SETUP_VERSION,SETUP_STOP_SERVER,SETUP_VOLATILE,
-    SETUP_STATION,SETUP_JOIN,SETUP_IP,SETUP_MULTIPLEX,SETUP_IPD_SIMPLE,
+    SETUP_STATION,SETUP_JOIN,SETUP_SIGNAL,SETUP_IP,
+#ifdef Z7_TRANSLATE_AUDIO
+    SETUP_CLOSE_SOCKET,
+#endif
+    SETUP_MULTIPLEX,SETUP_IPD_SIMPLE,
+#ifdef Z7_TRANSLATE_AUDIO
+    SETUP_AWAKE,
+#endif
     SETUP_ACTIVE_RECEIVE,SETUP_SERVER,SETUP_COUNT };
 static uint8_t frame[NET_FRAME_BYTES],ack[2048];
 static uint32_t send_size;
@@ -29,19 +40,77 @@ static uint32_t peer,peer_port,raw_state,raw_deadline;
    password are kept so the whole setup can be re-armed automatically. */
 static uint8_t saved_ssid[32],saved_pass[64];
 static uint32_t saved_ssid_bytes,saved_pass_bytes,saved_retry_count,saved_retry_at;
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+static uint32_t uart_sync_needed,uart_recovery,uart_recovery_pos,uart_recovery_deadline;
+static uint32_t passive_enabled,passive_pending,passive_read,passive_header;
+static uint32_t passive_retry_at;
+static uint32_t passive_unread,upload_yield_started,upload_yielding;
+#ifdef Z7_SSL_NO_LENGTH_QUERY
+static uint32_t passive_empty_attempts,passive_poll_at;
+#endif
+__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t receive_priority_diag[5];
+static uint32_t link_recovering,link_recovery_started;
+__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t link_recovery_diag[7];
+#define PASSIVE_READ_BYTES 2048u
+__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t duplex_fault_state[25];
+/* Capture sticky hardware evidence before recovery clears the UART counters. */
+__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t first_uart_fault[8];
+#endif
 static void (*stream_receive)(uint8_t);
+__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t link_quality[5];
+#ifdef Z7_LINK_DIAGNOSTICS
+static uint32_t heap_query,heap_query_at;
+__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t network_heap[9];
+static void heap_clean(void) {cache_clean_range((const void *)network_heap,sizeof(network_heap));}
+#endif
+#ifdef Z7_TRANSLATE_AUDIO
+/* Metadata only: collect locally and read once after playback, never log
+   command/reply bytes or credentials. */
+struct duplex_snapshot {uint32_t ms,phase,pos,command_bytes,send_bytes,reply_bytes,ipd_bytes,line_bytes,ack,resync,rx_count,tx_count,uart_status,sent_bytes,received_bytes,reply_flags;};
+struct duplex_diagnostics {uint32_t magic,timeouts;struct duplex_snapshot current,first_timeout;uint32_t faults,last_error,first_error,first_error_ms;};
+__attribute__((section(".cloud_runtime"),used)) static volatile struct duplex_diagnostics duplex_diag;
+__attribute__((section(".cloud_runtime"),used)) static volatile char duplex_reply_shape[257];
+static int contains(const char *s,const char *key);
+static void duplex_snapshot(volatile struct duplex_snapshot *out) {
+    out->ms=current_time;out->phase=command_phase;out->pos=command_pos;
+    out->command_bytes=command_size;out->send_bytes=send_size;out->reply_bytes=reply_size;
+    out->ipd_bytes=ipd_left;out->line_bytes=line_used;out->ack=ack_pending;out->resync=resync;
+    out->rx_count=read_reg(24);out->tx_count=read_reg(28);
+    out->uart_status=read_reg(4);out->sent_bytes=read_reg(40);out->received_bytes=read_reg(44);
+    out->reply_flags=(contains(reply,">")?1u:0u)|(contains(reply,"SEND OK")?2u:0u)|
+                     (contains(reply,"ERROR")?4u:0u)|(contains(reply,"FAIL")?8u:0u)|
+                     (contains(reply,"Recv")?16u:0u)|(contains(reply,"busy")?32u:0u)|
+                     ((reply_size && !reply[0])?64u:0u);
+}
+#endif
 #ifdef Z7_NETWORK_CAPABILITIES
 /* action 3: trusted cloud TLS, action 4: close and return UART ownership.
    reserved=1 is the explicit wrong-CN diagnostic; no API key is involved. */
 #define CLOUD_HOST "ws-zckg39zhbiii3yrv.cn-beijing.maas.aliyuncs.com"
 static uint32_t tls_mode,tls_step,tls_wait_until,tls_time_deadline,tls_connected,tls_closing;
 static const char *const tls_commands[]={
+#ifdef Z7_ARM_TLS
+    "AT+CIPDOMAIN=\"" CLOUD_HOST "\"\r\n",
+    "AT+CIPSTART=\"TCP\",\"" CLOUD_HOST "\",443\r\n",
+    "AT+CIPMODE=1\r\n","AT+CIPSEND\r\n"
+#else
     "AT+CIPDOMAIN=\"" CLOUD_HOST "\"\r\n",
     "AT+CIPSNTPCFG=1,0,\"ntp.aliyun.com\",\"ntp1.aliyun.com\"\r\n",
-    "AT+CIPSNTPTIME?\r\n","AT+CIPSSLCCONF=0,2,0,0\r\n","AT+CIPSSLCCONF?\r\n",
+    "AT+CIPSNTPTIME?\r\n",
+#ifdef Z7_TLS_PASSTHROUGH
+    "AT+CIPSSLCCONF=2,0,0\r\n","AT+CIPSSLCCONF?\r\n",
+    "AT+CIPSSLCSNI=\"" CLOUD_HOST "\"\r\n",
+    "AT+CIPSSLCCN=\"" CLOUD_HOST "\"\r\n",
+    "AT+CIPSTART=\"SSL\",\"" CLOUD_HOST "\",443\r\n",
+    "AT+CIPMODE=1\r\n","AT+CIPSEND\r\n"
+#else
+    "AT+CIPSSLCCONF=0,2,0,0\r\n","AT+CIPSSLCCONF?\r\n",
     "AT+CIPSSLCSNI=0,\"" CLOUD_HOST "\"\r\n",
     "AT+CIPSSLCCN=0,\"" CLOUD_HOST "\"\r\n",
-    "AT+CIPSTART=0,\"SSL\",\"" CLOUD_HOST "\",443\r\n"};
+    "AT+CIPSTART=0,\"SSL\",\"" CLOUD_HOST "\",443\r\n"
+#endif
+#endif
+};
 #endif
 static void fence(void) {
 #if defined(__arm__)
@@ -53,6 +122,13 @@ static void fence(void) {
 static void publish_report(uint32_t now) {
     if(now-report_ms<200u) return;
     report_ms=now;++network_report.sequence;fence();
+#ifdef Z7_TRANSLATE_AUDIO
+    duplex_snapshot(&duplex_diag.current);
+    cache_clean_range((const void *)&duplex_diag,sizeof(duplex_diag));
+#ifdef Z7_NETWORK_CAPABILITIES
+    cache_clean_range((const void *)receive_priority_diag,sizeof(receive_priority_diag));
+#endif
+#endif
     volatile uint32_t *out=(volatile uint32_t *)&network_report;
     const volatile uint32_t *in=(const volatile uint32_t *)&network_info;
     for(uint32_t i=0;i<16;++i) if(i!=1) out[i]=in[i];
@@ -67,8 +143,60 @@ static int same(const char *a,const char *b) {while(*a && *a==*b) {++a;++b;}retu
 static int contains(const char *s,const char *key) {
     for(uint32_t i=0;s[i];++i) {uint32_t j=0;while(key[j] && s[i+j] && key[j]==s[i+j]) ++j;if(!key[j]) return 1;}return 0;
 }
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+static int starts(const char *s,const char *prefix) {
+    while(*prefix) if(*s++!=*prefix++) return 0;
+    return 1;
+}
+#endif
 static void wipe(char *p,uint32_t n) {volatile char *v=p;while(n--) *v++=0;fence();}
 static void fault(uint32_t error) {
+#ifdef Z7_LINK_DIAGNOSTICS
+    network_heap[6]=network_heap[2];network_heap[7]=network_heap[3];heap_query=0;heap_clean();
+#endif
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+    if(error==32u && !first_uart_fault[0]) {
+        first_uart_fault[0]=0x31554657u;first_uart_fault[1]=error;
+        first_uart_fault[2]=current_time;first_uart_fault[3]=read_reg(32);
+        first_uart_fault[4]=read_reg(36);first_uart_fault[5]=read_reg(24);
+        first_uart_fault[6]=read_reg(28);first_uart_fault[7]=read_reg(8);
+        cache_clean_range((const void *)first_uart_fault,sizeof(first_uart_fault));
+    }
+    uint32_t words[]={error,current_time,network_info.phase,setup_step,command_phase,command_pos,
+        command_size,reply_size,passive_read,passive_header,ipd_left,resync};
+    for(uint32_t i=0;i<12u;++i) {
+        if(!duplex_fault_state[0]) duplex_fault_state[1u+i]=words[i];
+        duplex_fault_state[13u+i]=words[i];
+    }
+    duplex_fault_state[0]=0x31544644u;
+    cache_clean_range((const void *)duplex_fault_state,sizeof(duplex_fault_state));
+    if(error==32u || error==34u) uart_sync_needed=0;
+    /* CLOSED can arrive while ESP is still consuming a CIPSEND block. Starting
+       ATE0 immediately makes that command part of the unfinished binary data. */
+    if(!raw_state && error!=32u && error!=34u && tls_mode && network_info.phase==4 && ack_pending && command_phase>=2u && !passive_read) uart_sync_needed=1;
+#endif
+#ifdef Z7_TRANSLATE_AUDIO
+    ++duplex_diag.faults;duplex_diag.last_error=error;
+    uint32_t first_fault=!duplex_diag.first_error;
+    if(first_fault) {duplex_diag.first_error=error;duplex_diag.first_error_ms=current_time;}
+    if(error==27u) {
+        if(!duplex_diag.timeouts) {
+            duplex_snapshot(&duplex_diag.first_timeout);
+        }
+        ++duplex_diag.timeouts;
+    }
+    if(first_fault) {
+            uint32_t n=reply_size<256u?reply_size:256u;
+            for(uint32_t i=0;i<n;++i) {
+                unsigned char c=(unsigned char)reply[i];
+                duplex_reply_shape[i]=(c>='A' && c<='Z')?'A':
+                    (c>='a' && c<='z')?'a':(c>='0' && c<='9')?'0':
+                    (c=='\r' || c=='\n' || (c>=32 && c<127))?(char)c:'.';
+            }
+            duplex_reply_shape[n]=0;
+            cache_clean_range((const void *)duplex_reply_shape,sizeof(duplex_reply_shape));
+    }
+#endif
     if(raw_state>=6) {
         raw_state=command_phase=ack_pending=0;network_info.phase=6;
         if(!network_info.error) network_info.error=error;
@@ -104,7 +232,24 @@ static void send_ack_command(void) {
     text[n++]='\r';text[n++]='\n';text[n]=0;begin_command(text,30000);
 }
 int network_send(const uint8_t *data,uint32_t size) {
-    if(network_info.phase!=4 || command_phase || ack_pending || frame_ready || !size || size>sizeof(ack)) return 0;
+    if(network_info.phase!=4 || command_phase || ack_pending || frame_ready || line_used || !size || size>sizeof(ack)) return 0;
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+#ifdef Z7_SSL_DRAIN_FIRST
+    /* Finish the SSL receive transaction and its availability query before
+       asking the small ESP to allocate another transmit record. */
+    if(passive_enabled && (passive_pending || passive_unread || passive_read || ipd_left)) return 0;
+#endif
+    /* Prefer draining large audio bursts, but never starve microphone uploads
+       for an entire spoken response. Recheck at the next idle AT boundary. */
+    if(passive_enabled && passive_unread>4096u) {
+        if(!upload_yielding) {upload_yielding=1;upload_yield_started=current_time;}
+        uint32_t waited=current_time-upload_yield_started;
+        if(waited>receive_priority_diag[4]) receive_priority_diag[4]=waited;
+        if(waited<150u) {++receive_priority_diag[1];return 0;}
+        ++receive_priority_diag[3];
+    }
+    upload_yielding=0;
+#endif
     for(uint32_t i=0;i<size;++i) ack[i]=data[i];
     send_size=size;ack_pending=1;
     if(raw_state==1) {command_phase=3;command_pos=0;command_deadline=current_time+10000;}
@@ -116,11 +261,16 @@ int network_stream_attach(void (*receive)(uint8_t)) {
        trusted cloud TLS link is already up and the cloud client adopts it. */
     if(!receive || (network_info.phase!=0 && network_info.phase!=8) ||
        network_config.request_sequence!=network_info.config_ack ||
-       command_phase || ack_pending || raw_state || stream_receive) return 0;
+       command_phase || ack_pending || (raw_state && !(raw_state==1 && network_info.phase==8)) || stream_receive) return 0;
     stream_receive=receive;network_info.phase=4;network_info.client=0;resync=0;send_failures=0;
     return 1;
 }
 int network_stream_busy(void) {return command_phase || ack_pending;}
+void network_stream_failed(void) {
+#ifdef Z7_NETWORK_CAPABILITIES
+    if(tls_mode && (network_info.phase==4 || network_info.phase==8)) fault(48);
+#endif
+}
 int network_stream_detach(void) {
     if(!stream_receive || network_stream_busy() || network_info.phase!=4 || ipd_left || line_used || (read_reg(4)&1u)) return 0;
     stream_receive=0;network_info.phase=0;network_info.client=0xffffffffu;
@@ -133,10 +283,24 @@ void network_stop(void) {
 }
 static void issue_setup(void) {
     static const char *const commands[]={"ATE0\r\n","AT+GMR\r\n","AT+CIPSERVER=0\r\n","AT+SYSSTORE=0\r\n",
-        "AT+CWMODE=1\r\n",0,"AT+CIFSR\r\n","AT+CIPMUX=1\r\n","AT+CIPDINFO=0\r\n","AT+CIPRECVMODE=0\r\n","AT+CIPSERVER=1,8266\r\n"};
+        "AT+CWMODE=1\r\n",0,"AT+CWJAP?\r\n","AT+CIFSR\r\n",
+#ifdef Z7_TRANSLATE_AUDIO
+        "AT+CIPCLOSE=0\r\n",
+#endif
+        "AT+CIPMUX=1\r\n","AT+CIPDINFO=0\r\n",
+#ifdef Z7_TRANSLATE_AUDIO
+        "AT+SLEEP=0\r\n",
+#endif
+        "AT+CIPRECVMODE=0\r\n","AT+CIPSERVER=1,8266\r\n"};
     _Static_assert(sizeof(commands)/sizeof(commands[0])==SETUP_COUNT,"Setup command count");
     network_info.last_code=setup_step;
-    if(peer) {
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+    if(passive_enabled && setup_step==SETUP_ACTIVE_RECEIVE) {begin_command("AT+CIPRECVMODE=1\r\n",4000);return;}
+#endif
+#ifdef Z7_TLS_PASSTHROUGH
+    if(tls_mode && setup_step==SETUP_MULTIPLEX) {begin_command("AT+CIPMUX=0\r\n",4000);return;}
+#endif
+        if(peer) {
         if(setup_step==SETUP_STOP_SERVER) {begin_command("AT+CIPSERVER=0,1\r\n",4000);return;}
         if(setup_step==SETUP_MULTIPLEX) {begin_command("AT+CIPMUX=0\r\n",4000);return;}
         if(setup_step==SETUP_IPD_SIMPLE) {
@@ -155,9 +319,16 @@ static void issue_setup(void) {
 static void tls_issue(void) {
     network_info.last_code=100u+tls_step;
     const char *text=tls_commands[tls_step];
-    if(tls_step==6 && tls_mode==2) text="AT+CIPSSLCCN=0,\"wrong.invalid\"\r\n";
+    if(tls_step==6 && tls_mode==2) {
+#ifdef Z7_TLS_PASSTHROUGH
+        text="AT+CIPSSLCCN=\"wrong.invalid\"\r\n";
+#else
+        text="AT+CIPSSLCCN=0,\"wrong.invalid\"\r\n";
+#endif
+    }
     begin_command(text,tls_step==7?25000u:4000u);
 }
+#ifndef Z7_ARM_TLS
 static int tls_time_valid(void) {
     /* SNTP's initial 1970 clock cannot validate certificate dates. */
     const char *tag="+CIPSNTPTIME:";
@@ -172,13 +343,21 @@ static int tls_time_valid(void) {
     }
     return 0;
 }
+#endif
 static void tls_result(int failure) {
     if(tls_closing) {
         if(failure && (tls_closing!=1 || tls_connected)) {fault(46);return;}
         command_phase=0;wipe(reply,sizeof(reply));line_used=0;
         if(tls_closing==1) {
             tls_connected=0;tls_closing=2;begin_command("AT+CIPMUX=0\r\n",4000);
+#ifdef Z7_TRANSLATE_AUDIO
+        } else if(tls_closing==2 && passive_enabled) {
+            tls_closing=3;begin_command("AT+CIPRECVMODE=0\r\n",4000);
+#endif
         } else {
+#ifdef Z7_TRANSLATE_AUDIO
+            passive_enabled=passive_pending=passive_read=passive_header=0;
+#endif
             tls_closing=tls_mode=0;network_info.phase=0;network_info.error=0;
             network_info.client=0xffffffffu;
         }
@@ -186,17 +365,24 @@ static void tls_result(int failure) {
     }
     if(failure) {fault(43);return;}
     if(tls_step==0 && !contains(reply,"+CIPDOMAIN:")) {fault(44);return;}
+#ifndef Z7_ARM_TLS
     if(tls_step==4 && !contains(reply,"+CIPSSLCCONF:0,2,0,0\r\n")) {fault(44);return;}
     if(tls_step==2 && !tls_time_valid()) {
         if((int32_t)(current_time-tls_time_deadline)>=0) {fault(45);return;}
         command_phase=0;wipe(reply,sizeof(reply));tls_wait_until=current_time+1000u;return;
     }
     if(tls_step==7 && !tls_connected) {fault(44);return;}
+#else
+    if(tls_step==1 && !tls_connected) {fault(44);return;}
+#endif
     command_phase=0;wipe(reply,sizeof(reply));
     if(++tls_step<sizeof(tls_commands)/sizeof(tls_commands[0])) {
         if(tls_step==2) tls_time_deadline=current_time+15000u;
         tls_issue();
-    } else {network_info.phase=8;network_info.client=0;saved_retry_count=saved_retry_at=0;}
+    } else {
+        if(!tls_connected) {fault(44);return;}
+        network_info.phase=8;network_info.client=0;saved_retry_count=saved_retry_at=0;
+    }
 }
 #endif
 static uint32_t parse_ip(const char *s) {
@@ -263,6 +449,14 @@ static void configuration(void) {
     uint32_t request=network_config.request_sequence;
     if(request==network_info.config_ack || wifi_info.phase!=2) return;
     fence();
+#ifdef Z7_TLS_PASSTHROUGH
+    if(network_config.action==4 && tls_mode && raw_state==1 &&
+       (network_info.phase==4 || network_info.phase==8) &&
+       network_config.magic==0x3146434eu && !network_config.ssid_bytes &&
+       !network_config.password_bytes && !network_config.reserved && !network_config.port) {
+        network_info.config_ack=request;stream_receive=0;network_stop();return;
+    }
+#endif
     // Faults with unfinished framing require an application restart. A new
     // configuration must not reinterpret unread payload as command replies.
     if(command_phase || ipd_left || frame_used || frame_ready || line_used || ack_pending) {
@@ -306,11 +500,31 @@ static void configuration(void) {
 #ifdef Z7_NETWORK_CAPABILITIES
     cloud_tls=network_config.action==3;
 #endif
-    int valid=network_config.magic==0x3146434eu && (network_config.action==1 || cloud_tls) && sn>=1 && sn<=32 && pn>=8 && pn<=64 &&
-        (!cloud_tls || (network_info.phase==0 && !enabled && network_config.reserved<=1 && !network_config.port)) &&
-        (cloud_tls ||
-        (network_config.reserved ? network_config.port>=1 && network_config.port<=65535 :
-         (network_config.port==0 || network_config.port==8266)));
+    /* Diagnostic build: publish every term of `valid` so a rejected
+       configuration can be attributed without guessing. struct network_status
+       has no spare word and publish_report copies exactly 16, so `framing`
+       (index 13) carries the probe instead of the UART framing counter.
+         bit0 magic   bit1 action   bit2 ssid len   bit3 password len
+         bit4 phase==0   bit5 !enabled   bit6 reserved<=1   bit7 !port
+         bit8 port rule   bit9 cloud_tls
+         bits16..23 ssid_bytes   bits24..31 password_bytes */
+    uint32_t t_magic=network_config.magic==0x3146434eu;
+    uint32_t t_action=(network_config.action==1 || cloud_tls);
+    uint32_t t_sn=(sn>=1 && sn<=32);
+    uint32_t t_pn=(pn>=8 && pn<=64);
+    uint32_t t_phase=(network_info.phase==0);
+    uint32_t t_notenabled=!enabled;
+    uint32_t t_reserved=(network_config.reserved<=1);
+    uint32_t t_port0=!network_config.port;
+    uint32_t t_portrule=(network_config.reserved
+                         ? (network_config.port>=1 && network_config.port<=65535)
+                         : (network_config.port==0 || network_config.port==8266));
+    network_info.framing=t_magic|(t_action<<1)|(t_sn<<2)|(t_pn<<3)|(t_phase<<4)
+                        |(t_notenabled<<5)|(t_reserved<<6)|(t_port0<<7)|(t_portrule<<8)
+                        |(cloud_tls<<9)|((sn&0xffu)<<16)|((pn&0xffu)<<24);
+    int valid=t_magic && t_action && t_sn && t_pn &&
+        (!cloud_tls || (t_phase && t_notenabled && t_reserved && t_port0)) &&
+        (cloud_tls || t_portrule);
     uint32_t n=0;const char *prefix="AT+CWJAP=\"";while(*prefix) join_command[n++]=*prefix++;
     if(valid) for(uint32_t part=0;part<2;++part) {
         uint32_t count=part?pn:sn;
@@ -334,6 +548,17 @@ static void configuration(void) {
     peer=network_config.reserved;peer_port=network_config.port;
 #ifdef Z7_NETWORK_CAPABILITIES
     if(cloud_tls) {tls_mode=1u+network_config.reserved;tls_step=tls_wait_until=tls_connected=tls_closing=0;peer=0;}
+#endif
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+#ifdef Z7_TLS_PASSTHROUGH
+    passive_enabled=0;
+#else
+    passive_enabled=cloud_tls;
+#endif
+    passive_pending=passive_read=passive_header=passive_retry_at=passive_unread=0;
+#ifdef Z7_SSL_NO_LENGTH_QUERY
+    passive_empty_attempts=0;passive_poll_at=current_time+100u;
+#endif
 #endif
     if(enabled) (void)ui_control(model,UI_PAUSE);
     setup_step=0;frame_used=frame_ready=ipd_left=line_used=last_request=ack_pending=0;
@@ -359,12 +584,31 @@ static void commit_frame(void) {
     net_ack(ack,frame,code,model);send_size=32;ack_pending=1;frame_used=frame_ready=0;
 }
 static void line_event(void) {
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+    if(passive_enabled && starts(line,"+IPD,0,")) {
+        uint32_t n=7,count=0;
+        while(line[n]>='0' && line[n]<='9') {count=count*10u+(uint32_t)(line[n++]-'0');if(count>65535u) {fault(24);return;}}
+        if(n==7 || line[n]) {fault(24);return;}
+        if(count) passive_pending=1;
+#ifdef Z7_SSL_NO_LENGTH_QUERY
+        if(count) passive_empty_attempts=0;
+#endif
+        if(count>passive_unread) passive_unread=count;
+        if(passive_unread>receive_priority_diag[2]) receive_priority_diag[2]=passive_unread;
+        /* A prior SEND OK may have cleared reply while this notification was
+           only partly received. Trimming must never grow the cleared buffer
+           and expose NUL holes ahead of the next CIPSEND prompt. */
+        if(reply_line_start<reply_size) reply_size=reply_line_start;
+        reply[reply_size]=0;
+        return;
+    }
+#endif
 #ifdef Z7_NETWORK_CAPABILITIES
     if(tls_mode) {
-        if(same(line,"0,CONNECT")) tls_connected=1;
-        if(same(line,"0,CLOSED")) {
+        if(same(line,"0,CONNECT") || same(line,"CONNECT")) tls_connected=1;
+        if(same(line,"0,CLOSED") || same(line,"CLOSED")) {
             tls_connected=0;
-            if(!tls_closing && network_info.phase==8) fault(47);
+            if(!tls_closing && (network_info.phase==8 || network_info.phase==4)) fault(47);
         }
         if(same(line,"ready") || (same(line,"WIFI DISCONNECT") && setup_step>SETUP_JOIN)) fault(34);
         return;
@@ -410,7 +654,7 @@ static void receive(uint8_t byte) {
     if(prompt_padding) {prompt_padding=0;if(byte==' ') return;}
     if(!line_used && byte!='\r' && byte!='\n') reply_line_start=reply_size;
     // TCP payload bytes (including OK, ERROR and '>') never enter AT parsing.
-    if(command_phase==2 || command_phase==4) {
+    if(command_phase==2 || command_phase==3 || command_phase==4) {
         if(reply_size+1>=sizeof(reply)) {fault(25);return;}
         reply[reply_size++]=(char)byte;reply[reply_size]=0;
     }
@@ -418,6 +662,29 @@ static void receive(uint8_t byte) {
     if(byte=='\n') {line[line_used]=0;line_event();line_used=0;return;}
     if(line_used+1>=sizeof(line)) {fault(26);return;}
     line[line_used++]=(char)byte;line[line_used]=0;
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+    if(passive_read && byte==',' && line_used>=15u && starts(line,"+CIPRECVDATA:")) {
+        uint32_t i=13,count=0;
+        while(i<line_used && line[i]>='0' && line[i]<='9') {count=count*10u+(uint32_t)(line[i++]-'0');if(count>PASSIVE_READ_BYTES) {fault(24);return;}}
+        if(i==13 || i!=line_used-1u) {fault(24);return;}
+        ipd_left=count;ipd_client=0;passive_header=1;line_used=0;
+        /* SSL's IPD count includes encrypted overhead. A successful empty
+           plaintext read must not leave that overhead as a permanent backlog. */
+        passive_unread=count && passive_unread>count?passive_unread-count:0;
+        /* A short SSL plaintext block can still leave buffered data. Query
+           availability before another read instead of waiting for a new IPD. */
+#ifdef Z7_SSL_NO_LENGTH_QUERY
+        passive_pending=count?1u:0u;passive_empty_attempts=0;
+        if(!count) passive_poll_at=current_time+100u;
+#else
+        if(count==PASSIVE_READ_BYTES) passive_pending=1;
+        else if(count && !passive_pending) passive_pending=2;
+#endif
+        if(reply_line_start<reply_size) reply_size=reply_line_start;
+        reply[reply_size]=0;
+        return;
+    }
+#endif
     if(byte==':' && ipd_header()) {
         // Remove the IPD prefix already collected in the response buffer.
         // It is notification framing, not an AT command reply.
@@ -428,6 +695,10 @@ static void receive(uint8_t byte) {
 static void command_tick(void) {
     if(!command_phase) return;
     if((int32_t)(current_time-command_deadline)>=0) {
+#ifdef Z7_TRANSLATE_AUDIO
+        if(!duplex_diag.timeouts) duplex_snapshot(&duplex_diag.first_timeout);
+        ++duplex_diag.timeouts;
+#endif
         /* A stalled streaming send is a transient Wi-Fi/TLS hiccup: drop the
            frame and probe the AT command mode instead of killing the whole
            session. Setup/TLS commands still fault on timeout. */
@@ -442,26 +713,118 @@ static void command_tick(void) {
     if(command_phase==1) {
         // The bounded drain may leave old RX bytes queued. Send only after
         // that backlog is empty, so it cannot certify a new transaction.
-        if(!command_pos && (read_reg(4)&1u)) return;
+        /* An active IPD payload is framed separately from AT replies. Waiting
+           for its RX FIFO to become empty starves microphone uploads during
+           continuous translated-audio downlink. The previous send has already
+           completed before a new command can be queued. */
+        if(!command_pos && (read_reg(4)&1u) && !(stream_receive && ipd_left)) return;
         for(uint32_t budget=0;budget<64 && command_pos<command_size && (read_reg(4)&2u);++budget)
             write_reg(16,(uint8_t)command[command_pos++]);
         if(command_pos<command_size || (read_reg(4)&4u)) return;
         command_phase=2;wipe(command,sizeof(command));reply_size=0;reply[0]=0;
     } else if(command_phase==3) {
-        for(uint32_t budget=0;budget<2048 && command_pos<send_size && (read_reg(4)&2u);++budget) write_reg(16,ack[command_pos++]);
+        /* With no RTS/CTS, flooding the ESP RX UART while it decrypts and
+           streams PCM can lose input bytes. Pace audio-mode writes at up to
+           8 bytes/ms while continuing to drain the independent receive stream. */
+#ifdef Z7_TRANSLATE_AUDIO
+#ifdef Z7_NETWORK_CAPABILITIES
+        const uint32_t tx_budget=passive_enabled?64u:8u;
+#else
+        const uint32_t tx_budget=8u;
+#endif
+#else
+        const uint32_t tx_budget=2048u;
+#endif
+        for(uint32_t budget=0;budget<tx_budget && command_pos<send_size && (read_reg(4)&2u);++budget) write_reg(16,ack[command_pos++]);
         if(command_pos<send_size || (read_reg(4)&4u)) return;
         if(raw_state==1 || raw_state==2) {command_phase=ack_pending=0;return;}
-        command_phase=4;reply_size=0;reply[0]=0;
+        command_phase=4; /* Keep replies that arrived during the last TX bits. */
     }
     if(command_phase==4) {
         if(contains(reply,"ERROR") || contains(reply,"FAIL")) {
-            ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);command_phase=ack_pending=0;wipe(reply,sizeof(reply));reply_size=0;return;
+            ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);
+            /* A lost WebSocket/Ogg frame cannot be silently discarded while
+               retaining this stream. The completed failure owns no binary tail. */
+            command_phase=ack_pending=0;
+#ifdef Z7_TRANSLATE_AUDIO
+            if(stream_receive) {fault(28);return;}
+#endif
+            wipe(reply,sizeof(reply));reply_size=0;return;
         }
-        if(contains(reply,"\r\nSEND OK\r\n")) {send_failures=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;}
+        if(contains(reply,"\r\nSEND OK\r\n")) {
+            send_failures=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;
+        }
         if(resync && contains(reply,"\r\nOK\r\n")) {resync=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;}
         return;
     }
     if(command_phase!=2) return;
+#ifdef Z7_TLS_PASSTHROUGH
+    if(tls_mode && network_info.phase==1 && setup_step==SETUP_COUNT && tls_step==(sizeof(tls_commands)/sizeof(tls_commands[0]))-1u) {
+        if(contains(reply,"ERROR") || contains(reply,"FAIL")) {fault(43);return;}
+        if(!contains(reply,">")) return;
+        command_phase=0;reply_size=line_used=0;wipe(reply,sizeof(reply));
+        raw_state=1;network_info.phase=8;network_info.client=0;
+        tls_step=(uint32_t)(sizeof(tls_commands)/sizeof(tls_commands[0]));
+        saved_retry_count=saved_retry_at=0;return;
+    }
+#endif
+#ifdef Z7_LINK_DIAGNOSTICS
+    if(heap_query) {
+        int failed=contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n");
+        if(!failed && !contains(reply,"\r\nOK\r\n")) return;
+        const char *p=reply;
+        while(*p && !starts(p,"+SYSRAM:")) ++p;
+        if(!failed && *p) {
+            p+=8;uint32_t free_bytes=0,minimum=0;
+            while(*p>='0' && *p<='9') free_bytes=free_bytes*10u+(uint32_t)(*p++-'0');
+            if(*p==',') {++p;while(*p>='0' && *p<='9') minimum=minimum*10u+(uint32_t)(*p++-'0');}
+            ++network_heap[1];network_heap[2]=free_bytes;network_heap[3]=minimum;
+            if(!network_heap[4] || free_bytes<network_heap[4]) network_heap[4]=free_bytes;
+            network_heap[5]=current_time;network_heap[8]=1;
+        } else network_heap[8]=2;
+        network_heap[0]=0x31504845u;heap_clean();
+        heap_query=command_phase=0;reply_size=0;wipe(reply,sizeof(reply));return;
+    }
+#endif
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+    if(passive_read) {
+        if(contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n")) {
+            if(passive_read==2u || passive_header) {fault(43);return;}
+#ifdef Z7_SSL_NO_LENGTH_QUERY
+            /* ERROR can mean an empty socket or a transient allocation miss.
+               Retry once, then poll at a low rate; never query encrypted length. */
+            passive_read=command_phase=0;reply_size=0;wipe(reply,sizeof(reply));
+            if(++passive_empty_attempts<2u) {
+                passive_pending=1;passive_retry_at=current_time+20u;
+            } else {
+                passive_pending=passive_unread=passive_empty_attempts=0;
+                passive_poll_at=current_time+100u;
+            }
+            return;
+#else
+            /* An empty socket or a temporary allocation failure can reject a
+               read without closing SSL. Query availability, don't tear it down. */
+            passive_read=2u;begin_command("AT+CIPRECVLEN?\r\n",4000);return;
+#endif
+        }
+        if(contains(reply,"\r\nOK\r\n")) {
+            if(passive_read==2u) {
+                const char *p=reply;
+                while(*p && !starts(p,"+CIPRECVLEN:")) ++p;
+                if(!*p) {fault(24);return;}
+                p+=12;uint32_t count=0,n=0;
+                while(*p>='0' && *p<='9') {count=count*10u+(uint32_t)(*p++-'0');++n;if(count>65535u) {fault(24);return;}}
+                if(!n || (*p!=',' && *p!='\r')) {fault(24);return;}
+                passive_unread=count;
+                if(count>receive_priority_diag[2]) receive_priority_diag[2]=count;
+                if(count) passive_pending=1;
+                passive_retry_at=current_time+(count?0u:20u);
+            } else if(!passive_header || ipd_left) {fault(24);return;}
+            passive_read=command_phase=0;wipe(reply,sizeof(reply));reply_size=0;
+        }
+        return;
+    }
+#endif
     if(peer && setup_step==SETUP_SERVER && !raw_state) {
         if(contains(reply,"ERROR") || contains(reply,"FAIL")) fault(29);
         else if(contains(reply,">")) {
@@ -473,10 +836,13 @@ static void command_tick(void) {
     }
     if(network_info.phase==4 && ack_pending) {
         if(contains(reply,"ERROR") || contains(reply,"FAIL")) {
-            /* A rejected CIPSEND is a transient Wi-Fi/TLS hiccup too: drop this
-               frame and probe the AT mode instead of killing the session. */
+            /* Rebuild the cloud session rather than lose its queued append. */
             ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);
-            command_phase=ack_pending=0;wipe(reply,sizeof(reply));reply_size=0;
+            command_phase=ack_pending=0;
+#ifdef Z7_TRANSLATE_AUDIO
+            if(stream_receive) {fault(28);return;}
+#endif
+            wipe(reply,sizeof(reply));reply_size=0;
             if(send_failures>8u) fault(28);
             else if(!resync) {resync=1;begin_command("AT\r\n",2000);}
             return;
@@ -498,7 +864,13 @@ static void command_tick(void) {
         command_phase=0;wipe(reply,sizeof(reply));line_used=0;
         if(failure) {if(!network_info.error) network_info.error=41;raw_state=0;network_info.phase=6;return;}
         if(raw_state==6) {raw_state=7;begin_command("AT+CIPCLOSE\r\n",4000);}
-        else {raw_state=0;enabled=0;network_info.client=0xffffffffu;network_info.phase=network_info.error?6:0;}
+        else {
+            raw_state=0;enabled=0;stream_receive=0;
+#ifdef Z7_NETWORK_CAPABILITIES
+            if(!network_info.error) tls_mode=tls_connected=tls_closing=0;
+#endif
+            network_info.client=0xffffffffu;network_info.phase=network_info.error?6:0;
+        }
         return;
     }
 #ifdef Z7_NETWORK_CAPABILITIES
@@ -506,7 +878,11 @@ static void command_tick(void) {
     uint32_t tls_count=sizeof(tls_commands)/sizeof(tls_commands[0]);
     if(tls_mode && (tls_closing || (setup_step==SETUP_COUNT && tls_step<tls_count))) {tls_result(failure);return;}
 #endif
-    if(failure && setup_step!=SETUP_STOP_SERVER) {fault(29);return;} // deleting an absent old server may ERROR.
+    if(failure && setup_step!=SETUP_STOP_SERVER && setup_step!=SETUP_SIGNAL
+#ifdef Z7_TRANSLATE_AUDIO
+       && setup_step!=SETUP_CLOSE_SOCKET
+#endif
+       ) {fault(29);return;} // An absent old server/socket may ERROR.
     if(setup_step==SETUP_VERSION) {
         // Bare OK is insufficient. A fresh version-bearing query must respond
         // without echoing its command, including CRCR echo variants.
@@ -514,6 +890,26 @@ static void command_tick(void) {
         network_info.echo_verified=1;
     }
     if(setup_step==SETUP_JOIN) wipe(join_command,sizeof(join_command));
+    if(setup_step==SETUP_SIGNAL) {
+        link_quality[0]=0x31514c57u;link_quality[1]=2;
+        const char *p=reply,*last=0;
+        while(*p) {if(*p=='"') last=p;++p;}
+        if(last && last[1]==',') {
+            p=last+2;uint32_t channel=0,magnitude=0,negative=0;
+            while(*p>='0' && *p<='9') channel=channel*10u+(uint32_t)(*p++-'0');
+            if(*p==',') {++p;if(*p=='-') {negative=1;++p;}
+                while(*p>='0' && *p<='9') magnitude=magnitude*10u+(uint32_t)(*p++-'0');
+                if(channel>=1u && channel<=14u && magnitude<=127u) {
+                    link_quality[1]=1;link_quality[2]=channel;
+                    link_quality[3]=negative?0u-magnitude:magnitude;
+                }
+            }
+        }
+        link_quality[4]=current_time;
+#ifdef Z7_MMU_CACHE
+        cache_clean_range((const void *)link_quality,sizeof(link_quality));
+#endif
+    }
     if(setup_step==SETUP_IP) {network_info.sta_ip=parse_ip(reply);if(!network_info.sta_ip) {fault(31);return;}}
     command_phase=0;wipe(reply,sizeof(reply));
 #ifdef Z7_NETWORK_CAPABILITIES
@@ -529,7 +925,7 @@ static void raw_cleanup(void) {
             if((int32_t)(current_time-raw_deadline)>=0) {raw_state=command_phase=ack_pending=0;network_info.phase=6;if(!network_info.error) network_info.error=42;}
             return;
         }
-        raw_state=3;raw_deadline=current_time+21;
+        raw_state=3;raw_deadline=current_time+1100;
     } else if(raw_state==3 && (int32_t)(current_time-raw_deadline)>=0) {
         write_reg(16,'+');write_reg(16,'+');write_reg(16,'+');raw_state=4;raw_deadline=current_time+4000;
     } else if(raw_state==4) {
@@ -541,6 +937,13 @@ static void raw_cleanup(void) {
 }
 void network_init(wifi_read_fn r,wifi_write_fn w) {
     read_reg=r;write_reg=w;
+    for(uint32_t i=0;i<5u;++i) link_quality[i]=0;
+#ifdef Z7_TRANSLATE_AUDIO
+    volatile uint32_t *duplex_words=(volatile uint32_t *)&duplex_diag;
+    for(uint32_t i=0;i<sizeof(duplex_diag)/4u;++i) duplex_words[i]=0;
+    duplex_diag.magic=0x31505544u;
+    wipe((char *)duplex_reply_shape,sizeof(duplex_reply_shape));
+#endif
     volatile uint32_t *words=(volatile uint32_t *)&network_info;for(uint32_t i=0;i<16;++i) words[i]=0;
     words=(volatile uint32_t *)&network_report;for(uint32_t i=0;i<16;++i) words[i]=0;
     words=(volatile uint32_t *)&network_config;for(uint32_t i=0;i<32;++i) words[i]=0;
@@ -548,6 +951,24 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
     words=(volatile uint32_t *)&network_capabilities;for(uint32_t i=0;i<16;++i) words[i]=0;
     network_capabilities.magic=0x43415031u;capability_query=0;
     tls_mode=tls_step=tls_wait_until=tls_time_deadline=tls_connected=tls_closing=0;
+#endif
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+    uart_sync_needed=uart_recovery=uart_recovery_pos=uart_recovery_deadline=0;
+    passive_enabled=passive_pending=passive_read=passive_header=passive_retry_at=passive_unread=0;
+#ifdef Z7_SSL_NO_LENGTH_QUERY
+    passive_empty_attempts=passive_poll_at=0;
+#endif
+    upload_yield_started=upload_yielding=0;
+    for(uint32_t i=0;i<5u;++i) receive_priority_diag[i]=0;
+    receive_priority_diag[0]=0x31505852u;
+    for(uint32_t i=0;i<25u;++i) duplex_fault_state[i]=0;
+    for(uint32_t i=0;i<8u;++i) first_uart_fault[i]=0;
+    for(uint32_t i=0;i<7u;++i) link_recovery_diag[i]=0;
+    link_recovery_diag[0]=0x314b4e4cu;link_recovering=link_recovery_started=0;
+#endif
+#ifdef Z7_LINK_DIAGNOSTICS
+    for(uint32_t i=0;i<9u;++i) network_heap[i]=0;
+    network_heap[0]=0x31504845u;heap_query=heap_query_at=0;heap_clean();
 #endif
     network_info.magic=0x3154454eu;network_info.client=0xffffffffu;network_config.magic=0x3146434eu;
     /* The ESP8266 AT firmware runs at 115200 (divider 434); force it at init
@@ -561,14 +982,20 @@ int network_owns_ui(void) {return enabled!=0;}
 #ifdef Z7_NETWORK_CAPABILITIES
 /* A transient AT/SNTP/TLS failure otherwise needs a re-flash: re-arm a fresh
    cloud setup from the saved credentials after a short backoff. */
-static void retry_faulted(void) {
-    if(network_info.phase!=6 || !tls_mode || !saved_ssid_bytes || saved_retry_count>=6) return;
-    uint32_t error=network_info.error;
-    if(error!=27 && error!=28 && error!=29 && error!=32 && error!=34 && error!=43 &&
-       error!=44 && error!=45 && error!=46 && error!=47) return;
-    if((int32_t)(current_time-saved_retry_at)<0) return;
-    ++saved_retry_count;
-    saved_retry_at=current_time+5000u;
+static void retry_setup(void) {
+    /* Counters are sticky. A stale UART error must not invalidate the new
+       configuration between re-arming it and its next service tick. */
+    write_reg(12,8);network_info.overflow=network_info.framing=0;
+#ifdef Z7_LINK_DIAGNOSTICS
+    heap_query=0;
+#endif
+#ifdef Z7_TRANSLATE_AUDIO
+    upload_yielding=0;
+    passive_pending=passive_read=passive_header=passive_retry_at=passive_unread=0;
+#ifdef Z7_SSL_NO_LENGTH_QUERY
+    passive_empty_attempts=0;passive_poll_at=current_time+100u;
+#endif
+#endif
     stream_receive=0;
     tls_mode=tls_step=tls_wait_until=tls_connected=tls_closing=0;
     enabled=0;command_phase=ack_pending=resync=0;
@@ -587,25 +1014,103 @@ static void retry_faulted(void) {
     network_config.request_sequence=network_info.config_ack+1u;
     fence();
 }
+#ifdef Z7_TRANSLATE_AUDIO
+static void recover_uart(void) {
+    /* Finish any normal-mode <=2048-byte binary block, terminate the rejected
+       remainder as a line, then require a fresh AT reply before Wi-Fi setup.
+       Drain incoming audio without dispatching it to the failed cloud stream. */
+    for(uint32_t n=0;n<2048u && (read_reg(4)&1u);++n) {
+        uint32_t value=read_reg(20);if(!(value&0x80000000u)) break;
+        ++network_info.received_bytes;
+        if((uart_recovery==4 || (uart_recovery==3 && uart_recovery_pos==4u)) && reply_size+1<sizeof(reply)) {
+            reply[reply_size++]=(char)value;reply[reply_size]=0;
+        }
+    }
+    if((int32_t)(current_time-uart_recovery_deadline)>=0) {
+        uart_recovery=0;saved_retry_at=current_time+5000u;fault(27);return;
+    }
+    if(uart_recovery==1) {
+        for(uint32_t n=0;n<8u && uart_recovery_pos<2050u && (read_reg(4)&2u);++n) {
+            write_reg(16,uart_recovery_pos<2048u?0u:uart_recovery_pos==2048u?'\r':'\n');
+            ++uart_recovery_pos;
+        }
+        if(uart_recovery_pos==2050u && !(read_reg(4)&4u)) {
+            uart_recovery=2;uart_recovery_pos=current_time+100u;
+        }
+    } else if(uart_recovery==2 && (int32_t)(current_time-uart_recovery_pos)>=0) {
+        uart_recovery=3;uart_recovery_pos=0;reply_size=0;reply[0]=0;
+    } else if(uart_recovery==3) {
+        const char probe[]="AT\r\n";
+        while(uart_recovery_pos<4u && (read_reg(4)&2u)) write_reg(16,(uint8_t)probe[uart_recovery_pos++]);
+        if(uart_recovery_pos==4u && !(read_reg(4)&4u)) uart_recovery=4;
+    } else if(uart_recovery==4 && contains(reply,"\r\nOK\r\n")) {
+        uart_sync_needed=uart_recovery=0;reply_size=0;wipe(reply,sizeof(reply));retry_setup();
+    }
+}
+#endif
+static void retry_faulted(void) {
+    if(network_info.phase!=6 || !tls_mode || !saved_ssid_bytes || saved_retry_count>=6) return;
+    uint32_t error=network_info.error;
+    if(error!=26 && error!=27 && error!=28 && error!=29 && error!=32 && error!=34 && error!=43 &&
+       error!=44 && error!=45 && error!=46 && error!=47 && error!=48 && error!=24 && error!=42) return;
+    if((int32_t)(current_time-saved_retry_at)<0) return;
+    ++saved_retry_count;saved_retry_at=current_time+5000u;
+#ifdef Z7_TRANSLATE_AUDIO
+    if(error==26u || error==32u || error==34u || ((error==28u || error==29u || error==43u) && saved_retry_count>=3u)) {
+        stream_receive=0;uart_sync_needed=uart_recovery=0;
+        link_recovering=1;link_recovery_started=current_time;
+        ++link_recovery_diag[1];link_recovery_diag[6]=error;
+        wifi_recover_begin(read_reg,write_reg,current_time);return;
+    }
+    if(uart_sync_needed) {
+        uart_recovery=1;uart_recovery_pos=0;uart_recovery_deadline=current_time+5000u;
+        stream_receive=0;reply_size=0;reply[0]=0;return;
+    }
+#endif
+    retry_setup();
+}
 #endif
 
 void network_tick(struct ui_state *state,uint32_t now) {
     model=state;current_time=now;++network_info.sequence;fence();
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+    if(link_recovering) {
+        int result=wifi_recover_tick(now);
+        link_recovery_diag[4]=wifi_recover_phase();link_recovery_diag[5]=now-link_recovery_started;
+        if(result) {
+            link_recovering=0;
+            if(result>0) {++link_recovery_diag[2];network_info.overflow=network_info.framing=0;retry_setup();}
+            else {++link_recovery_diag[3];saved_retry_at=now+5000u;}
+        }
+        cache_clean_range((const void *)link_recovery_diag,sizeof(link_recovery_diag));
+        goto done;
+    }
+#endif
     configuration();network_info.overflow=read_reg(32);network_info.framing=read_reg(36);
 #ifdef Z7_NETWORK_CAPABILITIES
+#ifdef Z7_TRANSLATE_AUDIO
+    if(uart_recovery) {recover_uart();goto done;}
+#endif
     retry_faulted();
+#ifdef Z7_TRANSLATE_AUDIO
+    if(uart_recovery) {recover_uart();goto done;}
+#endif
 #endif
 #ifdef Z7_NETWORK_CAPABILITIES
     if(tls_mode && tls_wait_until && network_info.phase==1 && (int32_t)(now-tls_wait_until)>=0) {
         tls_wait_until=0;tls_issue();
     }
 #endif
-    if((network_info.overflow || network_info.framing) && (!raw_state || !network_info.error)) fault(32);
+    /* Counters latch until a deliberate UART reset. Fault the session once;
+       re-faulting phase 6 every millisecond prevents any recovery progressing. */
+    if(network_info.phase!=6 && (network_info.overflow || network_info.framing) && (!raw_state || !network_info.error)) fault(32);
     if(raw_state && raw_state<=5) {
         /* Passthrough RX is data, never AT replies or the LAN frame format. */
         for(uint32_t budget=0;budget<2048 && (read_reg(4)&1u);++budget) {
-            if(!(read_reg(20)&0x80000000u)) break;
+            uint32_t value=read_reg(20);
+            if(!(value&0x80000000u)) break;
             ++network_info.received_bytes;
+            if(raw_state==1 && stream_receive) stream_receive((uint8_t)value);
         }
         if(raw_state==1) command_tick();else raw_cleanup();
         goto done;
@@ -617,19 +1122,43 @@ void network_tick(struct ui_state *state,uint32_t now) {
         if(command_phase==1 && command_pos==command_size && !(read_reg(4)&4u)) {
             command_phase=2;wipe(command,sizeof(command));reply_size=0;reply[0]=0;
         } else if(command_phase==3 && command_pos==send_size && !(read_reg(4)&4u)) {
-            command_phase=4;reply_size=0;reply[0]=0;
+            command_phase=4; /* RX may already contain the early SEND OK. */
         }
         if(network_info.phase==6) goto done;
-        if((command_phase==1 && command_pos>0) || (command_phase==3 && command_pos>0)) {
+        if((command_phase==1 && command_pos>0) || (command_phase==3 && command_pos>0 && !stream_receive)) {
             command_tick();goto done;
         }
         for(uint32_t budget=0;budget<2048 && (read_reg(4)&1u);++budget) {
             uint32_t value=read_reg(20);if(!(value&0x80000000u)) break;receive((uint8_t)value);if(network_info.phase==6) break;
         }
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+        uint32_t was_reading=passive_read;
+#endif
         command_tick();
         if(network_info.phase==4) {
             commit_frame();
             if(ack_pending && !command_phase) send_ack_command();
+#ifdef Z7_LINK_DIAGNOSTICS
+            if(stream_receive && !command_phase && !ack_pending && !ipd_left && !line_used &&
+               (int32_t)(current_time-heap_query_at)>=0 && network_heap[8]!=2u) {
+                heap_query=1;heap_query_at=current_time+5000u;begin_command("AT+SYSRAM?\r\n",4000);
+            }
+#endif
+#if defined(Z7_TRANSLATE_AUDIO) && defined(Z7_NETWORK_CAPABILITIES)
+            /* Return ownership once after each read, so the microphone can
+               queue a due upload before the next receive transaction. */
+#ifdef Z7_SSL_NO_LENGTH_QUERY
+            if(passive_enabled && stream_receive && !passive_pending && !passive_read &&
+               (int32_t)(current_time-passive_poll_at)>=0) passive_pending=1;
+#endif
+            if(passive_enabled && passive_pending && !passive_read && !was_reading &&
+               stream_receive && !command_phase && !ack_pending && !line_used &&
+               (int32_t)(current_time-passive_retry_at)>=0) {
+                uint32_t query=passive_pending==2u;
+                passive_pending=0;passive_read=query?2u:1u;passive_header=0;
+                begin_command(query?"AT+CIPRECVLEN?\r\n":"AT+CIPRECVDATA=0,2048\r\n",4000);
+            }
+#endif
         }
     }
 done:

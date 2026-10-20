@@ -97,7 +97,10 @@ module audio_regs #(
     output reg  [8:0]  cfg_r4,
     output reg  [8:0]  cfg_r5,
     output reg  [8:0]  cfg_r7,
-    output reg  [8:0]  cfg_r8
+    output reg  [8:0]  cfg_r8,
+    input wire playback_bclk, playback_lrclk,
+    output wire playback_dac,
+    output wire playback_enable
 );
     localparam [31:0] ID_VALUE = 32'h41554431;   // "AUD1"
 
@@ -107,6 +110,18 @@ module audio_regs #(
     reg [3:0]  w_strobe;
     reg [31:0] ctrl_shadow;
     reg        ctrl_bit0_d;
+    reg [3:0] playback_control;
+    reg playback_clear;
+    wire [13:0] playback_count;
+    wire [31:0] playback_underruns, playback_played;
+    wire playback_push = aw_hold && w_hold && !s_axi_bvalid &&
+                         aw_address==8'ha0 && w_strobe[1:0]==2'b11;
+    assign playback_enable=playback_control[0];
+    audio_playback u_playback(.clk(clk),.reset_n(reset_n),.clear(playback_clear),
+        .bclk(playback_bclk),.lrclk(playback_lrclk),.run(playback_control[1]),
+        .ending(playback_control[3]),.push(playback_push),.data(w_data[15:0]),
+        .count(playback_count),.dacdat(playback_dac),
+        .underruns(playback_underruns),.played(playback_played));
 
     // Microphone PCM FIFO. The codec captures at 48 kHz but the cloud client
     // needs 16 kHz; the PL decimates 3:1 and buffers the samples so the PS can
@@ -146,6 +161,7 @@ module audio_regs #(
             init_trigger <= 0; ctrl_bit0_d <= 0; clear_extremes <= 0; freeze_display <= 0;
             translation_ms <= 16'd0; translation_valid <= 1'b0;
             pcm_clear_overflow <= 1'b0;
+            playback_control<=0; playback_clear<=0;
             ctrl_shadow <= 32'h1;                 // run the codec init after reset
             cfg_r0 <= DEF_R0; cfg_r1 <= DEF_R1; cfg_r2 <= DEF_R2; cfg_r3 <= DEF_R3;
             cfg_r4 <= DEF_R4; cfg_r5 <= DEF_R5; cfg_r7 <= DEF_R7; cfg_r8 <= DEF_R8;
@@ -156,6 +172,7 @@ module audio_regs #(
             init_trigger   <= ctrl_shadow[0] && !ctrl_bit0_d;
             ctrl_bit0_d    <= ctrl_shadow[0];
             clear_extremes <= 1'b0;
+            playback_clear<=0;
             pcm_clear_overflow <= 1'b0;
 
             if (s_axi_awvalid && s_axi_awready) begin aw_hold <= 1; aw_address <= s_axi_awaddr; end
@@ -188,6 +205,11 @@ module audio_regs #(
                     end
                     // Writing any value to 0x94 clears the FIFO-overflow counter.
                     8'h94: pcm_clear_overflow <= 1'b1;
+                    8'h9c: if(w_strobe[0]) begin
+                        playback_control<=w_data[3:0]&4'hb;
+                        playback_clear<=w_data[2];
+                    end
+                    8'ha0: if(playback_count==8192) s_axi_bresp<=2'b10;
                     default: s_axi_bresp <= 2'b10;
                 endcase
             end
@@ -242,6 +264,11 @@ module audio_regs #(
                     end
                     8'h90: s_axi_rdata <= {20'd0, pcm_count};
                     8'h94: s_axi_rdata <= {16'd0, pcm_overflows};
+                    8'h98: s_axi_rdata <= 32'h31594c50; // PLY1
+                    8'h9c: s_axi_rdata <= {28'd0,playback_control};
+                    8'ha4: s_axi_rdata <= {18'd0,playback_count};
+                    8'ha8: s_axi_rdata <= playback_underruns;
+                    8'hac: s_axi_rdata <= playback_played;
                     default: begin s_axi_rdata <= 32'd0; s_axi_rresp <= 2'b10; end
                 endcase
             end

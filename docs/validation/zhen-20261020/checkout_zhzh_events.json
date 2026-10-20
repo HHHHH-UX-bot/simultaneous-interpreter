@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "scope": "offline actual C client/muxer/event/UI with mock codec and transport; not recognition quality",
+  "native_result": "PASS_ASR_ACCURACY checks=126",
+  "ogg_pages_crc_and_48khz_timeline": 16,
+  "session_profiles": 2,
+  "vad_silence_ms": 400,
+  "mock_backlog_recovery": "100 frames drain below 20 in 1.6 s with 200 ms/send; zero drops",
+  "board_quality": "not measured"
+}

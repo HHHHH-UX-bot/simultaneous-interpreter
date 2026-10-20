@@ -173,11 +173,24 @@ void ui_format_elapsed(uint32_t ms,uint32_t text[16]) {
     text[n++]='0'+(seconds%60u)/10u;text[n++]='0'+seconds%10u;text[n]=0;
 }
 static const char *stage_key(const struct ui_state *s) {
+#ifdef Z7_TRANSLATE_EN
+    if(s->session==UI_PAUSED) return "Paused";
+    if(s->session==UI_IDLE) return "Ready";
+    switch(s->stage) {case UI_RECOGNIZING:return "Recognizing";case UI_TRANSLATING:return "Translating";
+        case UI_FINAL:return "Final";default:return "Listening";}
+#else
     if(s->session==UI_PAUSED) return "paused";
     if(s->session==UI_IDLE) return "ready";
     switch(s->stage) {case UI_RECOGNIZING:return "recognizing";case UI_TRANSLATING:return "translating";
         case UI_FINAL:return "final";default:return "listening";}
+#endif
 }
+#ifdef Z7_TRANSLATE_EN
+/* Built-in English status text uses the existing printable ASCII glyphs. */
+static void english_text(uint32_t out[64],const char *text) {
+    uint32_t n=0;while(text[n] && n<63u) {out[n]=(uint8_t)text[n];++n;}out[n]=0;
+}
+#endif
 static void button(struct paint *p,int x,int w,const uint32_t *text,int selected) {
     round_rect(p,x,530,w,56,8,selected?ACTION:LINE);
     if(!selected) round_rect(p,x+1,531,w-2,54,7,PAPER);
@@ -191,20 +204,54 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     rect(&p,0,0,UI_WIDTH,UI_HEIGHT,CANVAS);rect(&p,0,0,UI_WIDTH,64,PAPER);rect(&p,0,63,UI_WIDTH,1,LINE);
     round_rect(&p,24,13,36,36,8,ACTION);
     rect(&p,32,22,20,3,PAPER);rect(&p,32,29,16,3,PAPER);rect(&p,32,36,10,3,PAPER);
-    one_line(&p,label("brand"),24,72,17,64,INK);one_line(&p,label("language"),18,156,21,320,MUTED);
+    one_line(&p,label("brand"),24,72,17,64,INK);
+#ifdef Z7_TRANSLATE_EN
+    static const uint32_t direction[]={0x4e2d,0x6587,' ',0x2192,' ','E','n','g','l','i','s','h',0};
+    static const uint32_t mode_badge[]={'Z','H',' ','-','>',' ','E','N',0};
+    static const uint32_t english_caption[]={'E','n','g','l','i','s','h',0};
+    static const uint32_t bilingual_hint[]={'C','h','i','n','e','s','e',' ','/',' ','E','n','g','l','i','s','h',' ','s','u','b','t','i','t','l','e','s',0};
+    one_line(&p,direction,18,156,21,320,MUTED);
+#else
+    one_line(&p,label("language"),18,156,21,320,MUTED);
+#endif
     one_line(&p,label("touch"),14,720,24,116,MUTED);
-    round_rect(&p,850,17,150,30,15,TINT);one_line(&p,label("demo"),14,894,22,96,ACTION);
+    round_rect(&p,850,17,150,30,15,TINT);
+#ifdef Z7_TRANSLATE_EN
+    one_line(&p,mode_badge,14,894,22,96,ACTION);
+#else
+    one_line(&p,label("demo"),14,894,22,96,ACTION);
+#endif
     round_rect(&p,24,84,696,404,12,PAPER);round_rect(&p,740,84,260,404,12,0xe5eef0u);
+#ifdef Z7_TRANSLATE_EN
+    one_line(&p,english_caption,18,44,100,220,INK);
+#else
     one_line(&p,label("caption"),18,44,100,220,INK);
+#endif
     round_rect(&p,566,97,134,28,14,TINT);
+#ifdef Z7_TRANSLATE_EN
+    uint32_t status_text[64],note_text[64];
+    english_text(status_text,stage_key(s));
+    const uint32_t *stage=status_text;uint32_t sw=text_width(font(14),stage);
+    if(sw>118u) english_text(status_text,"Listening");
+#else
     const uint32_t *stage=label(stage_key(s));uint32_t sw=text_width(font(14),stage);
     if(sw>118u) stage=label("listening");
+#endif
     one_line(&p,stage,14,580,101,118,ACTION);
     static const uint32_t sizes[]={28,36,44};uint32_t size=sizes[s->font_index<3u?s->font_index:1u];
+#ifdef Z7_TRANSLATE_EN
+    const uint32_t *caption=s->translated;
+#else
     const uint32_t *caption=s->translated[0]?s->translated:label(s->session==UI_IDLE?"ready":"retained");
+#endif
     stats->caption_lines=paragraph(&p,caption,size,(struct clip){44,148,656,198},INK,requested_page,
                                   &stats->caption_pages,&stats->caption_page);
+#ifdef Z7_TRANSLATE_EN
+    english_text(note_text,!s->translated[0]?"":(s->session==UI_PAUSED?"Paused":(s->stage==UI_FINAL?"Final":"Translating")));
+    one_line(&p,note_text,14,44,360,440,MUTED);
+#else
     one_line(&p,label(s->session==UI_PAUSED?"paused":(s->stage==UI_FINAL?"final":"retained")),14,44,360,440,MUTED);
+#endif
     uint32_t number[20];
     if(stats->caption_pages>1u) {
         decimal(stats->caption_page+1u,number);uint32_t n=0;while(number[n]) ++n;
@@ -225,7 +272,11 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
         int h=s->session==UI_RUNNING?8+(int)((elapsed_ms/170u+i*7u)%24u):4;
         round_rect(&p,914+(int)i*8,246-h,4,h,2,ACTION);
     }
+#ifdef Z7_TRANSLATE_EN
+    paragraph(&p,bilingual_hint,14,(struct clip){760,254,220,45},MUTED,0,0,0);
+#else
     paragraph(&p,label("pending"),14,(struct clip){760,254,220,45},MUTED,0,0,0);
+#endif
     one_line(&p,label("history"),14,760,303,160,MUTED);
     if(!s->history_count) paragraph(&p,label("empty"),28,(struct clip){760,340,220,96},MUTED,0,0,0);
     uint32_t shown=s->history_count>2u?2u:s->history_count;

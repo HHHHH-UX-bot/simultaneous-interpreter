@@ -1,0 +1,11 @@
+{
+  "Status": "passed",
+  "BuiltAtUTC": "2026-10-20T02:28:37.079367+00:00",
+  "Selftest": false,
+  "Mode": "zhen",
+  "Speech": true,
+  "ArmTLS": true,
+  "ELFSHA256": "88349202c4489dc1bfb8ff0b2887b4a50c7ceb95389b4d63d949e44039f6d759",
+  "scope": "Rebuilt from the PR checkout with SDK 2018.3; not loaded again to avoid interrupting the validated microphone firmware",
+  "source_match": "board_source_match.json"
+}
