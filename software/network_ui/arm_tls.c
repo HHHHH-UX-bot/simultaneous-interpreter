@@ -65,7 +65,12 @@ static int entropy(void *ctx,unsigned char *p,size_t n) {
     return 0;
 }
 static int bio_send(void *ctx,const unsigned char *p,size_t n) {
-    (void)ctx;if(n>2048) n=2048;
+    (void)ctx;
+#ifdef Z7_TLS_PASSTHROUGH
+    if(n>2048) n=2048;
+#else
+    if(n>1024) n=1024; /* One acknowledged ESP block at a time. */
+#endif
     if(!network_send(p,(uint32_t)n)) return MBEDTLS_ERR_SSL_WANT_WRITE;
 #ifdef Z7_TLS_TRACE
     if(!arm_tls_fault[0]) {

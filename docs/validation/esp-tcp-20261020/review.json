@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-20",
+  "kind": "independent read-only review",
+  "reviewer": "uart_transport_review",
+  "scope": "dedicated UART/TCP diagnostics and opt-in ARM packet transport; no hardware by reviewer",
+  "findings": [
+    {
+      "severity": "P2",
+      "issue": "historical TCP driver starts escape while dedicated sender still state2",
+      "disposition": "failed attempt retained; recovered after sender completed; frozen driver text is evidence, not reusable run entry; bounded completion wait required before future repeat"
+    },
+    {
+      "severity": "P2",
+      "issue": "quick pause/resume can lose pending packet close",
+      "disposition": "resolved by packet_close_pending; new busy-block immediate-resume regression passes; followup review found no new P1/P2"
+    }
+  ],
+  "product_source_sha256": {
+    "scripts/build_cloud_app.py": "8099fcb0bc0ab7ede2dce4b5c27adf943090c73c2bb55d44f6fcc9330ae96233",
+    "scripts/validate_zhzh_transport.py": "5265d909b0c46e7f7da332d639320fa7005edbdf4e8a2d443b74819443a6ce41",
+    "software/network_ui/network.c": "9d7e4d1bb5f7695334397de197fe017e9dc17359c0d82530646fdd4920676a92",
+    "software/network_ui/arm_tls.c": "2ceaef541ad9fcd4152d084739abd0cde51304aa922fab1562fe5bced0feddc5",
+    "tests/network_arm_packet_test.c": "3e8cfff339ccb9ecea54428af4c962ea95de1be0d64c64c1e65546326f07f8dd"
+  },
+  "product_hardware_status": "not_loaded; user requested poweroff wrapup",
+  "build_warning": "linker reports libgcc variable-size enum versus 32-bit enum; candidate build completed, board ABI behavior unverified"
+}

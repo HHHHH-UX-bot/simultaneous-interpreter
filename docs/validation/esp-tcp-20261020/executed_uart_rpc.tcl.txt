@@ -1,0 +1,35 @@
+# Private stdin-only UART control while the dedicated wire-test app is idle.
+connect -url TCP:127.0.0.1:3121
+after 1000
+set cpu [targets -target-properties -filter {name =~ "*Cortex-A9*#0"}]
+if {[llength $cpu]!=1 || [dict get [lindex $cpu 0] jtag_cable_serial] ne "210241277120"} {error "Wrong UART owner"}
+targets -set -filter {name =~ "*Cortex-A9*#0"}
+fconfigure stdin -buffering line
+fconfigure stdout -buffering line
+puts "@@WIFI 0 OK ready"
+while {[gets stdin line]>=0} {
+    if {![regexp {^([0-9]+) (read|write|tx|drain|quit)(?: ([0-9a-fA-F ]+))?$} $line -> id op arg]} {error "Invalid RPC format"}
+    if {$op eq "quit"} {puts "@@WIFI $id OK closed";break}
+    if {[catch {
+        if {[state] ne "Running" || [mrd -force -value 0x1e000]!=0x31545755 || [mrd -force -value 0x1e008]!=0} {error "Wire-test UART ownership changed"}
+        set phase [mrd -force -value 0x1e004]
+        if {$phase!=1 && $phase!=3} {error "Wire-test transmitter is not idle"}
+        set result ""
+        switch $op {
+            read {scan $arg %x offset;if {$offset>44 || $offset%4} {error "Read offset"};set result [format %x [mrd -force -value [expr {0x43c30000+$offset}]]]}
+            write {scan [lindex $arg 0] %x offset;scan [lindex $arg 1] %x value;if {$offset ni {8 12}} {error "Write offset"};mwr -force [expr {0x43c30000+$offset}] $value}
+            tx {
+                if {[string length $arg]>512 || [string length $arg]%2} {error "TX bound"}
+                foreach byte [regexp -all -inline {..} $arg] {if {!([mrd -force -value 0x43c30004]&2)} {error "TX full"};scan $byte %x value;mwr -force 0x43c30010 $value}
+                set result [format %x [expr {[string length $arg]/2}]]
+            }
+            drain {
+                scan $arg %x limit;if {$limit>4096} {error "RX bound"}
+                set data ""
+                for {set n 0} {$n<$limit && ([mrd -force -value 0x43c30004]&1)} {incr n} {set word [mrd -force -value 0x43c30014];if {!($word&0x80000000)} {error "RX changed"};append data [format %c [expr {$word&255}]]}
+                set result [binary encode hex $data]
+            }
+        }
+    } message]} {puts "@@WIFI $id ERROR UART_operation_failed"} else {puts "@@WIFI $id OK $result"}
+}
+disconnect

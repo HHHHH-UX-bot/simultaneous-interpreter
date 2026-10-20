@@ -34,7 +34,7 @@
 | 开发 ARM 云事件消费与真实字幕 | [C1-6](docs/design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)、[实现](software/network_ui/cloud_live.c)、[离线验证](scripts/validate_cloud_live.py) | 有界 WebSocket、ID/epoch 映射、字形检查、DDR/栈及真实短文件上屏证据；独立云客户端待完成 |
 | 测试百炼实时语音翻译接口或 PCM/Opus 负载 | [C2-PC](docs/design/CLOUD_SPEECH.md#c2-pc-受控音频云端对照)、[客户端](scripts/run_bailian_file.py) | 同样本三组对照、Ogg 封装、定稿和实际帧字节，尚非 ARM 自主云端链路 |
 | 测量新板连续上传与透传 | [C1-1](docs/design/CLOUD_SPEECH.md#c1-1-连续上传与串口调度)、[逐包测量](scripts/measure_z7_nano_upload.py)、[透传测量](scripts/measure_z7_nano_passthrough.py) | 已知数据块核账、时长、有效带宽与退出清理；不替代音频/TLS 验收 |
-| 核对 UART 实体发送波形 | [当前 TLS 诊断](docs/context/ENGLISH.md#tls-传输诊断进行中2026-10-20)、[单端采样工具与证据](docs/validation/uart-wire-20261020/README.md) | SLogic 采集、已知样本及完整字节核账；工具准备通过，受控板测待 JTAG 恢复 |
+| 核对 UART 波形、ESP 透传与分块发送 | [当前 TLS 诊断](docs/context/ENGLISH.md#tls-传输诊断进行中2026-10-20)、[单端采样](docs/validation/uart-wire-20261020/README.md)、[TCP 对照](docs/validation/esp-tcp-20261020/README.md) | 单端三组通过，透传复现差异，分块 1 MiB 精确通过；产品候选未上板，已暂停待断电 |
 | 调整屏幕布局、按钮、字幕和异常交互 | [UI_SPEC](docs/design/UI_SPEC.md) | 界面与行为规范 |
 | 修改或重新下载纯 PL 静态 UI | [STATIC_DEMO](docs/design/STATIC_DEMO.md)、[run_static_ui](scripts/run_static_ui.ps1) | 静态像素结构、资产与阶段入口 |
 | 处理屏幕无画面、抖动和上电顺序 | [RUNBOOK 屏幕恢复](docs/context/RUNBOOK.md#hdmi-屏幕启动与异常恢复) | 本设备已验证的恢复流程，实际结论见 NOW |

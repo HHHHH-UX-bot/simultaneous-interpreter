@@ -1,0 +1,14 @@
+{
+  "status": "built",
+  "elf_sha256": "231b51e5f7f505967e0e1d852d81d8b8fb29a75cf6a4ca70955a4f6f3ad76b6c",
+  "input_sha256": {
+    "software/ps_bringup/start.S": "40445495bee0f2292d0222b453207d8ae83628ee78fa3d647d96d1afc5df7e29",
+    "software/ps_bringup/link.ld": "060ef4a0c1d31e328c36c0fc7eca42c476cd06ada7b987fb91545422ee9611c1",
+    "software/uart_wire_test/main.c": "8a4519abf3693582ccbcc6666826a1ea5f8f446867308226a74b827a80df5028",
+    "scripts/repair/build_uart_wire_test.py": "ebcdedc00ad43be09770f6efec20905386a202d3eb558b0ca1a386322b4b19cb"
+  },
+  "compiler_sha256": "5564b16b151c1c8d626531440c538866aa938bdcecd7460be03ab6a43377a72f",
+  "mailbox": 122880,
+  "payload": 16777216,
+  "scope": "OCM UART wire stimulus; no network, USB host, UI, credentials or persistent writes"
+}

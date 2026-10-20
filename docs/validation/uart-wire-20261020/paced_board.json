@@ -1,0 +1,93 @@
+{
+  "status": "passed",
+  "case": "paced",
+  "payload": {
+    "bytes": 65536,
+    "sha256": "76c16a88ae1ab3c93fef338e41a804b3e7b2f0da28f520dd2ec14cce38341015",
+    "divider": 50,
+    "paced": 1,
+    "fnv1a": 4084477208
+  },
+  "elf_sha256": "541693f1e23006519f6e94c533692dc88ba7925b162951b0759f3e9fe76f1f8d",
+  "bitstream_sha256": "a40a08f0a5e854f579f4cdaa05beab2db6280a47be470dc21c6c34b5816fab2e",
+  "board": {
+    "report": [
+      827610965,
+      3,
+      0,
+      0,
+      65536,
+      50,
+      1,
+      65536,
+      0,
+      3044044138,
+      1481228314,
+      65536,
+      0,
+      770,
+      4084477208,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "uart": [
+      0,
+      0,
+      0,
+      0,
+      65536,
+      0
+    ]
+  },
+  "decode": {
+    "status": "passed",
+    "sample_rate_hz": 20000000,
+    "uart_baud": 1000000,
+    "decoded_bytes": 65536,
+    "framing_errors": 0,
+    "prefix_offset": 0,
+    "expected_bytes": 65536,
+    "expected_sha256": "76c16a88ae1ab3c93fef338e41a804b3e7b2f0da28f520dd2ec14cce38341015",
+    "high_fraction": 0.976603,
+    "matched_length": 65536,
+    "byte_mismatches": 0,
+    "first_mismatch_offsets": [],
+    "actual_sha256": "76c16a88ae1ab3c93fef338e41a804b3e7b2f0da28f520dd2ec14cce38341015",
+    "first_byte_sample": 55014663,
+    "prefix_edge_width_median_samples": 20.0,
+    "estimated_prefix_baud": 1000000.0
+  },
+  "capture": {
+    "status": "captured",
+    "device": "359f:0300 / SLogic Combo 8",
+    "sample_rate_hz": 20000000,
+    "channels": [
+      0,
+      1
+    ],
+    "samples": 280000000,
+    "packing": "four samples per byte, earliest sample in bits 1:0",
+    "bytes": 70000000,
+    "bulk_transfers": 268,
+    "wall_seconds": 14.016,
+    "sample_seconds": 14.0,
+    "sha256": "d7bb772795f6fc313420ee74734591f30d6ec792102be515ce31c5d17fe0e531",
+    "method": "vendor Combo8 start command and synchronous libusb bulk; no GLib session",
+    "dll_sha256": "39a8be2a8c628c2a6146a3a1a85758a5f7fe44045fe425c9bf5897a11ea1b46c"
+  }
+}

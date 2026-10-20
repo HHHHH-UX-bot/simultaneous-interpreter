@@ -80,7 +80,9 @@ L1/T1 改为由原有抗锯齿字体绘制的圆角数值卡片，用户已确�
 
 ## TLS 传输诊断进行中（2026-10-20）
 
-本轮完成到传输边界定位，根因尚未确认。当前已恢复正常麦克风固件 `output/enzh/tls_guard_final/cloud_app.elf`，SHA-256 `86e4035d4f73a1c739ac647386a5df9176468dd87b54a7cbb95db8a67548a727`，UART 恢复为 1000000；直接连接云端，没有编入指纹或电脑中转。已确认暂停、network/client idle、错误为 0，CPU1 触摸常驻。当前独立诊断 PL 为 `output/z7_nano/audio_tx_trace/z7_nano_audio_top.bit`，SHA-256 `a40a08f0a5e854f579f4cdaa05beab2db6280a47be470dc21c6c34b5816fab2e`，USR_ACCESS 为 `0x5a375458`，内部监视已关闭；原 `0x5a374e33` 位流保留。没有写 Flash/SD 或 ESP 固件。源绑定、现场与验收已封存到 [本阶段验证入口](../validation/tls-transport-20261020/README.md)，供本次 Git 同步。
+当前完成单端 UART 采样、纯 TCP 透传/分块对照和产品候选离线实现；确切厂商根因未确认。用户要求即将断电收尾，已停止板上工作。最后板上是完成态的专用诊断 ELF `231b51e5f7f505967e0e1d852d81d8b8fb29a75cf6a4ca70955a4f6f3ad76b6c`，ESP 已确认普通 AT/模式 0、TCP 关闭，CPU1 停止，没有重新启动产品显示或触摸。PL 为 `output/z7_nano/audio_tx_trace/z7_nano_audio_top.bit`，SHA-256 `a40a08f0a5e854f579f4cdaa05beab2db6280a47be470dc21c6c34b5816fab2e`；断电后必须重新核验状态。没有写 Flash/SD 或 ESP 固件。当前证据入口为 [单端实测](../validation/uart-wire-20261020/README.md)和 [ESP TCP 对照](../validation/esp-tcp-20261020/README.md)。
+
+以下较早诊断过程保留原范围：正常麦克风基线为 `output/enzh/tls_guard_final/cloud_app.elf`，SHA-256 `86e4035d4f73a1c739ac647386a5df9176468dd87b54a7cbb95db8a67548a727`，曾恢复暂停 idle/零错误、CPU1 触摸常驻。这是改线和断电前的已核实现场，不代表现在仍有 UI。早期 TLS 证据见 [上一阶段](../validation/tls-transport-20261020/README.md)。
 
 固定英文样本经 OnePlus12 直连，在本次观察第 186.5 秒记录到远端 alert 20（`-0x7780`）；首故障时待发明文及 TLS out_left 均为 0，FPGA UART 溢出/帧错误为 0。证据：`output/tls_alert_20261020/baseline/summary.json` 与 `sample_014.json`。首故障元数据由 `arm_tls_fault[12]` 锁存，不读取种子、密钥或音频。
 
@@ -102,10 +104,12 @@ L1/T1 改为由原有抗锯齿字体绘制的圆角数值卡片，用户已确�
 
 诊断选项：`--tls-relay <电脑IPv4:端口>` 只改变 TCP 路由，ARM 仍核验真实云端证书/SNI；`--tls-wire-trace` 还须匹配诊断 PL。`arm_tls_tx_identity[2]` 保存首块，三处软件环为 260 字，`network_tx_wire_trace[262]` 末两字为首块及内部解码帧错误。仅首个 TLS API 错误锁存；网络先失败可能在重连时覆盖，运行中读取也不是原子快照，只能用停止或首 TLS 故障冻结的数据核账。工具仅保存公开记录头和非加密指纹，不保存载荷。
 
-下一步使用逻辑分析仪比较 FPGA TX 与 ESP RX 两端的逻辑时序，区分外部传输与 ESP 接收/转发。用户确认杜邦线约 20 cm。分析仪 USB 已识别为 `359f:0300 / SI_8CH`，便携库扫描为 `SIPEED / USB TO LA / SI 8ch`；官方驱动将该 VID/PID 映射为 SLogic Combo 8，官方输入范围 0～3.6 V。空载 8 通道、20 MS/s、200 万点采样已完整返回，不能当成板卡信号或长时采集通过；便携库还出现 GLib Windows 句柄警告，采集工具仍需处理后再做正式取证。识别、空载范围及官方来源见 [分析仪准备记录](../validation/logic-analyzer-20261020/README.md)。
+分析仪准备时，用户确认杜邦线约 20 cm。USB 识别为 `359f:0300 / SI_8CH`，便携库扫描为 `SIPEED / USB TO LA / SI 8ch`；官方驱动将该 VID/PID 映射为 SLogic Combo 8，官方输入范围 0～3.6 V。空载采样通过但便携库出现 GLib Windows 句柄警告，故实际受控取证改用直接 libusb。识别及官方来源见 [准备记录](../validation/logic-analyzer-20261020/README.md)，当前实测另行记录。
 
-用户确认探线只有杜邦母头/排线，没有钩夹或分线；随后实物照片确认分析仪有可直接插入杜邦母头的公针，贴纸区分 SLogic 针位。双端并联仍需分线/测试夹，但单端可临时以分析仪替代 ESP：开发板断电后，取下分析仪彩色排线，将 ESP 四根连接在模块端全部脱开，原 JP1-1→RXD 线的模块端接分析仪 SLogic CH0，原 JP1-30→GND 线的模块端接 SLogic GND；另外两根不接分析仪，3V3/5V 针保持空置。接线针位仍由 [板级接线来源](../../hardware/z7_nano/esp8266.json)维护。用户已确认两根线接好，专用串口样本尚未发送；正常联网程序不能在模块脱开时验证云端。单端测试只检查 FPGA 物理发送与现有线缆在分析仪负载下的情况，不代替带 ESP 负载的原故障复现或根因结论。网络可靠后再分别验证长时、耳机听感和独立启动。
+用户没有钩夹/分线，故采用断电后以分析仪替代 ESP 的单端接法：JP1-1 原信号线→SLogic CH0、JP1-30→GND，模块全部断开，3V3/5V 空置。JTAG 重插后恢复枚举，核对 PL 未配置后加载专用程序。8 KiB、256 KiB 连续发送及 64 KiB 每毫秒 8 字节，合计 335872 字节，在 20 MS/s 下解码数量/内容全部一致、帧错误 0。单端只证明分析仪负载下的 FPGA/现有线缆，不替代 ESP 实际负载或模拟电气测量。完整指纹和方法由 [单端 UART 实测](../validation/uart-wire-20261020/README.md)维护。
 
-用户随后确认两根线已接好。专用 OCM 串口发送程序及 8 KiB/256 KiB 满速、64 KiB 每毫秒 8 字节三组公开样本已准备；只编译，尚未下载或发送。新的采集工具按厂商 Combo8 USB 命令直接读取 CH0/CH1，绕开便携库的 GLib 会话；20 MS/s、400 万点、100 万打包字节完整返回，没有同类 GLib 警告。该结果仅核验采集链路，不证明串口波形正确。解码器 5 项测试覆盖 33041 字节、全部字节值、双通道打包、停止位错误、缺失/多余/篡改字节、空闲及截断数据；严格核对采集清单长度/指纹和完整样本，不只找相同前缀。
+用户随后断电恢复 ESP 四根线及供电/JTAG，电脑刷新扫描后接入 OnePlus12；没有要求用户重新开启热点。专用 ARM→ESP→电脑的纯 TCP 透传，在 8 KiB 中出现 40 字节替换，恰好来自后续 1460 字节的位置；64 KiB/8 kB/s 一轮通过，1 MiB 同速长测仍在共同前缀 141580 处出现差异。后者接收超时处发送尚未完成，历史驱动立即退出被板端保护拒绝；等发送完成后，ARM 连续发 `+++`，普通 AT/模式 0/关闭 TCP 已另行确认。数据替换提示接收/转发缓冲方向，但精确原因未证实，不把未收尾部算作损坏。
 
-本次用户报告恢复供电/JTAG 后，Windows 仍只识别分析仪而未枚举原 JTAG 设备；已启动本地 hw_server，XSDB 目标列表为空。已请用户核查并重插 JTAG 数据线，等待回复；没有反复复位、写入 FPGA 或下载新程序。当前板卡配置和运行状态不能从旧记录外推，原先的暂停状态只代表上次已核实现场。本轮准备结果与硬件未执行范围见 [单端采样准备](../validation/uart-wire-20261020/README.md)。
+同一连接改为每块 1024 字节 CIPSEND、等待提示及 SEND OK，8 KiB、256 KiB、1 MiB 全部完整一致，后两组接收区间约 55 kB/s、UART 错误为 0；每组结束确认回到普通 AT、无活动 TCP。该 blocking 专用诊断没有 UI/USB/TLS/音频，不是产品端到端验收。板态、脚本快照、失败与恢复细节由 [TCP 对照](../validation/esp-tcp-20261020/README.md)维护。
+
+已实现显式 `--arm-tls-packets` 产品候选，复用现有 MUX1/被动接收/逐块确认，TLS 仍由 ARM 认证。快速暂停/继续的旧连接关闭意图会保留到 AT 空闲，新增时序回归及复核通过。用户要求断电收尾，候选只完成离线验证和构建，未下载、未做云端或实屏验收。下一次先重新核验板态，再分别验证候选真实 TLS、固定音频、麦克风、触摸及持续运行；本次停止在此。

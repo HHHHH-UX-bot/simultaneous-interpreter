@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-20",
+  "status": "packet_diagnostic_passed_product_built_not_loaded_paused",
+  "scope": "dedicated ARM UART -> ESP8266 -> PC TCP sink; no TLS/cloud/UI/USB Host/audio",
+  "uart_baud": 1000000,
+  "packet_bytes": 1024,
+  "transparent_short_failure": {
+    "received_bytes": 8192,
+    "mismatch_bytes": 40,
+    "offset": 2880,
+    "replacement_from_offset": 4340,
+    "distance_bytes": 1460
+  },
+  "transparent_paced_1m": "failed common-prefix comparison; initial sender snapshot still running, later completed all bytes",
+  "packet_cases": {
+    "8k": "passed",
+    "256k": "passed",
+    "1m": "passed"
+  },
+  "limits": [
+    "physical capture used analyzer load, not ESP load",
+    "1460-byte replacement suggests forwarding/buffer issue, exact vendor cause unproven",
+    "paced1m name is inherited; mode2 packet case is ACK-paced, not 8bytes/ms",
+    "old raw cleanup failed when sender was still running; later ARM-contiguous escape confirmed AT mode0",
+    "not product TLS or microphone endurance acceptance"
+  ],
+  "artifact_sha256": {
+    "executed_packet_reload.tcl.txt": "1023dd77a5eadc0213595294067dd8941d0b286e62eca6fccf8bb82e5d170e49",
+    "executed_tcp_driver.py.txt": "811f7066340fa6e261ca53a8dd2f507390329f483f203c071091d740e28d4c2e",
+    "executed_uart_rpc.tcl.txt": "aab190b2c7f5e5182fdc3269cccc3a725ec1110a13e6ed5b2d49dae488ae6b81",
+    "packet_1m.json": "f0164a7064710e3876115c8d22c904a2a79ede2f14ba406b0e8187803c588337",
+    "packet_256k.json": "a8417a08c8fe62690525e34502a8fb7374e4fb44dfc328a72d964188839e4601",
+    "packet_8k.json": "f82adea97f454cda2c630ba19522f63e2bae9196b4decf84535567e01e3fa30d",
+    "packet_build.json": "f02472eb75290af6785441d7c8ede4b37c79a14b3fc2f432aa2070f4fec65d50",
+    "packet_load.json": "5a6cdb15d32073b63906e44ca819f9a57b96e2f98779000821bff5e5f63a1e85",
+    "packet_load_console.txt": "85c904ad07193b3a456914f82b0b306ebe87fe6bb57f493b84a09867c6db6450",
+    "product_build.json": "e881372d7e65dbe909d7736f7ae8c4c96f33d693253cc45b5ec7e930bb40f8a5",
+    "product_tls_engine.json": "1bc5c2543fa8eda1d70ef9f4ee78650bd19b4d27194bd108cbac35d4e26b27a4",
+    "product_transport.json": "87cd25a710d1afddb4f86cc521449db6f80f94c9e763856fc226c381a3a02177",
+    "README.md": "22c4d5846bf580222061a8e38b3ee0a8c1e2e5f37858c6ada7286b201357d0bd",
+    "recovery.json": "5dd09d8e0999e42050bc8bf7c762ac43712a93f1c184209b2f5b14446005576a",
+    "replacement_analysis.json": "bbf89246e4e5602f8ea77c26f09b84378a761e18f1816118a2fa46841edb3b63",
+    "review.json": "8224deebb54bc8dc0b1ee0f17d3a26f0fb23016dd1e468d4056788d9f5802609",
+    "transparent_paced_1m_completed.json": "fdaa80183df84d2e57e351ce38302f629614238408a9be984dde40c801d514cb",
+    "transparent_paced_1m_intermediate.json": "6107d4c4f27a7a496377c64b2ba0f487a423fe125956c4436b10951b61704ecc",
+    "transparent_paced_64k.json": "fea644cf62d29c16f439be249619dd55a83bd7752b262a9bf332e41f514ddc9c",
+    "transparent_short.json": "0820234e80fb00a23e69f801c518f98cb72d70d5b8478c0185b3540fa32360a8"
+  },
+  "product_validation_original_sha256": {
+    "product_transport.json": "87cd25a710d1afddb4f86cc521449db6f80f94c9e763856fc226c381a3a02177",
+    "product_tls_engine.json": "1bc5c2543fa8eda1d70ef9f4ee78650bd19b4d27194bd108cbac35d4e26b27a4",
+    "product_build.json": "6dd9863895ab0102b84544f88e1d8cc6de9f0e2f92d27adeda06dfbf2f4ba2a7"
+  }
+}

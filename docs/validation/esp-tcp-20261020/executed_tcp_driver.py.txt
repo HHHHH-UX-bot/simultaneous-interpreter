@@ -1,0 +1,107 @@
+import getpass,hashlib,json,re,socket,subprocess,sys,time
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'scripts'))
+import run_z7_nano as base
+from wifi_link import Bridge,ATClient,detect_at,at_escape
+
+reuse=len(sys.argv)>1 and sys.argv[1]=='reuse'
+normal='normal' in sys.argv
+cases=[name for name in sys.argv[2:] if name!='normal'] if reuse else ('short','paced','burst')
+credentials=None
+if not reuse:
+    print('PRIVATE_WIFI_INPUT_READY',flush=True)
+    credentials=json.loads(getpass.getpass('') if sys.stdin.isatty() else sys.stdin.readline())
+out=ROOT/('output/uart_tcp_packet_test' if normal else 'output/uart_tcp_test_reuse' if reuse else 'output/uart_tcp_test');out.mkdir(exist_ok=True)
+app=ROOT/'output/uart_wire_test';tcl=ROOT/'scripts/repair/uart_wire_test.tcl'
+local_ip='10.204.150.224';port=8269
+record={'status':'pending','local_ip':local_ip,'scope':('1024-byte CIPSEND with prompt/SEND OK' if normal else 'transparent TCP')+'; dedicated CPU, no UI, TLS, cloud or audio','cases':[]}
+def operation(action,folder,*args):
+    folder.mkdir(parents=True,exist_ok=True)
+    path=folder/(action+'.json')
+    base.run([base.XSDB,tcl,action,'210241277120',path,*args],folder/action,'PASS_UART_WIRE_'+action.upper(),20)
+    return json.loads(path.read_text())
+with base.hardware_lock():
+    bridge=Bridge(None,command=[str(base.XSDB),str(ROOT/'tmp/logic_analyzer_20261020/uart_rpc.tcl')],cwd=out)
+    try:
+        if reuse:
+            at=ATClient(bridge);at.command('AT');baud=1000000;version=[]
+            assert bridge.read(8)==50
+        else:at,baud,version=detect_at(bridge)
+        record['initial_uart_baud']=baud;record['firmware']=version
+        if baud!=1000000:
+            bridge.send(b'AT+UART_CUR=1000000,8,1,0,0\r\n');time.sleep(.3)
+            bridge.write(8,50);bridge.write(12,15);time.sleep(.1)
+            if bridge.read(8)!=50:raise RuntimeError('UART target divider rejected')
+            at.command('AT')
+        at.command('ATE0');at.command('AT+SYSSTORE=0');at.command('AT+CWMODE=1')
+        if not reuse:
+            at.command('AT+CWJAP="'+at_escape(credentials['ssid'])+'","'+at_escape(credentials['password'])+'"',timeout=50)
+            credentials.clear();credentials=None
+        addr,_=at.command('AT+CIFSR');match=re.search(rb'\+CIFSR:STAIP,"([0-9.]+)"',addr)
+        record['module_ip']=match.group(1).decode() if match else None
+        print('PRIVATE_WIFI_JOIN_PASSED',flush=True)
+        at.command('AT+CIPMUX=0');at.command('AT+CIPMODE=0');at.command('AT+SLEEP=0')
+        for name in cases:
+            folder=out/name;folder.mkdir(exist_ok=True)
+            spec=json.loads((app/(name+'.json')).read_text());expected=(app/(name+'.bin')).read_bytes()
+            assert hashlib.sha256(expected).hexdigest()==spec['sha256']
+            result={'case':name,'expected_bytes':len(expected),'expected_sha256':spec['sha256'],'paced':spec['paced']}
+            operation('prepare',folder,app/(name+'.bin'),spec['bytes'],2 if normal else spec['paced'])
+            received=bytearray();stream=None;raw=False;connected=False
+            with socket.socket() as listener:
+                listener.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+                listener.bind((local_ip,port));listener.listen(1);listener.settimeout(8)
+                try:
+                    at.command(f'AT+CIPSTART="TCP","{local_ip}",{port}',timeout=15);connected=True
+                    stream,peer=listener.accept();stream.settimeout(5 if normal else 2)
+                    if not normal:
+                        at.command('AT+CIPMODE=1');raw=True;at.command('AT+CIPSEND',prompt=True)
+                    started=time.monotonic();operation('start',folder)
+                    deadline=started+len(expected)/(5000 if normal else 8000 if spec['paced'] else 90000)+15
+                    first=last=None;first_size=0
+                    while len(received)<len(expected) and time.monotonic()<deadline:
+                        try:chunk=stream.recv(65536)
+                        except socket.timeout:break
+                        if not chunk:break
+                        last=time.monotonic()
+                        if first is None:first=last;first_size=len(chunk)
+                        received.extend(chunk)
+                    if len(received)>=len(expected):
+                        stream.settimeout(.25)
+                        try:received.extend(stream.recv(65536))
+                        except socket.timeout:pass
+                    board=operation('result',folder);words=board['report']
+                    (folder/'received.bin').write_bytes(received)
+                    mismatches=[i for i,(a,b) in enumerate(zip(expected,received)) if a!=b]
+                    result.update(bytes_received=len(received),elapsed_seconds=round(time.monotonic()-started,3),
+                        sha256=hashlib.sha256(received).hexdigest(),byte_mismatches=len(mismatches),first_mismatch_offsets=mismatches[:8],board=board)
+                    if first is not None and last>first:
+                        result.update(active_receive_seconds=round(last-first,4),receive_bytes_per_second=round((len(received)-first_size)/(last-first),2))
+                    tx_expected=len(expected)+(17*(len(expected)//1024) if normal else 0)
+                    result['status']='passed' if bytes(received)==expected and words[1]==3 and words[8]==0 and words[7]==len(expected) and words[11]==tx_expected and words[14]==spec['fnv1a'] and not any(board['uart'][2:4]) else 'failed'
+                finally:
+                    (folder/'before_cleanup.json').write_text(json.dumps(result,indent=2)+'\n')
+                    if raw:
+                        escape=folder/'escape';escape.mkdir(exist_ok=True);file=escape/'escape.bin';file.write_bytes(b'+++')
+                        operation('prepare',escape,file,3,0)
+                        time.sleep(1.2);operation('start',escape);time.sleep(1.3)
+                        bridge.send(b'\r\nAT\r\n');at.collect(2)
+                        at.command('AT');at.command('AT+CIPMODE=0')
+                    if connected:at.command('AT+CIPCLOSE')
+                    status,_=at.command('AT+CIPSTATUS')
+                    mode,_=at.command('AT+CIPMODE?')
+                    result['normal_at_confirmed']=b'+CIPMODE:0' in mode and b'STATUS:3' not in status
+                    if not result['normal_at_confirmed']:raise RuntimeError('TCP cleanup unconfirmed')
+                    if stream:stream.close()
+            (folder/'validation.json').write_text(json.dumps(result,indent=2)+'\n')
+            record['cases'].append(result)
+            print('TCP_CASE',json.dumps({k:v for k,v in result.items() if k not in ('board',)}),flush=True)
+            if result['status']!='passed':break
+        record['status']='passed' if len(record['cases'])==len(cases) and all(c['status']=='passed' for c in record['cases']) else 'failed'
+    except Exception as error:
+        record.update(status='failed',error=str(error))
+        raise
+    finally:
+        credentials=None;bridge.close()
+        (out/'validation.json').write_text(json.dumps(record,indent=2)+'\n')
+print('TCP_DIAGNOSTIC_FINISHED',record['status'],flush=True)

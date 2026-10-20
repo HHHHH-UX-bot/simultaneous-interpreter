@@ -122,6 +122,7 @@ def main():
     parser.add_argument("--link-diagnostics", action="store_true", help="sample ESP heap at idle AT boundaries")
     parser.add_argument("--tls-passthrough", action="store_true", help="single verified TLS connection with raw duplex UART")
     parser.add_argument("--arm-tls", action="store_true", help="verified TLS on Zynq; ESP carries raw TCP")
+    parser.add_argument("--arm-tls-packets", action="store_true", help="ARM TLS over acknowledged CIPSEND blocks, without UART passthrough")
     parser.add_argument("--tls-relay", help="diagnostic IPv4:port TCP relay; ARM still verifies the real cloud certificate")
     parser.add_argument("--tls-wire-trace",action="store_true",help="requires the matching TX_TRACE diagnostic PL")
     parser.add_argument("--drain-before-upload", action="store_true", help="experimental SSL receive-first scheduling")
@@ -133,10 +134,12 @@ def main():
     if args.mode == "enzh":
         args.speech = True
 
+    if args.arm_tls_packets and (not args.arm_tls or args.tls_passthrough):
+        parser.error("--arm-tls-packets requires --arm-tls without --tls-passthrough")
     if args.arm_tls:
         if args.mode == "zhen" and not args.speech:
             parser.error("--mode zhen --arm-tls requires --speech")
-        args.tls_passthrough=True
+        args.tls_passthrough=not args.arm_tls_packets
     if args.mode == "zhen":
         OUT = ROOT / "output/cloud_app_zhen"
     if args.speech:
@@ -157,6 +160,7 @@ def main():
     flags = list(FLAGS)
     if args.tls_wire_trace:
         if not args.tls_relay:parser.error('--tls-wire-trace requires --tls-relay')
+        if args.arm_tls_packets:parser.error('--tls-wire-trace requires UART passthrough; packet AT bytes are not TLS bytes')
         flags.append('-DZ7_TLS_WIRE_TRACE')
     if args.tls_relay:
         import ipaddress
@@ -281,6 +285,7 @@ def main():
         "Mode": args.mode,
         "Speech": bool(args.speech),
         "ArmTLS": bool(args.arm_tls),
+        "ArmTLSPackets": bool(args.arm_tls_packets),
         "TLSWireTrace": bool(args.tls_wire_trace),
         "UARTBaud": args.uart_baud,
         "ELFSHA256": hashlib.sha256(elf_path.read_bytes()).hexdigest(),

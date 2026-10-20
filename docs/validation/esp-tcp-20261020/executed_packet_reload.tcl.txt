@@ -1,0 +1,18 @@
+connect -url TCP:127.0.0.1:3121
+after 1000
+foreach core {0 1} {
+ set match [targets -target-properties -filter "name =~ \"*Cortex-A9*#$core\""]
+ if {[llength $match]!=1 || [dict get [lindex $match 0] jtag_cable_serial] ne "210241277120"} {error "Wrong core"}
+}
+targets -set -filter {name =~ "*Cortex-A9*#1"}
+if {![string match "Stopped:*" [state]]} {error "CPU1 must remain stopped"}
+targets -set -filter {name =~ "*Cortex-A9*#0"}
+if {[mrd -force -value 0x1e000]!=0x31545755 || [mrd -force -value 0x1e004]!=3 || ([mrd -force -value 0x43c30004]&4)} {error "Previous dedicated test not stopped"}
+stop
+rst -processor
+dow [lindex $argv 0]
+con
+after 100
+if {[mrd -force -value 0x1e000]!=0x31545755 || [mrd -force -value 0x1e004]!=1} {error "Packet test not ready"}
+disconnect
+puts PASS_PACKET_TEST_WARM_LOAD

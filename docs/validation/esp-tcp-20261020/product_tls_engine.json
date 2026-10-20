@@ -1,0 +1,118 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "test": "normal:",
+      "returncode": 0,
+      "result": {
+        "passed": true,
+        "error": 0,
+        "verify_flags": 0,
+        "handshakes": 1,
+        "handshake_ms": 625,
+        "plaintext_rx": 238,
+        "ciphertext_rx": 3861,
+        "ciphertext_tx": 399,
+        "wire_tx": 399,
+        "attached": 1,
+        "corrupted": 0
+      }
+    },
+    {
+      "test": "normal:full_record",
+      "returncode": 0,
+      "result": {
+        "passed": true,
+        "error": 0,
+        "verify_flags": 0,
+        "handshakes": 1,
+        "handshake_ms": 656,
+        "plaintext_rx": 238,
+        "ciphertext_rx": 3861,
+        "ciphertext_tx": 2354,
+        "wire_tx": 2354,
+        "attached": 1,
+        "corrupted": 0
+      }
+    },
+    {
+      "test": "wrong_host:",
+      "returncode": 0,
+      "result": {
+        "passed": true,
+        "error": -9984,
+        "verify_flags": 4,
+        "handshakes": 1,
+        "handshake_ms": 0,
+        "plaintext_rx": 0,
+        "ciphertext_rx": 3288,
+        "ciphertext_tx": 158,
+        "wire_tx": 151,
+        "attached": 1,
+        "corrupted": 0
+      }
+    },
+    {
+      "test": "normal:expired",
+      "returncode": 0,
+      "result": {
+        "passed": true,
+        "error": -9984,
+        "verify_flags": 1,
+        "handshakes": 1,
+        "handshake_ms": 0,
+        "plaintext_rx": 0,
+        "ciphertext_rx": 3288,
+        "ciphertext_tx": 158,
+        "wire_tx": 151,
+        "attached": 1,
+        "corrupted": 0
+      }
+    },
+    {
+      "test": "normal:noseed",
+      "returncode": 0,
+      "result": {
+        "passed": true,
+        "error": -1,
+        "verify_flags": 4294967295,
+        "handshakes": 0,
+        "handshake_ms": 0,
+        "plaintext_rx": 0,
+        "ciphertext_rx": 0,
+        "ciphertext_tx": 0,
+        "wire_tx": 0,
+        "attached": 0,
+        "corrupted": 0
+      }
+    },
+    {
+      "test": "normal:corrupt",
+      "returncode": 0,
+      "result": {
+        "passed": true,
+        "error": -29056,
+        "verify_flags": 0,
+        "handshakes": 1,
+        "handshake_ms": 687,
+        "plaintext_rx": 0,
+        "ciphertext_rx": 3861,
+        "ciphertext_tx": 399,
+        "wire_tx": 399,
+        "attached": 1,
+        "corrupted": 1
+      }
+    }
+  ],
+  "utc": "2026-10-20T14:18:08.804516+00:00",
+  "scope": "real TLS service, fragmented TCP, authentication and ciphertext integrity; no API key",
+  "input_sha256": {
+    "software/network_ui/arm_tls.c": "2ceaef541ad9fcd4152d084739abd0cde51304aa922fab1562fe5bced0feddc5",
+    "software/network_ui/arm_tls.h": "2462cd139c7189cb774e0c57ffe63e30934b0b9a72d6e9e0f8a4247b8807a181",
+    "software/network_ui/tls_config.h": "e9dfc82a996c7a740b6c7114c206faab109a8ef59a8691bc243b512c6648c930",
+    "software/network_ui/tls_root.h": "5798be910cac2974ba78c20629cef29c765d66b57638c5d52a4e3805423494ea",
+    "software/network_ui/tls_tx_trace.h": "05e25b73fc8f0f0a7d8d2a3ae99a9cc316316e27e8075423940095c8371bc949",
+    "tests/arm_tls_host_test.c": "88e22dde8a45aecbee155cbe7aa0891d27030586b9199c4aa01c7838c1f241d6",
+    "third_party/mbedtls/SOURCE.json": "5e432858b0b1547a43791f1efc042f147079e1cef1b40ad233ac4858000c0e69"
+  }
+}

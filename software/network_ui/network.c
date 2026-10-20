@@ -132,17 +132,27 @@ static void duplex_snapshot(volatile struct duplex_snapshot *out) {
    reserved=1 is the explicit wrong-CN diagnostic; no API key is involved. */
 #define CLOUD_HOST "ws-zckg39zhbiii3yrv.cn-beijing.maas.aliyuncs.com"
 static uint32_t tls_mode,tls_step,tls_wait_until,tls_time_deadline,tls_connected,tls_closing;
+#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+static uint32_t packet_close_pending;
+#endif
 static const char *const tls_commands[]={
 #ifdef Z7_ARM_TLS
+#ifdef Z7_TLS_PASSTHROUGH
+#define ARM_TCP_ID ""
+#else
+#define ARM_TCP_ID "0,"
+#endif
     "AT+CIPDOMAIN=\"" CLOUD_HOST "\"\r\n",
 #ifdef Z7_TLS_RELAY_IP
 #define TLS_PORT_TEXT_(n) #n
 #define TLS_PORT_TEXT(n) TLS_PORT_TEXT_(n)
-    "AT+CIPSTART=\"TCP\",\"" Z7_TLS_RELAY_IP "\"," TLS_PORT_TEXT(Z7_TLS_RELAY_PORT) "\r\n",
+    "AT+CIPSTART=" ARM_TCP_ID "\"TCP\",\"" Z7_TLS_RELAY_IP "\"," TLS_PORT_TEXT(Z7_TLS_RELAY_PORT) "\r\n",
 #else
-    "AT+CIPSTART=\"TCP\",\"" CLOUD_HOST "\",443\r\n",
+    "AT+CIPSTART=" ARM_TCP_ID "\"TCP\",\"" CLOUD_HOST "\",443\r\n",
 #endif
+#ifdef Z7_TLS_PASSTHROUGH
     "AT+CIPMODE=1\r\n","AT+CIPSEND\r\n"
+#endif
 #else
     "AT+CIPDOMAIN=\"" CLOUD_HOST "\"\r\n",
     "AT+CIPSNTPCFG=1,0,\"ntp.aliyun.com\",\"ntp1.aliyun.com\"\r\n",
@@ -307,7 +317,7 @@ int network_send(const uint8_t *data,uint32_t size) {
 #endif
     for(uint32_t i=0;i<size;++i) ack[i]=data[i];
 #ifdef Z7_TLS_TRACE
-    if(raw_state==1 && !tx_trace_frozen) tls_tx_trace_add(network_tx_queue_trace,ack,size);
+    if(tls_mode && !tx_trace_frozen) tls_tx_trace_add(network_tx_queue_trace,ack,size);
 #endif
     send_size=size;ack_pending=1;
     if(raw_state==1) {command_phase=3;command_pos=0;command_deadline=current_time+10000;}
@@ -335,9 +345,14 @@ int network_stream_detach(void) {
     ipd_left=line_used=prompt_padding=0;return 1;
 }
 void network_stop(void) {
-    if(raw_state!=1) return;
-    raw_state=2;raw_deadline=current_time+4000;network_info.phase=7;
-    (void)ui_control(model,UI_PAUSE);
+    if(raw_state==1) {
+        raw_state=2;raw_deadline=current_time+4000;network_info.phase=7;
+        (void)ui_control(model,UI_PAUSE);
+    }
+#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+    /* Latch close even if the user resumes before the accepted block finishes. */
+    else if(!raw_state && tls_mode && (network_info.phase==4 || network_info.phase==8)) packet_close_pending=1;
+#endif
 }
 static void issue_setup(void) {
     static const char *const commands[]={"ATE0\r\n","AT+GMR\r\n","AT+CIPSERVER=0\r\n","AT+SYSSTORE=0\r\n",
@@ -801,7 +816,7 @@ static void command_tick(void) {
         for(uint32_t budget=0;budget<tx_budget && command_pos<send_size && (read_reg(4)&2u);++budget) {
             uint8_t byte=ack[command_pos++];write_reg(16,byte);
 #ifdef Z7_TLS_TRACE
-            if((raw_state==1 || raw_state==2) && !tx_trace_frozen) tls_tx_trace_add(network_tx_uart_trace,&byte,1);
+            if(tls_mode && !tx_trace_frozen) tls_tx_trace_add(network_tx_uart_trace,&byte,1);
 #endif
         }
         if(command_pos<send_size || (read_reg(4)&4u)) return;
@@ -1025,6 +1040,9 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
     words=(volatile uint32_t *)&network_capabilities;for(uint32_t i=0;i<16;++i) words[i]=0;
     network_capabilities.magic=0x43415031u;capability_query=0;
     tls_mode=tls_step=tls_wait_until=tls_time_deadline=tls_connected=tls_closing=0;
+#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+    packet_close_pending=0;
+#endif
 #endif
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
     uart_sync_needed=uart_recovery=uart_recovery_pos=uart_recovery_deadline=0;
@@ -1073,6 +1091,9 @@ static void retry_setup(void) {
 #endif
     stream_receive=0;
     tls_mode=tls_step=tls_wait_until=tls_connected=tls_closing=0;
+#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+    packet_close_pending=0;
+#endif
     enabled=0;command_phase=ack_pending=resync=0;
     ipd_left=frame_used=frame_ready=0;line_used=0;prompt_padding=0;raw_state=0;
     network_info.phase=0;network_info.error=0;
@@ -1101,7 +1122,11 @@ void network_cloud_run(int run) {
        must not reopen a transport explicitly quiesced by the host loader. */
     if(cloud_resume_pending && network_info.phase==0 && saved_ssid_bytes) {
         cloud_resume_pending=0;retry_setup();
-    } else if(network_info.phase==4 || network_info.phase==8) cloud_resume_pending=0;
+    } else if((network_info.phase==4 || network_info.phase==8)
+#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+              && !packet_close_pending
+#endif
+    ) cloud_resume_pending=0;
 }
 #ifdef Z7_STREAM_TRANSPORT
 static void recover_uart(void) {
@@ -1254,5 +1279,13 @@ void network_tick(struct ui_state *state,uint32_t now) {
         }
     }
 done:
+#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+    /* Complete the owned binary transaction before issuing the close command. */
+    if(packet_close_pending && (network_info.phase==4 || network_info.phase==8) &&
+       !command_phase && !ack_pending && !ipd_left && !line_used && !(read_reg(4)&1u)) {
+        packet_close_pending=0;stream_receive=0;tls_closing=1;tls_wait_until=0;network_info.phase=7;
+        begin_command("AT+CIPCLOSE=0\r\n",4000);
+    }
+#endif
     network_info.epoch=state->epoch;fence();++network_info.sequence;fence();publish_report(now);
 }

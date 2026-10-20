@@ -1,0 +1,25 @@
+{
+  "status": "single_end_three_cases_passed",
+  "date": "2026-10-20",
+  "total_bytes": 335872,
+  "source_sha256": {
+    "scripts/repair/uart_wire_test.tcl": "36e55dbf596846c45160a03276d3a3fde9580e883cf307390668c1573d7d3172",
+    "scripts/repair/run_uart_wire_case.py": "a11da073780f46ad3f7c96662b9d255760ee879f8eb3157acdda1a84c073d08e",
+    "software/uart_wire_test/main.c": "9bf60a481ac80027af452217666974f618c74b4cbcb3170555ef4fb73d8ddb84",
+    "scripts/repair/slogic_capture.py": "55c067c05ffca95cf6010710108af88b4aa376141043cbc17db85ae0f562296f",
+    "scripts/repair/uart_wire_decode.py": "139e834fbe1d1be6d3204a42fbd5d8d0c0d4052425ab6a3915d8f1b766a938c0"
+  },
+  "elf_sha256": "541693f1e23006519f6e94c533692dc88ba7925b162951b0759f3e9fe76f1f8d",
+  "framing_errors": 0,
+  "byte_mismatches": 0,
+  "uart_baud": 1000000,
+  "analyzer_rate_hz": 20000000,
+  "scope": "FPGA physical TX -> existing wire -> analyzer, ESP disconnected; dedicated CPU firmware",
+  "after_test": "user confirmed power off, ESP wiring restored, board power/JTAG reconnected; dedicated test firmware reloaded for plain TCP",
+  "limits": [
+    "not ESP input electrical-load qualification",
+    "not original live UI/TLS fault reproduction",
+    "digital sampling does not measure analog voltage or edge margins",
+    "no Flash/SD/ESP firmware programming"
+  ]
+}

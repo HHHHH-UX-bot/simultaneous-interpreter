@@ -7,6 +7,28 @@ __attribute__((section(".mailbox"),used)) volatile uint32_t report[32];
 static uint32_t ticks(void) { return *(volatile uint32_t *)0xf8f00200u; }
 static void barrier(void) { __asm__ volatile("dsb sy" ::: "memory"); }
 
+static int put_byte(uint8_t byte) {
+    uint32_t start=ticks();
+    while(!(UART[1]&2u)) {
+        if(ticks()-start>TICKS_MS*100u) {report[8]=5;return 0;}
+    }
+    UART[4]=byte;return 1;
+}
+
+/* The controlled TCP peer sends no application data. Consume AT replies only. */
+static int wait_reply(int prompt) {
+    uint32_t start=ticks(),tail=0;
+    while(ticks()-start<TICKS_MS*3000u) {
+        if(!(UART[1]&1u)) continue;
+        uint32_t word=UART[5];
+        if(!(word&0x80000000u)) continue;
+        uint8_t byte=(uint8_t)word;tail=(tail<<8)|byte;
+        if((prompt && byte=='>') || (!prompt && tail==0x44204f4bu)) return 1;
+        if(tail==0x52524f52u || tail==0x4641494cu) return 0;
+    }
+    return 0;
+}
+
 int main(void) {
     for(uint32_t i=0;i<32u;++i) report[i]=0;
     report[0]=0x31545755u;
@@ -16,8 +38,8 @@ int main(void) {
     for(;;) {
         if(report[2]!=1u) continue;
         uint32_t count=report[4],divider=report[5],paced=report[6];
-        report[2]=0;report[7]=report[8]=0;report[1]=2;barrier();
-        if(!count || count>1048576u || divider<16u || divider>65535u || paced>1u) {
+        report[2]=0;report[7]=report[8]=report[15]=0;report[1]=2;barrier();
+        if(!count || count>1048576u || divider<16u || divider>65535u || paced>2u || (paced==2u && count%1024u)) {
             report[8]=2;report[1]=4;continue;
         }
         UART[3]=15u;barrier();
@@ -32,17 +54,22 @@ int main(void) {
         uint32_t hash=2166136261u,slot=ticks(),budget=0;
         start=slot;report[9]=start;
         for(uint32_t n=0;n<count;++n) {
-            if(paced && budget==8u) {
+            if(paced==1u && budget==8u) {
                 while(ticks()-slot<TICKS_MS) {}
                 slot=ticks();budget=0;
             }
-            uint32_t waiting=ticks();
-            while(!(UART[1]&2u)) {
-                if(ticks()-waiting>TICKS_MS*100u) {report[8]=5;break;}
+            if(paced==2u && !(n%1024u)) {
+                static const char command[]="AT+CIPSEND=1024\r\n";
+                for(uint32_t i=0;i<sizeof(command)-1u;++i) if(!put_byte((uint8_t)command[i])) break;
+                if(report[8]) break;
+                if(!wait_reply(1)) {report[8]=7;break;}
             }
-            if(report[8]) break;
-            uint8_t byte=payload[n];UART[4]=byte;
+            uint8_t byte=payload[n];if(!put_byte(byte)) break;
             hash=(hash^byte)*16777619u;++budget;report[7]=n+1u;
+            if(paced==2u && n%1024u==1023u) {
+                if(!wait_reply(0)) {report[8]=8;break;}
+                ++report[15];
+            }
         }
         uint32_t waiting=ticks();
         while(UART[1]&4u) {
