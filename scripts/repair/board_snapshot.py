@@ -15,6 +15,12 @@ counts['link_quality']=5
 counts['first_wire_fault']=8
 counts['first_uart_fault']=8
 counts['arm_tls_diag']=24
+counts['arm_tls_fault']=12
+counts['arm_tls_tx_trace']=260
+counts['arm_tls_tx_identity']=2
+counts['network_tx_queue_trace']=260
+counts['network_tx_uart_trace']=260
+counts['network_tx_wire_trace']=262
 script=['connect -url TCP:127.0.0.1:3121','after 300',
  'set b [targets -target-properties -filter {name == "xc7z010"}]',
  'if {[llength $b]!=1 || ![dict exists [lindex $b 0] jtag_cable_serial] || [dict get [lindex $b 0] jtag_cable_serial] ne "210241277120"} {error "Wrong board"}',

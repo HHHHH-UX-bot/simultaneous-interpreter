@@ -1,0 +1,89 @@
+{
+  "status": "tls_failure_reproduced",
+  "utc": "2026-10-20T11:26:43.014372+00:00",
+  "scope": "fixed English audio on actual board with returned translated audio; not microphone or long-run acceptance",
+  "elf_sha256": "4eb6b59ebc1349258c2bcf61715bc8c4e617d45704ee6c4b5da1bbb231f2fa6a",
+  "seconds_requested": 300,
+  "samples": [
+    {
+      "seconds": 3.1,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 73128,
+      "tls_plain_rx": 413019,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 248,
+      "finals": [
+        4,
+        4
+      ],
+      "speech_samples": 142080,
+      "evidence": "sample_000.json"
+    },
+    {
+      "seconds": 16.1,
+      "network": [
+        7,
+        48
+      ],
+      "client": 0,
+      "tls_failures": 1,
+      "tls_error": 4294936704,
+      "tls_alert": 70,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 107484,
+      "tls_plain_rx": 680853,
+      "first_tls_fault": [
+        826692673,
+        90827,
+        4294936704,
+        0,
+        0,
+        865,
+        0,
+        4,
+        103,
+        691604,
+        107484,
+        97666
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 324,
+      "finals": [
+        7,
+        7
+      ],
+      "speech_samples": 234240,
+      "evidence": "sample_001.json"
+    }
+  ]
+}

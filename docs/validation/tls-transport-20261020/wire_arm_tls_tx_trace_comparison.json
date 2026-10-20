@@ -1,0 +1,21 @@
+{
+  "status": "mismatch",
+  "scope": "FNV-1a fingerprints of common 256-byte ciphertext blocks; no payload capture or model-quality claim",
+  "elf_sha256": "efceb58647c9d8367dc2cd74c133fada68608b5419de029f6a183d8b1ce9c760",
+  "connection": 1,
+  "board_trace": "arm_tls_tx_trace",
+  "first_block_identity": "matched",
+  "board_accepted_bytes": 555092,
+  "relay_received_bytes": 554646,
+  "compared_blocks": 126,
+  "compared_block_range": [
+    2041,
+    2166
+  ],
+  "mismatched_blocks": [
+    2159,
+    2160,
+    2161
+  ],
+  "unreceived_tail_bytes": 446
+}

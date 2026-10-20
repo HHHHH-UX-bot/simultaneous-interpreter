@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "cable_serial": "210241277120",
+  "elf_sha256": "efceb58647c9d8367dc2cd74c133fada68608b5419de029f6a183d8b1ce9c760",
+  "bitstream_sha256": "a40a08f0a5e854f579f4cdaa05beab2db6280a47be470dc21c6c34b5816fab2e",
+  "ps7_init_sha256": "90683f6490f64fe68da6518e4b0ef54e7e9dc7232945b62c4e8f61da856b0d5d",
+  "result": "output/enzh/tls_wire_trace/hardware_load/result.json",
+  "result_sha256": "276c364ee9278c7af34d65818e470402adc5f9ea2000f63715bc2b4ebb602ba9",
+  "parent_load_sha256": "1f4533b75ebe2fb842b4c8830d973e2c80acd649791742c4c0b4a86ac111eaf7",
+  "method": "USB/VDMA halted then system reset and matching diagnostic PL/PS/ELF",
+  "selftest": true
+}

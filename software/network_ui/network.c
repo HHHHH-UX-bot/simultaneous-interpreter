@@ -34,8 +34,48 @@ enum setup_state { SETUP_ECHO,SETUP_VERSION,SETUP_STOP_SERVER,SETUP_VOLATILE,
 #endif
     SETUP_ACTIVE_RECEIVE,SETUP_SERVER,SETUP_COUNT };
 static uint8_t frame[NET_FRAME_BYTES],ack[2048];
+#ifdef Z7_TLS_TRACE
+#include "tls_tx_trace.h"
+__attribute__((section(".cloud_runtime"),used)) volatile uint32_t network_tx_queue_trace[260],network_tx_uart_trace[260];
+#ifdef Z7_TLS_WIRE_TRACE
+__attribute__((section(".cloud_runtime"),used)) volatile uint32_t network_tx_wire_trace[262];
+#endif
+static uint32_t tx_trace_frozen;
+void network_tls_trace_begin(uint32_t session) {
+    tls_tx_trace_begin(network_tx_queue_trace,session);tls_tx_trace_begin(network_tx_uart_trace,session);tx_trace_frozen=0;
+#ifdef Z7_TLS_WIRE_TRACE
+    write_reg(0x34,(session<<1)|1u);
+#endif
+}
+void network_tls_trace_clean(void) {
+    cache_clean_range((const void *)network_tx_queue_trace,sizeof(network_tx_queue_trace));
+    cache_clean_range((const void *)network_tx_uart_trace,sizeof(network_tx_uart_trace));
+#ifdef Z7_TLS_WIRE_TRACE
+    if(network_tx_queue_trace[0]) {
+        uint32_t count=read_reg(0x38),last=count/256u;
+        network_tx_wire_trace[0]=0x31545854u;network_tx_wire_trace[1]=read_reg(0x44);
+        network_tx_wire_trace[2]=count;network_tx_wire_trace[3]=read_reg(0x3c);
+        for(uint32_t slot=0;slot<128u;++slot) {
+            uint32_t block=last>slot?slot+1u+((last-slot-1u)/128u)*128u:0;
+            network_tx_wire_trace[4u+2u*slot]=block;
+            network_tx_wire_trace[5u+2u*slot]=block?read_reg(0x100u+4u*slot):0;
+        }
+        network_tx_wire_trace[260]=read_reg(0x40);network_tx_wire_trace[261]=read_reg(0x48);
+        cache_clean_range((const void *)network_tx_wire_trace,sizeof(network_tx_wire_trace));
+    }
+#endif
+}
+void network_tls_trace_freeze(void) {
+    tx_trace_frozen=1;
+#ifdef Z7_TLS_WIRE_TRACE
+    write_reg(0x34,0);
+#endif
+    network_tls_trace_clean();
+}
+#endif
 static uint32_t send_size;
 static uint32_t peer,peer_port,raw_state,raw_deadline;
+#define RAW_UNCONFIRMED 8u
 /* A transient AT/SNTP/TLS failure must not require a re-flash: the last SSID and
    password are kept so the whole setup can be re-armed automatically. */
 static uint8_t saved_ssid[32],saved_pass[64];
@@ -95,7 +135,13 @@ static uint32_t tls_mode,tls_step,tls_wait_until,tls_time_deadline,tls_connected
 static const char *const tls_commands[]={
 #ifdef Z7_ARM_TLS
     "AT+CIPDOMAIN=\"" CLOUD_HOST "\"\r\n",
+#ifdef Z7_TLS_RELAY_IP
+#define TLS_PORT_TEXT_(n) #n
+#define TLS_PORT_TEXT(n) TLS_PORT_TEXT_(n)
+    "AT+CIPSTART=\"TCP\",\"" Z7_TLS_RELAY_IP "\"," TLS_PORT_TEXT(Z7_TLS_RELAY_PORT) "\r\n",
+#else
     "AT+CIPSTART=\"TCP\",\"" CLOUD_HOST "\",443\r\n",
+#endif
     "AT+CIPMODE=1\r\n","AT+CIPSEND\r\n"
 #else
     "AT+CIPDOMAIN=\"" CLOUD_HOST "\"\r\n",
@@ -201,7 +247,12 @@ static void fault(uint32_t error) {
             cache_clean_range((const void *)duplex_reply_shape,sizeof(duplex_reply_shape));
     }
 #endif
-    if(raw_state>=6) {
+    if(raw_state==6 || raw_state==RAW_UNCONFIRMED) {
+        raw_state=RAW_UNCONFIRMED;command_phase=ack_pending=0;
+        network_info.phase=6;network_info.error=42;
+        wipe(command,sizeof(command));wipe(reply,sizeof(reply));return;
+    }
+    if(raw_state==7) {
         raw_state=command_phase=ack_pending=0;network_info.phase=6;
         if(!network_info.error) network_info.error=error;
         wipe(command,sizeof(command));wipe(reply,sizeof(reply));return;
@@ -255,6 +306,9 @@ int network_send(const uint8_t *data,uint32_t size) {
     upload_yielding=0;
 #endif
     for(uint32_t i=0;i<size;++i) ack[i]=data[i];
+#ifdef Z7_TLS_TRACE
+    if(raw_state==1 && !tx_trace_frozen) tls_tx_trace_add(network_tx_queue_trace,ack,size);
+#endif
     send_size=size;ack_pending=1;
     if(raw_state==1) {command_phase=3;command_pos=0;command_deadline=current_time+10000;}
     else send_ack_command();
@@ -706,6 +760,11 @@ static void command_tick(void) {
         /* A stalled streaming send is a transient Wi-Fi/TLS hiccup: drop the
            frame and probe the AT command mode instead of killing the whole
            session. Setup/TLS commands still fault on timeout. */
+        if(raw_state) {
+            /* Keep the accepted ciphertext intact while guarded close drains
+               it; an AT probe is not data in a transparent TCP stream. */
+            command_deadline=current_time+4000u;fault(27);return;
+        }
         if(network_info.phase==4 && stream_receive) {
             ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);
             command_phase=ack_pending=0;command_size=command_pos=0;
@@ -739,7 +798,12 @@ static void command_tick(void) {
 #else
         const uint32_t tx_budget=2048u;
 #endif
-        for(uint32_t budget=0;budget<tx_budget && command_pos<send_size && (read_reg(4)&2u);++budget) write_reg(16,ack[command_pos++]);
+        for(uint32_t budget=0;budget<tx_budget && command_pos<send_size && (read_reg(4)&2u);++budget) {
+            uint8_t byte=ack[command_pos++];write_reg(16,byte);
+#ifdef Z7_TLS_TRACE
+            if((raw_state==1 || raw_state==2) && !tx_trace_frozen) tls_tx_trace_add(network_tx_uart_trace,&byte,1);
+#endif
+        }
         if(command_pos<send_size || (read_reg(4)&4u)) return;
         if(raw_state==1 || raw_state==2) {command_phase=ack_pending=0;return;}
         command_phase=4; /* Keep replies that arrived during the last TX bits. */
@@ -864,7 +928,7 @@ static void command_tick(void) {
     }
     int failure=contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n");
     if(!contains(reply,"\r\nOK\r\n") && !failure) return;
-    if(raw_state>=6) {
+    if(raw_state==6 || raw_state==7) {
         command_phase=0;wipe(reply,sizeof(reply));line_used=0;
         if(failure) {if(!network_info.error) network_info.error=41;raw_state=0;network_info.phase=6;return;}
         if(raw_state==6) {raw_state=7;begin_command("AT+CIPCLOSE\r\n",4000);}
@@ -926,15 +990,18 @@ static void raw_cleanup(void) {
     if(raw_state==2) {
         if(command_phase==3) command_tick();
         if(command_phase || (read_reg(4)&4u)) {
-            if((int32_t)(current_time-raw_deadline)>=0) {raw_state=command_phase=ack_pending=0;network_info.phase=6;if(!network_info.error) network_info.error=42;}
+            if((int32_t)(current_time-raw_deadline)>=0) {raw_state=RAW_UNCONFIRMED;command_phase=ack_pending=0;network_info.phase=6;network_info.error=42;}
             return;
         }
+#ifdef Z7_TLS_WIRE_TRACE
+        write_reg(0x34,0); // Exclude the following AT escape from the wire trace.
+#endif
         raw_state=3;raw_deadline=current_time+1100;
     } else if(raw_state==3 && (int32_t)(current_time-raw_deadline)>=0) {
         write_reg(16,'+');write_reg(16,'+');write_reg(16,'+');raw_state=4;raw_deadline=current_time+4000;
     } else if(raw_state==4) {
         if(!(read_reg(4)&4u)) {raw_state=5;raw_deadline=current_time+1000;}
-        else if((int32_t)(current_time-raw_deadline)>=0) {raw_state=0;network_info.phase=6;if(!network_info.error) network_info.error=42;}
+        else if((int32_t)(current_time-raw_deadline)>=0) {raw_state=RAW_UNCONFIRMED;command_phase=ack_pending=0;network_info.phase=6;network_info.error=42;}
     } else if(raw_state==5 && (int32_t)(current_time-raw_deadline)>=0) {
         raw_state=6;begin_command("AT+CIPMODE=0\r\n",4000);
     }
@@ -1071,6 +1138,9 @@ static void recover_uart(void) {
 }
 #endif
 static void retry_faulted(void) {
+    /* AT ownership is unknown after a failed drain/escape. A guarded external
+       recovery is required before any setup bytes may enter this UART. */
+    if(raw_state==RAW_UNCONFIRMED) return;
     if(cloud_suspended || network_info.phase!=6 || !tls_mode || !saved_ssid_bytes || saved_retry_count>=6) return;
     uint32_t error=network_info.error;
     if(error!=26 && error!=27 && error!=28 && error!=29 && error!=32 && error!=34 && error!=43 &&

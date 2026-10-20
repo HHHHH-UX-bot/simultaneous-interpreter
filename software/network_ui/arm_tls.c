@@ -18,6 +18,16 @@ struct tls_seed {uint32_t magic,epoch;uint8_t bytes[64];};
 __attribute__((section(".arm_tls_seed"),used)) volatile struct tls_seed arm_tls_seed;
 __attribute__((section(".tls_runtime"),used)) static uint8_t arena[524288],rx[RX_BYTES];
 __attribute__((section(".cloud_runtime"),used)) volatile uint32_t arm_tls_diag[24];
+/* First failure metadata only; no seed, plaintext, ciphertext or TLS keys. */
+__attribute__((section(".cloud_runtime"),used)) volatile uint32_t arm_tls_fault[12];
+#ifdef Z7_TLS_TRACE
+#include "tls_tx_trace.h"
+/* Diagnostic fingerprints of 256-byte ciphertext blocks, never payloads. */
+__attribute__((section(".cloud_runtime"),used)) volatile uint32_t arm_tls_tx_trace[260];
+/* First complete block survives ring wrap and binds the relay connection. */
+__attribute__((section(".cloud_runtime"),used)) volatile uint32_t arm_tls_tx_identity[2];
+static uint32_t trace_session;
+#endif
 static mbedtls_ssl_context ssl;
 static mbedtls_ssl_config config;
 static mbedtls_x509_crt ca;
@@ -57,6 +67,14 @@ static int entropy(void *ctx,unsigned char *p,size_t n) {
 static int bio_send(void *ctx,const unsigned char *p,size_t n) {
     (void)ctx;if(n>2048) n=2048;
     if(!network_send(p,(uint32_t)n)) return MBEDTLS_ERR_SSL_WANT_WRITE;
+#ifdef Z7_TLS_TRACE
+    if(!arm_tls_fault[0]) {
+        tls_tx_trace_add(arm_tls_tx_trace,p,n);
+        if(!arm_tls_tx_identity[0] && arm_tls_tx_trace[2]>=256u) {
+            arm_tls_tx_identity[0]=trace_session;arm_tls_tx_identity[1]=arm_tls_tx_trace[5];
+        }
+    }
+#endif
     arm_tls_diag[5]+=(uint32_t)n;return (int)n;
 }
 static int bio_recv(void *ctx,unsigned char *p,size_t n) {
@@ -71,6 +89,19 @@ static void received(uint8_t b) {
     if(used>arm_tls_diag[8]) arm_tls_diag[8]=used;
 }
 static void failed(int code) {
+    if(!arm_tls_fault[0]) {
+        uint32_t snapshot[]={0x31465441u,now_ms,(uint32_t)code,pending,
+            (uint32_t)ssl.MBEDTLS_PRIVATE(out_left),(uint32_t)ssl.MBEDTLS_PRIVATE(out_msglen),
+            used,network_info.phase,network_info.last_code,network_info.received_bytes,
+            arm_tls_diag[5],arm_tls_diag[12]};
+        for(uint32_t i=0;i<12;++i) arm_tls_fault[i]=snapshot[i];
+        cache_clean_range((const void *)arm_tls_fault,sizeof(arm_tls_fault));
+#ifdef Z7_TLS_TRACE
+        network_tls_trace_freeze();
+        cache_clean_range((const void *)arm_tls_tx_trace,sizeof(arm_tls_tx_trace));
+        cache_clean_range((const void *)arm_tls_tx_identity,sizeof(arm_tls_tx_identity));
+#endif
+    }
     arm_tls_diag[2]=(uint32_t)code;
     /* Pinned Mbed TLS 3.6.7 returns this code after validating a two-byte alert. */
     if(code==MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE)
@@ -82,7 +113,13 @@ void arm_tls_init(void) {
     arm_tls_seed.magic=arm_tls_seed.epoch=0;
     for(uint32_t i=0;i<64;++i) arm_tls_seed.bytes[i]=0;
     memset((void *)arm_tls_diag,0,sizeof(arm_tls_diag));arm_tls_diag[0]=0x31534c54u;
+    memset((void *)arm_tls_fault,0,sizeof(arm_tls_fault));
+    cache_clean_range((const void *)arm_tls_fault,sizeof(arm_tls_fault));
     phase=initialized=used=head=tail=pending=0;consumer=0;clean();
+#ifdef Z7_TLS_TRACE
+    memset((void *)arm_tls_tx_trace,0,sizeof(arm_tls_tx_trace));trace_session=0;
+    arm_tls_tx_identity[0]=arm_tls_tx_identity[1]=0;
+#endif
 }
 int arm_tls_ready(void) {return phase==2 && !consumer;}
 int arm_tls_active(void) {return phase==1 || phase==2;}
@@ -122,6 +159,13 @@ void arm_tls_tick(uint32_t now) {
     if(network_info.phase!=4 && network_info.phase!=8) {
         if(phase) {mbedtls_ssl_free(&ssl);mbedtls_ssl_config_free(&config);phase=0;consumer=0;pending=used=head=tail=0;}
     } else if(!phase && network_info.phase==8) {
+#ifdef Z7_TLS_TRACE
+        if(!arm_tls_fault[0]) {
+            tls_tx_trace_begin(arm_tls_tx_trace,++trace_session);
+            arm_tls_tx_identity[0]=arm_tls_tx_identity[1]=0;
+            network_tls_trace_begin(trace_session);
+        }
+#endif
         int rc=setup();
         if(rc) {failed(rc);return;}
         if(!network_stream_attach(received)) {failed(-2);return;}
@@ -156,5 +200,11 @@ void arm_tls_tick(uint32_t now) {
         }
     }
     arm_tls_diag[1]=phase;arm_tls_diag[6]=used;arm_tls_diag[14]=pending;arm_tls_diag[15]=now;
-    if(now-diag_ms>=200) {diag_ms=now;clean();}
+    if(now-diag_ms>=200) {diag_ms=now;clean();
+#ifdef Z7_TLS_TRACE
+        cache_clean_range((const void *)arm_tls_tx_trace,sizeof(arm_tls_tx_trace));
+        cache_clean_range((const void *)arm_tls_tx_identity,sizeof(arm_tls_tx_identity));
+        network_tls_trace_clean();
+#endif
+    }
 }

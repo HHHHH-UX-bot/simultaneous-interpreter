@@ -1,0 +1,8 @@
+{
+  "display_after_diagnostic_pl": "user_confirmed_clear_stable",
+  "normal_firmware_microphone_english_chinese_touch_font": "user_confirmed_all_three_normal",
+  "later_normal_followup": "AT mode unconfirmed error 42, preserved separately; not continuous-run acceptance",
+  "final_recovery": "external guarded AT recovery and same normal ELF reload; ready then confirmed idle pause",
+  "wires_user_report": "approximately 20 cm",
+  "logic_analyzer_user_report": "available; model acquisition is next stage"
+}

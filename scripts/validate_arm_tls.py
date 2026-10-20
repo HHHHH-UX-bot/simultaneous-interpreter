@@ -19,7 +19,7 @@ def main():
     args = p.parse_args()
     out = ROOT / 'output/repair/arm_tls_native'
     out.mkdir(parents=True, exist_ok=True)
-    flags = ['-O2', '-ffunction-sections', '-fdata-sections',
+    flags = ['-O2', '-DZ7_TLS_TRACE', '-ffunction-sections', '-fdata-sections',
              '-DMBEDTLS_CONFIG_FILE="tls_config.h"',
              '-I' + str(ROOT / 'software/network_ui'),
              '-I' + str(ROOT / 'third_party/mbedtls/include')]
@@ -42,7 +42,7 @@ def main():
         if result.returncode:
             raise RuntimeError(result.stderr)
     cases = []
-    for exe, option in [('normal', ''), ('wrong_host', ''), ('normal', 'expired'),
+    for exe, option in [('normal', ''), ('normal', 'full_record'), ('wrong_host', ''), ('normal', 'expired'),
                         ('normal', 'noseed'), ('normal', 'corrupt')]:
         result = subprocess.run([str(out / (exe + '.exe')), *([option] if option else [])],
                                 capture_output=True, text=True, timeout=40)
@@ -52,7 +52,7 @@ def main():
         print(json.dumps(case), flush=True)
     inputs = ['software/network_ui/arm_tls.c', 'software/network_ui/arm_tls.h',
               'software/network_ui/tls_config.h', 'software/network_ui/tls_root.h',
-              'tests/arm_tls_host_test.c', 'third_party/mbedtls/SOURCE.json']
+              'software/network_ui/tls_tx_trace.h', 'tests/arm_tls_host_test.c', 'third_party/mbedtls/SOURCE.json']
     record = {'passed': all(c['returncode'] == 0 for c in cases), 'cases': cases,
               'utc': datetime.now(timezone.utc).isoformat(),
               'scope': 'real TLS service, fragmented TCP, authentication and ciphertext integrity; no API key',

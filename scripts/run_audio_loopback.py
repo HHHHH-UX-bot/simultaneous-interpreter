@@ -64,6 +64,7 @@ BUILD_INPUTS = RTL_INPUTS + [
     "rtl/dvi_transmitter_top.v",
     "rtl/serializer_10_to_1.v",
     "rtl/wifi_uart_axi.v",
+    "rtl/wifi_uart_tx_trace.v",
     "rtl/ps_wifi_uart.v",
     "rtl/wifi_uart_phy.v",
     "rtl/wifi_byte_fifo.v",

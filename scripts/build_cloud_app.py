@@ -122,6 +122,8 @@ def main():
     parser.add_argument("--link-diagnostics", action="store_true", help="sample ESP heap at idle AT boundaries")
     parser.add_argument("--tls-passthrough", action="store_true", help="single verified TLS connection with raw duplex UART")
     parser.add_argument("--arm-tls", action="store_true", help="verified TLS on Zynq; ESP carries raw TCP")
+    parser.add_argument("--tls-relay", help="diagnostic IPv4:port TCP relay; ARM still verifies the real cloud certificate")
+    parser.add_argument("--tls-wire-trace",action="store_true",help="requires the matching TX_TRACE diagnostic PL")
     parser.add_argument("--drain-before-upload", action="store_true", help="experimental SSL receive-first scheduling")
     parser.add_argument("--ssl-read-until-empty", action="store_true", help="experimental SSL reads without encrypted-length queries")
     parser.add_argument("--uart-baud", type=int, choices=(460800,921600,1000000,2000000),default=2000000)
@@ -153,6 +155,15 @@ def main():
         raise SystemExit("ARM GCC not found: " + str(gcc))
     OUT.mkdir(parents=True, exist_ok=True)
     flags = list(FLAGS)
+    if args.tls_wire_trace:
+        if not args.tls_relay:parser.error('--tls-wire-trace requires --tls-relay')
+        flags.append('-DZ7_TLS_WIRE_TRACE')
+    if args.tls_relay:
+        import ipaddress
+        if not args.arm_tls:parser.error('--tls-relay requires --arm-tls')
+        host,port=args.tls_relay.rsplit(':',1);host=str(ipaddress.IPv4Address(host));port=int(port)
+        if not 1<=port<=65535:parser.error('relay port must be 1..65535')
+        flags += ['-DZ7_TLS_TRACE','-DZ7_TLS_RELAY_IP="'+host+'"','-DZ7_TLS_RELAY_PORT='+str(port)]
     if args.arm_tls:
         flags += ["-DZ7_ARM_TLS", "-ffunction-sections", "-fdata-sections", "-Wl,--gc-sections",
                   '-DMBEDTLS_CONFIG_FILE="tls_config.h"', "-I", str(ROOT / "software/network_ui"),
@@ -270,6 +281,7 @@ def main():
         "Mode": args.mode,
         "Speech": bool(args.speech),
         "ArmTLS": bool(args.arm_tls),
+        "TLSWireTrace": bool(args.tls_wire_trace),
         "UARTBaud": args.uart_baud,
         "ELFSHA256": hashlib.sha256(elf_path.read_bytes()).hexdigest(),
         "InputSHA256": {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in sorted(set(sources) | {"scripts/build_cloud_app.py", "software/network_ui/language_profile.h", "software/network_ui/link_arm_tls.ld", "software/z7_nano_usb/touch_link.h", "output/display/framebuffer_hw.h"} | {p.relative_to(ROOT).as_posix() for d in ("software/network_ui", "software/subtitle_ui") for p in (ROOT / d).glob("*.h")})},

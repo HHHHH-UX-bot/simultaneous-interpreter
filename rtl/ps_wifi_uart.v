@@ -1,5 +1,5 @@
 // PS-only address window; foreign addresses remain invalid, never aliases.
-module ps_wifi_uart #(parameter FIFO_ADDR_BITS=12) (
+module ps_wifi_uart #(parameter FIFO_ADDR_BITS=12, parameter TX_TRACE=0) (
     (* X_INTERFACE_INFO="xilinx.com:signal:clock:1.0 aclk CLK", X_INTERFACE_PARAMETER="ASSOCIATED_BUSIF S_AXI, ASSOCIATED_RESET aresetn, FREQ_HZ 50000000" *)
     input wire aclk,
     (* X_INTERFACE_INFO="xilinx.com:signal:reset:1.0 aresetn RST", X_INTERFACE_PARAMETER="POLARITY ACTIVE_LOW" *)
@@ -48,7 +48,7 @@ module ps_wifi_uart #(parameter FIFO_ADDR_BITS=12) (
     wire ar_mapped = (s_axi_araddr[31:16]==16'h43c2) || (s_axi_araddr[31:16]==16'h43c3);
     wire [31:0] local_aw = aw_mapped ? {16'd0,s_axi_awaddr[15:0]} : 32'hffffffff;
     wire [31:0] local_ar = ar_mapped ? {16'd0,s_axi_araddr[15:0]} : 32'hffffffff;
-    wifi_uart_axi #(.FIFO_ADDR_BITS(FIFO_ADDR_BITS)) u_uart(
+    wifi_uart_axi #(.FIFO_ADDR_BITS(FIFO_ADDR_BITS),.TX_TRACE(TX_TRACE)) u_uart(
         .aclk(aclk),
         .aresetn(aresetn),
         .s_axi_awaddr(local_aw),

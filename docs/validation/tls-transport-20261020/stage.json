@@ -1,0 +1,40 @@
+{
+  "status": "diagnostic_boundary_confirmed_root_cause_pending",
+  "utc": "2026-10-20T11:41:55.814531+00:00",
+  "source_sha256": {
+    "rtl/ps_wifi_uart.v": "2f199b3e3de96b3f959812894a2feb51858f1ea76f24e1ec737eb977a8a28bdc",
+    "rtl/wifi_uart_axi.v": "6981580ceecc5485f3395c259bbf615b4ad9f2d87810de685eb0ca542b735f30",
+    "scripts/build_cloud_app.py": "320efb6f66fefcaab7571c64d1ff3733d88838892680832c959956537ad5ee83",
+    "scripts/build_z7_nano_audio.tcl": "0c7a7f3ebf0603d29b75322d810481a36e6772de80b6ac9e1ff16901418cc8ed",
+    "scripts/repair/board_snapshot.py": "efd8a3c4fc49d40a2ccddd2a61fdd0f399d959349cabd08485ef4616fb686c7d",
+    "scripts/run_audio_loopback.py": "b1696d91e725b636c51b46fc7e07c2823e209b1b33e02364e451bca5b3d0b7f5",
+    "scripts/validate_arm_tls.py": "f9997de4eafc288df63dc0cfafafaaca04b3a5d92222153720718c8f80db0add",
+    "scripts/validate_zhzh_transport.py": "72fdeb981ffc9096447962b3adc01c0ab07321dc9d75776a57fec9193eeb2283",
+    "sim/tb_wifi_uart_axi.sv": "fa95cc421f984bbb9a60216391ca8796b2738169407a9585bef8b7dc5c11519b",
+    "software/network_ui/arm_tls.c": "8c16f69c3bb131386a3bea35379b5ceff19c330015126bd9bcc954c40693d293",
+    "software/network_ui/network.c": "4ca245662f3fca9bad0fa725f4456ff218640c10ff4155f3aad71462173b51d7",
+    "software/network_ui/network.h": "c4f8bee58c09cb61832fd3677cbb393ecc51319293fbed25bab606edf61c9adf",
+    "tests/arm_tls_host_test.c": "88e22dde8a45aecbee155cbe7aa0891d27030586b9199c4aa01c7838c1f241d6",
+    "tests/network_tls_raw_test.c": "ea00a3607606f2d63881225ea79ea6bbf7e5626164a6723b4fb2c43c23b103a2",
+    "rtl/wifi_uart_tx_trace.v": "ad3be7c12fdb356d31d9434c80ecca9cdd9c171f8a4c6e4add59a0076701ea0c",
+    "scripts/repair/build_uart_tx_trace.py": "4dd20b87bedad44a2085b1a723cf01690a97e9c879ef04ad7c770df2428a819b",
+    "scripts/repair/compare_tls_trace.py": "3c35adca2bf28670209fb4ddd919820b36cc0aaca34e438e959340d14b3f2524",
+    "scripts/repair/tls_record_relay.py": "352ba35f1a401ce99d05278e62503fce05256acddfbf994e885347b16bd09b2a",
+    "scripts/repair/validate_uart_tx_trace.py": "3abb55e127273ecb47f46a49cac2ec72d593d2f38d17e00b7481c1508e1c822d",
+    "sim/tb_wifi_uart_trace.sv": "d89047dbe4da412ae2ee910a10458a9282798733e94ada0b58e1169b188b12e6",
+    "software/network_ui/tls_tx_trace.h": "05e25b73fc8f0f0a7d8d2a3ae99a9cc316316e27e8075423940095c8371bc949",
+    "tests/test_tls_diagnostics.py": "02d920cb1cca9dfd93caae56e6b2f42b92cfaa6f7257e28fd02dd5e9c3e8ebab"
+  },
+  "tls_alert_fixed": false,
+  "460800_is_a_fix": false,
+  "normal_firmware_restored": true,
+  "current_network": "paused, error zero",
+  "current_uart_baud": 1000000,
+  "current_touch": "resident",
+  "limits": [
+    "internal TX decode does not measure electrical waveform at ESP pin",
+    "no long-run, headphone-listening or standalone-boot acceptance",
+    "no Flash/SD/ESP firmware programming"
+  ],
+  "next": "logic analyzer at FPGA TX and ESP RX sides, then distinguish electrical transfer from ESP receive/forwarding"
+}

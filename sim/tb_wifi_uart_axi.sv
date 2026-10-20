@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-module tb_wifi_uart_axi;
+module tb_wifi_uart_axi #(parameter TRACE=0);
     reg clk=0, resetn=0, rx=1;
     always #10 clk=~clk;
     wire tx;
@@ -10,10 +10,12 @@ module tb_wifi_uart_axi;
     wire [1:0] bresp,rresp;
     wire [31:0] rdata;
     integer transmitted=0, i,j, writes=0;
-    reg [7:0] wire_bytes[0:511];
+    reg [7:0] wire_bytes[0:34000];
     reg [31:0] value;
+    reg [31:0] expected_hash,expected_first,expected_blocks[0:127];
+    reg [7:0] stimulus;
     realtime bit_period=2000.0;
-    wifi_uart_axi #(.FIFO_ADDR_BITS(4)) dut(
+    wifi_uart_axi #(.FIFO_ADDR_BITS(4),.TX_TRACE(TRACE)) dut(
         .aclk(clk),.aresetn(resetn),
         .s_axi_awaddr(awaddr),.s_axi_awvalid(awvalid),.s_axi_awready(awready),
         .s_axi_wdata(wdata),.s_axi_wstrb(wstrb),.s_axi_wvalid(wvalid),.s_axi_wready(wready),
@@ -93,7 +95,7 @@ module tb_wifi_uart_axi;
         write_reg(8,32'hffffffff,0,0);
         read_reg(8,value,0); if(value!==100) $fatal(1,"Byte strobe or invalid-divider write");
         write_reg(32'h80000008,100,15,2);
-        read_reg(32'h100,value,2);
+        read_reg(32'h100,value,TRACE?0:2);
         read_reg(32'h14,value,0); if(value!==0) $fatal(1,"Empty read must be invalid");
         #211; rx=0; #400; rx=1; #4000;
         read_reg(32'h18,value,0); if(value!==0) $fatal(1,"Start glitch accepted");
@@ -134,6 +136,42 @@ module tb_wifi_uart_axi;
         if(wire_bytes[256]!==8'h96) $fatal(1,"115200 baud TX mismatch");
         send_byte(8'ha5,8680.0,1);
         read_reg(32'h14,value,0); if(value!==32'h800000a5) $fatal(1,"115200 baud RX mismatch");
+        if(TRACE) begin
+            write_reg(8,50,15,0);bit_period=1000.0;
+            read_reg(32'h30,value,0);if(value!==32'h31544857) $fatal(1,"TX trace identity");
+            write_reg(32'h34,15,15,0); // Start diagnostic session 7.
+            expected_hash=32'h811c9dc5;
+            for(i=0;i<33041;i++) begin
+                stimulus=(i*73+(i>>8)*17+31)&255;
+                read_reg(4,value,0);while(!value[1]) read_reg(4,value,0);
+                write_reg(32'h10,stimulus,1,0);
+                expected_hash=(expected_hash^stimulus)*32'h01000193;
+                if((i&255)==255) begin
+                    expected_blocks[(i>>8)&127]=expected_hash;
+                    if(i==255) expected_first=expected_hash;
+                    expected_hash=32'h811c9dc5;
+                end
+            end
+            wait(transmitted==257+33041);#2000;
+            write_reg(32'h34,0,15,0);
+            read_reg(32'h38,value,0);if(value!==33041) $fatal(1,"TX wire trace byte count");
+            read_reg(32'h3c,value,0);if(value!==expected_hash) $fatal(1,"TX wire partial fingerprint");
+            read_reg(32'h40,value,0);if(value!==expected_first) $fatal(1,"TX first block overwritten after ring wrap");
+            read_reg(32'h44,value,0);if(value!==7) $fatal(1,"TX trace epoch");
+            read_reg(32'h48,value,0);if(value!==0) $fatal(1,"TX trace framing errors");
+            for(i=0;i<128;i++) begin
+                read_reg(32'h100+4*i,value,0);
+                if(value!==expected_blocks[i]) $fatal(1,"TX wire fingerprint mismatch at slot %0d",i);
+            end
+            for(i=0;i<33041;i++)
+                if(wire_bytes[257+i]!==((i*73+(i>>8)*17+31)&255)) $fatal(1,"Long TX wire byte mismatch %0d",i);
+            write_reg(32'h10,8'haa,1,0);wait(transmitted==257+33042);#2000;
+            read_reg(32'h38,value,0);if(value!==33041) $fatal(1,"Frozen TX trace changed");
+            write_reg(32'h34,17,15,0);
+            read_reg(32'h38,value,0);if(value!==0) $fatal(1,"TX trace reset count");
+            read_reg(32'h44,value,0);if(value!==8) $fatal(1,"TX trace new epoch");
+            $display("PASS_WIFI_TX_TRACE: 33041 independently decoded bytes, ring wrap, first identity, partial block, freeze and restart");
+        end
         // Reset an incomplete AW transaction; no stale write may survive.
         put_aw(32'h10,0); @(negedge clk); resetn=0;
         repeat(5) @(negedge clk); resetn=1;
@@ -143,5 +181,8 @@ module tb_wifi_uart_axi;
         $display("PASS_WIFI_UART: all 256 TX/RX values, FIFO wrap/full/overflow, AXI AW/W ordering/backpressure, strobes, reset, bad framing, start glitches and 115200 timing");
         $finish;
     end
-    initial begin #30000000; $fatal(1,"UART/AXI test timeout"); end
+    initial begin
+        if(TRACE) #400000000;else #30000000;
+        $fatal(1,"UART/AXI test timeout");
+    end
 endmodule

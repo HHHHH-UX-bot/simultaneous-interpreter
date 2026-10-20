@@ -1,5 +1,5 @@
 // AXI4-Lite UART mailbox, 50 MHz. Register contract: docs/design/WIFI_LINK.md.
-module wifi_uart_axi #(parameter FIFO_ADDR_BITS=12) (
+module wifi_uart_axi #(parameter FIFO_ADDR_BITS=12, parameter TX_TRACE=0) (
     input wire aclk, aresetn,
     input wire [31:0] s_axi_awaddr,
     input wire s_axi_awvalid,
@@ -61,6 +61,19 @@ module wifi_uart_axi #(parameter FIFO_ADDR_BITS=12) (
         end
     endfunction
     wire [31:0] new_divider = merge_bytes({16'd0,baud_divider},w_data,w_strobe);
+    wire trace_control = TX_TRACE && write_commit && aw_address==32'h34 && w_strobe==4'hf;
+    wire [31:0] trace_count,trace_partial,trace_first,trace_session,trace_errors,trace_hash;
+    wire trace_active;
+    wire [6:0] trace_index=(s_axi_araddr-32'h100)>>2;
+    generate if(TX_TRACE) begin : g_tx_trace
+        wifi_uart_tx_trace monitor(.clk(aclk),.reset(!aresetn),.tx(esp_tx),.baud_divider(baud_divider),
+            .start(trace_control && w_data[0]),.stop(trace_control && !w_data[0]),.session(w_data[31:1]),
+            .read_index(trace_index),.read_hash(trace_hash),.count(trace_count),.partial_hash(trace_partial),
+            .first_hash(trace_first),.trace_session(trace_session),.errors(trace_errors),.active(trace_active));
+    end else begin : g_no_tx_trace
+        assign trace_count=0;assign trace_partial=0;assign trace_first=0;assign trace_session=0;
+        assign trace_errors=0;assign trace_hash=0;assign trace_active=0;
+    end endgenerate
     wifi_byte_fifo #(.ADDR_BITS(FIFO_ADDR_BITS)) u_rx_fifo(
         .clk(aclk),.reset(reset_rx),.push(rx_valid),.pop(rx_pop),
         .data_in(received_data),.data_out(rx_fifo_data),.empty(rx_empty),.full(rx_full),.count(rx_count));
@@ -108,6 +121,7 @@ module wifi_uart_axi #(parameter FIFO_ADDR_BITS=12) (
                             else baud_divider <= new_divider[15:0];
                     32'h0c: if (w_strobe[0]) control_pulse <= w_data[3:0];
                     32'h10: if (w_strobe[0] && !tx_space) s_axi_bresp <= 2;
+                    32'h34: if(!TX_TRACE || w_strobe!=4'hf) s_axi_bresp<=2;
                     default: s_axi_bresp <= 2;
                 endcase
             end
@@ -137,7 +151,18 @@ module wifi_uart_axi #(parameter FIFO_ADDR_BITS=12) (
                     32'h24: s_axi_rdata <= framing_errors;
                     32'h28: s_axi_rdata <= sent_bytes;
                     32'h2c: s_axi_rdata <= received_bytes;
-                    default: begin s_axi_rresp <= 2; s_axi_rdata <= 0; end
+                    32'h30: begin s_axi_rdata<=TX_TRACE?32'h31544857:0;if(!TX_TRACE) s_axi_rresp<=2;end
+                    32'h34: begin s_axi_rdata<={31'd0,trace_active};if(!TX_TRACE) s_axi_rresp<=2;end
+                    32'h38: begin s_axi_rdata<=trace_count;if(!TX_TRACE) s_axi_rresp<=2;end
+                    32'h3c: begin s_axi_rdata<=trace_partial;if(!TX_TRACE) s_axi_rresp<=2;end
+                    32'h40: begin s_axi_rdata<=trace_first;if(!TX_TRACE) s_axi_rresp<=2;end
+                    32'h44: begin s_axi_rdata<=trace_session;if(!TX_TRACE) s_axi_rresp<=2;end
+                    32'h48: begin s_axi_rdata<=trace_errors;if(!TX_TRACE) s_axi_rresp<=2;end
+                    default: begin
+                        if(TX_TRACE && s_axi_araddr>=32'h100 && s_axi_araddr<32'h300 && s_axi_araddr[1:0]==0)
+                            s_axi_rdata<=trace_hash;
+                        else begin s_axi_rresp<=2;s_axi_rdata<=0;end
+                    end
                 endcase
             end
         end

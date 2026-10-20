@@ -1,0 +1,15 @@
+{
+  "base": "0480504ead29c0c1bf0d133758d6bff8d689db24",
+  "result": "no_remaining_important_findings_in_scoped_code",
+  "scope": "TLS/queue/MMIO/wire diagnostics, first-block association, guarded close, default-disabled RTL, source-bound build helpers",
+  "resolved": [
+    "unconfirmed raw ownership retry bypasses",
+    "independent connection counters need first-block identity",
+    "prepare and generated configuration build binding"
+  ],
+  "limits": [
+    "physical transport root cause remains pending",
+    "TLS API first fault only; network-first failure may overwrite traces",
+    "live trace snapshots are not atomic"
+  ]
+}

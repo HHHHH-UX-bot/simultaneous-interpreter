@@ -26,7 +26,7 @@ add_files [file join $root rtl audio_regs.v]
 add_files [file join $root rtl audio_playback.v]
 # The ESP8266 UART is a module reference inside the block design, so its
 # sources must be in the project before create_bd_cell resolves them.
-foreach filename {ps_wifi_uart.v wifi_uart_axi.v wifi_uart_phy.v wifi_byte_fifo.v} {
+foreach filename {ps_wifi_uart.v wifi_uart_axi.v wifi_uart_phy.v wifi_byte_fifo.v wifi_uart_tx_trace.v} {
     add_files [file join $root rtl $filename]
 }
 
@@ -141,6 +141,7 @@ create_bd_addr_seg -range 0x10000 -offset 0x43c20000 [get_bd_addr_spaces ps7/Dat
 # through the same register-file style as the audio block. Only esp_tx/esp_rx
 # cross the block-design boundary.
 set uart [create_bd_cell -type module -reference ps_wifi_uart uart]
+if {[lindex $argv 2] eq "tx-trace"} {set_property CONFIG.TX_TRACE {1} $uart}
 connect_bd_intf_net [get_bd_intf_pins regs/M03_AXI] [get_bd_intf_pins uart/S_AXI]
 connect_bd_net $clk [get_bd_pins uart/aclk]
 connect_bd_net [get_bd_pins reset/peripheral_aresetn] [get_bd_pins uart/aresetn]
@@ -206,7 +207,8 @@ set_bus_skew -from $tap_starts -to $tap_ends 15.0
 place_design
 phys_opt_design
 route_design
-set_property BITSTREAM.CONFIG.USR_ACCESS 0x5a374e33 [current_design]
+set usr_access [expr {[lindex $argv 2] eq "tx-trace" ? 0x5a375458 : 0x5a374e33}]
+set_property BITSTREAM.CONFIG.USR_ACCESS [format "0x%08x" $usr_access] [current_design]
 report_timing_summary -report_unconstrained -file [file join $out reports timing.rpt]
 set tap_skew_report [report_bus_skew -return_string]
 set tap_skew_file [open [file join $out reports microphone_cdc_skew.rpt] w]
@@ -244,7 +246,7 @@ if {[llength $bclk] == 1} {
 write_checkpoint -force [file join $out routed.dcp]
 write_bitstream -force [file join $out z7_nano_audio_top.bit]
 set f [open [file join $out implementation.json] w]
-puts $f "{\"part\":\"$board_part\",\"setup_slack_ns\":$setup,\"hold_slack_ns\":$hold,\"pins_verified\":true,\"audio_pins_verified\":true,\"clocks_verified\":true,\"audio_base_addr\":\"0x43c20000\",\"usr_access\":[expr {0x5a374e33}]}"
+puts $f "{\"part\":\"$board_part\",\"setup_slack_ns\":$setup,\"hold_slack_ns\":$hold,\"pins_verified\":true,\"audio_pins_verified\":true,\"clocks_verified\":true,\"audio_base_addr\":\"0x43c20000\",\"usr_access\":$usr_access}"
 close $f
 puts PASS_Z7_NANO_AUDIO_BUILD
 close_project

@@ -1,0 +1,28 @@
+{
+  "elf_sha256": "4eb6b59ebc1349258c2bcf61715bc8c4e617d45704ee6c4b5da1bbb231f2fa6a",
+  "connection": 1,
+  "internal_boundaries": [
+    {
+      "boundary": "network_tx_queue_trace",
+      "compared_blocks": 128,
+      "mismatch": [],
+      "bio_bytes": 107484,
+      "boundary_bytes": 107484
+    },
+    {
+      "boundary": "network_tx_uart_trace",
+      "compared_blocks": 127,
+      "mismatch": [],
+      "bio_bytes": 107484,
+      "boundary_bytes": 107166
+    },
+    {
+      "boundary": "network_tx_wire_trace",
+      "compared_blocks": 127,
+      "mismatch": [],
+      "bio_bytes": 107484,
+      "boundary_bytes": 107166
+    }
+  ],
+  "loaded_pl_record_changed_inputs": []
+}

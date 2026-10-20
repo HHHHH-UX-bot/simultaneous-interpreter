@@ -31,6 +31,7 @@ def main():
         ('zero_plaintext_read', stream + ['-DZ7_SSL_DRAIN_FIRST', '-DZ7_SSL_NO_LENGTH_QUERY'], 'network_speech_no_length_test.c'),
         ('raw_tls', stream + ['-DZ7_TLS_PASSTHROUGH'], 'network_tls_raw_test.c'),
         ('arm_tcp', stream + ['-DZ7_TLS_PASSTHROUGH', '-DZ7_ARM_TLS'], 'network_tls_raw_test.c'),
+        ('arm_tcp_trace', stream + ['-DZ7_TLS_PASSTHROUGH', '-DZ7_ARM_TLS', '-DZ7_TLS_TRACE'], 'network_tls_raw_test.c'),
         ('framing_recovery_1m', stream, 'network_framing_recovery_test.c'),
         ('framing_recovery_921600', [d for d in stream if d != '-DZ7_UART_1M_STREAM'] + ['-DZ7_UART_LEGACY_STREAM'], 'network_framing_recovery_test.c'),
     ]
@@ -53,7 +54,7 @@ def main():
         results[name] = test.stdout.decode().strip()
         inputs.update(sources)
         print(name, 'passed', flush=True)
-    inputs.update(['software/network_ui/network.h', 'software/network_ui/wifi_recover.h', 'software/ps_wifi/wifi_at_probe.h'])
+    inputs.update(['software/network_ui/network.h', 'software/network_ui/tls_tx_trace.h', 'software/network_ui/wifi_recover.h', 'software/ps_wifi/wifi_at_probe.h'])
     record = {'status':'passed', 'utc':datetime.now(timezone.utc).isoformat(),
               'scope':'native mocked ESP UART/AT/TCP framing and recovery; no board or model quality measurement',
               'tests':results, 'input_sha256':{s:hashlib.sha256((ROOT / s).read_bytes()).hexdigest() for s in sorted(inputs)}}

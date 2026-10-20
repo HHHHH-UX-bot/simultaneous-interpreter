@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "utc": "2026-10-20T10:56:14.457494+00:00",
+  "scope": "RTL simulation, not physical FPGA or ESP receive acceptance",
+  "input_sha256": {
+    "rtl/wifi_byte_fifo.v": "a58dc970c50e1eb7b850ed78b88fe06c76989e256bf4fae7eda454882e7be2d8",
+    "rtl/wifi_uart_phy.v": "3b14e6ad852185c29ea258944366eb3e0912aaac7d5d81f972bd68f33403a464",
+    "rtl/wifi_uart_tx_trace.v": "ad3be7c12fdb356d31d9434c80ecca9cdd9c171f8a4c6e4add59a0076701ea0c",
+    "rtl/wifi_uart_axi.v": "6981580ceecc5485f3395c259bbf615b4ad9f2d87810de685eb0ca542b735f30",
+    "sim/tb_wifi_uart_axi.sv": "fa95cc421f984bbb9a60216391ca8796b2738169407a9585bef8b7dc5c11519b",
+    "sim/tb_wifi_uart_trace.sv": "d89047dbe4da412ae2ee910a10458a9282798733e94ada0b58e1169b188b12e6"
+  }
+}
