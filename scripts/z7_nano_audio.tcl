@@ -19,16 +19,24 @@ if {$action ni {program diag run}} {error "Expected program, diag or run"}
 if {$action eq "program" && ($bitstream eq "" || $bitstream eq "-")} {error "program needs a bitstream"}
 if {$action eq "run" && ($elf eq "" || $elf eq "-")} {error "run needs an ELF"}
 
+# hw_server publishes targets before it publishes their cable properties, so
+# jtag_cable_serial can be absent for a moment after connect. Treat "not yet
+# known" as "not this cable" and let the caller's retry loop wait, instead of
+# letting dict get throw and abort the whole wait loop.
+proc cable_serial {properties} {
+    if {![dict exists $properties jtag_cable_serial]} {return ""}
+    return [dict get $properties jtag_cable_serial]
+}
 proc try_connect {serial} {
     if {[catch {connect -url TCP:127.0.0.1:3121} e]} {return 0}
     after 1000
     set fpga [targets -target-properties -filter {name == "xc7z010"}]
-    if {[llength $fpga] != 1 || [dict get [lindex $fpga 0] jtag_cable_serial] ne $serial} {
+    if {[llength $fpga] != 1 || [cable_serial [lindex $fpga 0]] ne $serial} {
         catch {disconnect}; return 0
     }
     foreach core {0 1} {
         set m [targets -target-properties -filter "name =~ \"*Cortex-A9*#$core\""]
-        if {[llength $m] != 1 || [dict get [lindex $m 0] jtag_cable_serial] ne $serial} {
+        if {[llength $m] != 1 || [cable_serial [lindex $m 0]] ne $serial} {
             catch {disconnect}; return 0
         }
     }
@@ -46,6 +54,15 @@ while {![try_connect $serial]} {
     after 3000
 }
 puts "BOARD_READY"
+
+# A stopped CPU does not stop PS peripherals or outstanding AXI/VDMA traffic.
+# Start full PL replacement from a system reset, before changing its clocks.
+if {$action ne "diag"} {
+    targets -set -filter {name =~ "APU*"}
+    rst -system
+    after 1500
+    puts "SYSTEM_RESET_BEFORE_PL_CONFIGURATION"
+}
 
 # No AXI traffic while the PL is reprogrammed, and memory reads need stopped cores.
 foreach core {1 0} {
@@ -228,9 +245,9 @@ puts $f "{\"status\":\"passed\",\"action\":\"$action\",\"cable_serial\":\"$seria
 ,\"occupancy\":$occ,\"bclk_hz\":$bclk_hz\
 ,\"pin_bclk\":$pc_bclk,\"pin_adclrc\":$pc_adclrc,\"pin_dadlrc\":$pc_dadlrc,\"pin_adcdat\":$pc_adcdat\
 ,\"codec_rb_valid\":$rb_valid,\"sda_idle\":$sda_idle,\"scl_idle\":$scl_idle\
-,\"codec_r4\":$rb_r4,\"codec_r7\":$rb_r7,\"codec_r8\":$rb_r8,\"codec_r9\":$rb_r9}"
+,\"codec_r4\":$rb_r4,\"codec_r7\":$rb_r7,\"codec_r8\":$rb_r8,\"codec_r9\":$rb_r9"
 if {[info exists words]} {puts $f ",\"display_report\":\[[join $words ,]\]"}
-puts $f ",\"display_ok\":$display_ok"
+puts $f ",\"display_ok\":$display_ok}"
 close $f
 puts [format "AUDIO_STATUS status=0x%08x live=%d codec_found=%d addr_sel=%d regs_written=%d" \
     $status $live $codec_found $codec_addr $regs_written]

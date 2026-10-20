@@ -11,6 +11,8 @@ static void check(int yes,const char *s) {++checks;if(!yes) {fprintf(stderr,"FAI
 static void enqueue_bytes(const unsigned char *p,uint32_t n) {for(uint32_t i=0;i<n;++i) fifo[tail++%sizeof(fifo)]=p[i];}
 static void enqueue(const char *s) {enqueue_bytes((const unsigned char *)s,(uint32_t)strlen(s));}
 static uint32_t reg_read(uint32_t offset) {
+    if(offset==8) return 25u; /* Runtime fault metadata reads the configured divider. */
+    if(offset==24 || offset==28 || offset==40 || offset==44) return 0;
     if(offset==4) return (head!=tail?1u:0u)|2u;
     if(offset==20) return head==tail?0:(0x80000000u|fifo[head++%sizeof(fifo)]);
     if(offset==32) return scenario==5?1:0;
@@ -18,6 +20,7 @@ static uint32_t reg_read(uint32_t offset) {
     fprintf(stderr,"Unexpected offset %u\n",offset);exit(1);
 }
 static void reg_write(uint32_t offset,uint32_t value) {
+    if(offset==8 || offset==12) return;
     check(offset==16,"PS writes only TX register");
     if(raw_left) {
         last_ack[raw_used++]=(unsigned char)value;
@@ -42,7 +45,7 @@ static void reg_write(uint32_t offset,uint32_t value) {
     else if(strncmp(command,"AT+CIPSEND=",11)==0) {
         enqueue("\r\nOK\r\n");if(scenario!=3) {enqueue("> ");raw_left=32;raw_used=0;}
     } else if(strcmp(command,"AT+CIPSERVER=0\r\n")==0 || strcmp(command,"AT+CWMODE=1\r\n")==0 ||
-              strcmp(command,"AT+CIPMUX=1\r\n")==0 || strcmp(command,"AT+CIPDINFO=0\r\n")==0 ||
+              strcmp(command,"AT+CIPMUX=1\r\n")==0 || strcmp(command,"AT+CIPDINFO=0\r\n")==0 || strcmp(command,"AT+SLEEP=0\r\n")==0 ||
               strcmp(command,"AT+CIPRECVMODE=0\r\n")==0 || strcmp(command,"AT+CIPSERVER=1,8266\r\n")==0)
         enqueue("\r\nOK\r\n");
     else enqueue("\r\nERROR\r\n"); // Explicit supported command set; obsolete _CUR commands fail.
@@ -101,7 +104,7 @@ int main(void) {
     reset(8);ready();check(network_info.phase==6 && network_info.error==29 && network_info.last_code==3 && !join_seen,
           "unsupported volatile storage blocks private join");
     reset(3);ready();enqueue("\r\n0,CONNECT\r\n");tick();unsigned char f[36];(void)make(f,0,0,0,0,0);ipd(f,36);
-    for(uint32_t i=0;i<60 && network_info.phase!=6;++i) tick();
+    for(uint32_t i=0;i<400 && network_info.phase!=6;++i) tick();
     check(network_info.phase==6 && network_info.error==27 && ack_count==0,"OK cannot replace CIPSEND prompt");
     reset(0);ready();enqueue("\r\nWIFI DISCONNECT\r\n");tick();check(network_info.phase==6 && network_info.error==23,"Wi-Fi loss blocks network");
     reset(5);check(network_info.phase==6 && network_info.error==32,"UART overflow blocks network");

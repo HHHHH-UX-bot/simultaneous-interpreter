@@ -54,7 +54,13 @@ reset_entry:
     /* Invalidate D-cache lines for every DDR region the app touches
        (0x00F00000 guard bytes through 0x01E00000 page table/stack). */
     ldr r0, =0x00F00000
+#ifdef Z7_ARM_TLS
+    ldr r1, =0x02800000  /* Include the opt-in TLS code and static arena. */
+#elif defined(Z7_TRANSLATE_AUDIO)
+    ldr r1, =0x02100000  /* Include the dedicated translated-audio ring. */
+#else
     ldr r1, =0x01E00000
+#endif
 2:  cmp r0, r1
     bhs 3f
     mcr p15, 0, r0, c7, c6, 1          @ DCIMVAC

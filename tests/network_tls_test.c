@@ -4,6 +4,7 @@
 static char tls_tx[320];
 static uint32_t tls_used,tls_case,time_queries,connect_queries,close_queries,server_queries,wrong_cn;
 static void tls_write(uint32_t offset,uint32_t value) {
+    if(offset==8 || offset==12) return; /* UART divider and FIFO reset. */
     check(offset==16 && tls_used+1<sizeof(tls_tx),"bounded TLS command");
     tls_tx[tls_used++]=(char)value;tls_tx[tls_used]=0;
     if(value!='\n') return;
@@ -19,7 +20,7 @@ static void tls_write(uint32_t offset,uint32_t value) {
         enqueue(tls_case==4?"\r\nERROR\r\n":tls_case==5?"\r\nOK\r\n":tls_case==7?"\r\n0,CONNECT\r\nOK\r\n0,CLOSED\r\n":"\r\n0,CONNECT\r\nOK\r\n");
     } else if(!strcmp(tls_tx,"AT+CIPCLOSE=0\r\n")) {
         ++close_queries;enqueue(tls_case==6 || tls_case==4?"\r\nERROR\r\n":"\r\n0,CLOSED\r\nOK\r\n");
-    } else if(!strncmp(tls_tx,"AT+CIPSNTPCFG=",14) || !strncmp(tls_tx,"AT+CIPSSL",9) || !strcmp(tls_tx,"AT+CIPMUX=0\r\n")) {
+    } else if(!strncmp(tls_tx,"AT+CIPSNTPCFG=",14) || !strncmp(tls_tx,"AT+CIPSSL",9) || !strcmp(tls_tx,"AT+CIPMUX=0\r\n") || !strcmp(tls_tx,"AT+CIPRECVMODE=1\r\n")) {
         if(!strcmp(tls_tx,"AT+CIPSSLCCN=0,\"wrong.invalid\"\r\n")) wrong_cn=1;
         enqueue("\r\nOK\r\n");
     }
@@ -44,13 +45,19 @@ static void tls_close(void) {
     for(uint32_t i=0;i<20 && network_info.config_ack!=network_config.request_sequence;++i) tick();
     for(uint32_t i=0;i<80 && network_info.phase!=0 && network_info.phase!=6;++i) tick();
 }
+#ifndef NETWORK_TLS_TEST_NO_MAIN
+#ifdef Z7_TRANSLATE_AUDIO
+void cache_clean_range(const void *start,unsigned bytes) {(void)start;(void)bytes;}
+#endif
+static void tls_receive(uint8_t byte) {(void)byte;}
 int main(void) {
     check(legacy_suite()==0,"legacy LAN unchanged");
     tls_reset(0);tls_run();check(network_info.phase==8 && !network_info.error,"trusted TLS opens on ARM");
     check(time_queries==2 && connect_queries==1 && !server_queries,"wait SNTP before SSL, no LAN server");
     check(!network_owns_ui() && state.session==UI_RUNNING,"TLS bootstrap does not clear or pause UI");
     for(uint32_t i=0;i<100;++i) check(!network_config.credentials[i],"Wi-Fi private input consumed");
-    tls_close();check(network_info.phase==0 && close_queries==1,"close and restore MUX0");
+    uint32_t initial_closes=close_queries;
+    tls_close();check(network_info.phase==0 && close_queries==initial_closes+1,"close and restore MUX0");
     tls_reset(1);tls_run();check(network_info.error==44 && !connect_queries,"bare DNS OK cannot certify hostname lookup");
     tls_reset(2);tls_run();check(network_info.error==45 && !connect_queries && time_queries<20,"unsynced clock times out before TLS");
     tls_reset(3);tls_run();check(network_info.error==44 && !connect_queries,"auth0 readback cannot open SSL");
@@ -63,6 +70,9 @@ int main(void) {
     check(network_info.phase==8 && network_info.rejected==1 && !network_info.error,"new LAN request cannot take TLS ownership");
     tls_close();check(network_info.phase==0,"rejected reconfiguration preserves valid close path");
     tls_reset(0);tls_run();enqueue("\r\n0,CLOSED\r\n");tick();check(network_info.phase==6 && network_info.error==47,"peer disconnect invalidates ready TLS");
+    tls_reset(0);tls_run();check(network_stream_attach(tls_receive),"cloud adopts TLS");
+    enqueue("\r\n0,CLOSED\r\n");tick();check(network_info.phase==6 && network_info.error==47,"peer disconnect invalidates active cloud stream");
     tls_reset(0);clock_ms=0xfffffff0u;tls_run();check(network_info.phase==8,"SNTP timers survive wrap");
     printf("PASS_NETWORK_TLS checks=%u\n",checks);return 0;
 }
+#endif

@@ -3,6 +3,11 @@
 #include "stream_pilot.h"
 #include "cloud_live.h"
 #include "cloud_client.h"
+#include "speech_playback.h"
+#include "wifi_recover.h"
+#ifdef Z7_ARM_TLS
+#include "arm_tls.h"
+#endif
 #include "../subtitle_ui/ui_demo.h"
 #include "../subtitle_ui/ui_render.h"
 static void render_service(void);
@@ -34,6 +39,20 @@ static int uart_at(const char *text,uint32_t window_ms) {
    base64 is about 46 kB/s. Negotiate the module up to 921600 (divider 54) and
    fall back to the previous rate if the module does not follow. */
 static void uart_link_setup(void) {
+#ifdef Z7_TRANSLATE_AUDIO
+    const uint32_t rates[]={434u,WIFI_STREAM_DIVISOR,54u};
+    for(uint32_t i=0;i<3u;++i) {
+        uart_flush();uart_write(8,rates[i]);
+        (void)uart_at("AT\r\n",150);
+        if(!uart_at("AT\r\n",300)) continue;
+        if(rates[i]==WIFI_STREAM_DIVISOR) return;
+        if(!uart_at(WIFI_STREAM_UART_COMMAND,500)) return;
+        for(volatile uint32_t wait=0;wait<4000000u;++wait) {}
+        uart_flush();uart_write(8,WIFI_STREAM_DIVISOR);
+        if(uart_at("AT\r\n",300)) return;
+        uart_flush();uart_write(8,rates[i]);return;
+    }
+#else
     uart_flush();
     (void)uart_at("AT\r\n",150);                 // warm, ignore the answer
     if(uart_at("AT\r\n",300)) {
@@ -56,6 +75,7 @@ static void uart_link_setup(void) {
     uart_flush();uart_write(8,434);
     for(volatile uint32_t i=0;i<400000u;++i) {}
     uart_flush();(void)uart_at("AT\r\n",300);
+#endif
 }
 static uint8_t upload[1536];
 static void put_word(uint32_t at,uint32_t value) {
@@ -94,6 +114,10 @@ static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_
     stream_pilot_init((const uint8_t *)STREAM_PILOT_TX_ADDRESS,(uint8_t *)STREAM_PILOT_RX_ADDRESS);
     cloud_live_init(s);
     cloud_client_init();
+#ifdef Z7_ARM_TLS
+    arm_tls_init();
+#endif
+    speech_playback_init();
     service_ms=now-1u;network_upload_duration=upload_sequence=upload_ready=0;
     ui_render_set_service(render_service);
 #ifdef Z7_UART_921600
@@ -103,6 +127,7 @@ static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_
 static void network_background_tick(struct ui_state *s,uint32_t now) {
     if(now-service_ms<1u) return;
     service_ms=now;
+    speech_playback_tick(now);
 #ifdef Z7_UART_921600
     if(wifi_info.phase==2u) uart_accepted=1;
     if(uart_accepted) network_tick(s,now);
@@ -113,13 +138,28 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
     if(network_info.phase==6u) cloud_client_stop();
 #endif
     cloud_live_tick(now);
+#ifdef Z7_ARM_TLS
+    arm_tls_tick(now);
+    if(arm_tls_ready()) cloud_client_start(now);
+#else
     if(network_info.phase==8u) cloud_client_start(now);
+#endif
     cloud_client_tick(now);
-    if(stream_pilot.request || stream_pilot.phase) stream_pilot_tick(now);else upload_tick(now);
+    if(stream_pilot.request || stream_pilot.phase) stream_pilot_tick(now);
+    else if(!cloud_live_owns_ui()
+#ifdef Z7_ARM_TLS
+            && !arm_tls_active()
+#endif
+    ) upload_tick(now);
 }
 static void network_demo_tick(struct ui_demo_clock *c,struct ui_state *s,uint32_t now) {
     network_background_tick(s,now);
+#ifdef Z7_TRANSLATE_EN
+    /* Leave the bilingual display empty until real cloud text arrives. */
+    (void)c;
+#else
     if(!network_owns_ui() && !cloud_live_owns_ui()) ui_demo_tick(c,s,now);
+#endif
 }
 #define ui_demo_init network_demo_init
 #define ui_demo_tick network_demo_tick

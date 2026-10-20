@@ -31,6 +31,9 @@ struct cloud_client_state {
 enum { CLOUD_IDLE, CLOUD_HANDSHAKE, CLOUD_WAITING_SESSION, CLOUD_WAITING_UPDATE, CLOUD_STREAMING };
 
 void cloud_client_init(void);
+/* Receipt-to-final diagnostics; excludes server VAD's silence window/uplink. */
+void cloud_client_speech_stopped(void);
+void cloud_client_asr_final(void);
 void cloud_client_start(uint32_t now);
 /* Called from the cloud event mapper: session.created arrives first, then the
    session.update is acknowledged by session.updated, and only then may audio be

@@ -73,7 +73,14 @@ static enum cloud_parse_code cloud_json_text(const char *s,const jsmntok_t *t,in
     if(token<0 || t[token].type!=JSMN_STRING) return CLOUD_SCHEMA;
     int at=t[token].start;uint32_t n=0;
     while(at<t[token].end) {
-        if(n==UI_MAX_TEXT-1) return CLOUD_LIMIT;
+        if(n==UI_MAX_TEXT-1) {
+#ifdef Z7_TRANSLATE_EN
+            for(uint32_t i=1;i<n;++i) out[i-1u]=out[i];
+            --n; /* Keep the latest screenful; a long final must still commit. */
+#else
+            return CLOUD_LIMIT;
+#endif
+        }
         if(!cloud_json_scalar(s,t[token].end,&at,out+n)) return CLOUD_JSON;
         ++n;
     }
@@ -85,7 +92,14 @@ static enum cloud_parse_code cloud_json_text_append(const char *s,const jsmntok_
     if(token<0 || t[token].type!=JSMN_STRING) return CLOUD_SCHEMA;
     int at=t[token].start;
     while(at<t[token].end) {
-        if(*n==UI_MAX_TEXT-1) return CLOUD_LIMIT;
+        if(*n==UI_MAX_TEXT-1) {
+#ifdef Z7_TRANSLATE_EN
+            for(uint32_t i=1;i<*n;++i) out[i-1u]=out[i];
+            --*n;
+#else
+            return CLOUD_LIMIT;
+#endif
+        }
         if(!cloud_json_scalar(s,t[token].end,&at,out+*n)) return CLOUD_JSON;
         ++*n;
     }
@@ -160,7 +174,15 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
         return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,"transcript"),event->text);
     }
-    if(cloud_json_equal(s,tokens+type,"response.text.text")) {
+    if(cloud_json_equal(s,tokens+type,"response.audio.delta")) {
+        value=cloud_json_member(s,tokens,count,0,"delta");
+        if(value<0 || tokens[value].type!=JSMN_STRING) return CLOUD_SCHEMA;
+        event->kind=CLOUD_AUDIO_DELTA;event->audio=s+tokens[value].start;
+        event->audio_bytes=(uint32_t)(tokens[value].end-tokens[value].start);
+        return CLOUD_OK;
+    }
+    if(cloud_json_equal(s,tokens+type,"response.audio.done")) {event->kind=CLOUD_AUDIO_DONE;return CLOUD_OK;}
+    if(cloud_json_equal(s,tokens+type,"response.text.text") || cloud_json_equal(s,tokens+type,"response.audio_transcript.text")) {
         /* qwen3.5 streams the (speculative) full translation text in this
            event; response.text.done carries the final text. */
         event->kind=CLOUD_TRANSLATION_DELTA;
@@ -170,7 +192,10 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         int rtok=cloud_json_member(s,tokens,count,0,"response_id");
         if(rtok>=0) (void)cloud_json_identifier(s,tokens,rtok,event->response_id);
         int ttext=cloud_json_member(s,tokens,count,0,"text");
-        if(ttext<0 || cloud_json_text(s,tokens,ttext,event->text)) event->text[0]=0;
+        uint32_t n=0;
+        (void)cloud_json_text_append(s,tokens,ttext,event->text,&n);
+        (void)cloud_json_text_append(s,tokens,cloud_json_member(s,tokens,count,0,"stash"),event->text,&n);
+        event->text[n]=0;
         return CLOUD_OK;
     }
     if(cloud_json_equal(s,tokens+type,"response.text.delta")) {
@@ -185,11 +210,12 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         if(dtok<0 || cloud_json_text(s,tokens,dtok,event->text)) event->text[0]=0;
         return CLOUD_OK;
     }
-    if(cloud_json_equal(s,tokens+type,"response.text.done")) {
+    if(cloud_json_equal(s,tokens+type,"response.text.done") || cloud_json_equal(s,tokens+type,"response.audio_transcript.done")) {
         event->kind=CLOUD_TRANSLATION;
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"response_id"),event->response_id);if(code) return code;
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
-        return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,"text"),event->text);
+        const char *key=cloud_json_equal(s,tokens+type,"response.audio_transcript.done")?"transcript":"text";
+        return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,key),event->text);
     }
     if(cloud_json_equal(s,tokens+type,"response.done")) {
         event->kind=CLOUD_RESPONSE_DONE;int response=cloud_json_member(s,tokens,count,0,"response");
@@ -205,8 +231,25 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         if(cloud_json_uint(s,tokens,cloud_json_member(s,tokens,count,0,"audio_start_ms"),&event->audio_start_ms)) event->audio_start_ms=0;
         return CLOUD_OK;
     }
+    if(cloud_json_equal(s,tokens+type,"input_audio_buffer.speech_stopped")) {
+        event->kind=CLOUD_SPEECH_STOPPED;
+        return CLOUD_OK;
+    }
     if(cloud_json_equal(s,tokens+type,"session.created")) {event->kind=CLOUD_SESSION_CREATED;return CLOUD_OK;}
-    if(cloud_json_equal(s,tokens+type,"session.updated")) {event->kind=CLOUD_SESSION_UPDATED;return CLOUD_OK;}
+    if(cloud_json_equal(s,tokens+type,"session.updated")) {
+        event->kind=CLOUD_SESSION_UPDATED;
+        int session=cloud_json_member(s,tokens,count,0,"session");
+        int turn=cloud_json_member(s,tokens,count,session,"turn_detection");
+        int interrupt=cloud_json_member(s,tokens,count,turn,"interrupt_response");
+        if(interrupt>=0 && tokens[interrupt].type==JSMN_PRIMITIVE) {
+            int at=tokens[interrupt].start,len=tokens[interrupt].end-at;
+            if(len==4 && s[at]=='t' && s[at+1]=='r' && s[at+2]=='u' && s[at+3]=='e')
+                event->interrupt_known=event->interrupt_response=1;
+            else if(len==5 && s[at]=='f' && s[at+1]=='a' && s[at+2]=='l' && s[at+3]=='s' && s[at+4]=='e')
+                event->interrupt_known=1;
+        }
+        return CLOUD_OK;
+    }
     if(cloud_json_equal(s,tokens+type,"session.finished")) {event->kind=CLOUD_FINISHED;return CLOUD_OK;}
     if(cloud_json_equal(s,tokens+type,"error") || cloud_json_equal(s,tokens+type,"conversation.item.input_audio_transcription.failed")) {
         event->kind=CLOUD_ERROR;int error=cloud_json_member(s,tokens,count,0,"error");

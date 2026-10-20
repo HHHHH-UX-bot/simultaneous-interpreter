@@ -37,6 +37,8 @@ void cloud_wire_init(int (*message)(const char *,uint32_t,void *),void *user) {
 static int cloud_wire_control(void) {
     if(cloud_wire.opcode==WSLAY_PONG) return 0;
     if(cloud_wire.opcode==WSLAY_CONNECTION_CLOSE && cloud_wire.control_used==1) return 1;
+    if(cloud_wire.opcode==WSLAY_CONNECTION_CLOSE && cloud_wire.control_used>=2u)
+        cloud_wire.stats.close_code=((uint32_t)cloud_wire.control[0]<<8)|cloud_wire.control[1];
     /* RFC 6455 permits replying to the latest pending ping; close takes priority. */
     cloud_wire.out_used=0;
     struct wslay_frame_iocb out={0};out.fin=1;out.mask=1;

@@ -1,10 +1,14 @@
 #ifndef NETWORK_UI_CLOUD_EVENTS_H
 #define NETWORK_UI_CLOUD_EVENTS_H
 #include "../subtitle_ui/ui_model.h"
+#ifdef Z7_TRANSLATE_AUDIO
+#define CLOUD_JSON_BYTES 65536u
+#else
 #define CLOUD_JSON_BYTES 4096u
+#endif
 #define CLOUD_ID_BYTES 80u
 enum cloud_kind {CLOUD_IGNORE,CLOUD_ASR_FINAL,CLOUD_TRANSLATION,CLOUD_RESPONSE_DONE,CLOUD_FINISHED,CLOUD_ERROR,CLOUD_ITEM_LINK,
-                 CLOUD_SESSION_CREATED,CLOUD_SESSION_UPDATED,CLOUD_TRANSLATION_DELTA,CLOUD_SPEECH_STARTED,CLOUD_ASR_PARTIAL};
+                 CLOUD_SESSION_CREATED,CLOUD_SESSION_UPDATED,CLOUD_TRANSLATION_DELTA,CLOUD_SPEECH_STARTED,CLOUD_ASR_PARTIAL,CLOUD_SPEECH_STOPPED,CLOUD_AUDIO_DELTA,CLOUD_AUDIO_DONE};
 enum cloud_parse_code {CLOUD_OK,CLOUD_JSON,CLOUD_SCHEMA,CLOUD_LIMIT};
 struct cloud_event {
     enum cloud_kind kind;
@@ -15,6 +19,9 @@ struct cloud_event {
     char error_message[CLOUD_ID_BYTES];
     char previous_id[CLOUD_ID_BYTES];
     uint32_t text[UI_MAX_TEXT];
+    const char *audio;
+    uint32_t audio_bytes;
+    uint32_t interrupt_known,interrupt_response;
 };
 /* One complete JSON text message after WebSocket reassembly. Output is valid
    only on CLOUD_OK. Unknown events are ignored; text whitespace becomes spaces.

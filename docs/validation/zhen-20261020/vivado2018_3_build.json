@@ -1,0 +1,103 @@
+{
+  "part": "xc7z010clg400-1",
+  "setup_slack_ns": 6.318,
+  "hold_slack_ns": 0.024,
+  "pins_verified": true,
+  "audio_pins_verified": true,
+  "clocks_verified": true,
+  "audio_base_addr": "0x43c20000",
+  "usr_access": 1513573939,
+  "Status": "passed",
+  "LogicHashes": [
+    {
+      "File": "rtl/i2c_master.v",
+      "SHA256": "93ea995f75e61d31ba0307c5c574e84f2599d6ee10ebab4cac477278c3af2447"
+    },
+    {
+      "File": "rtl/wm8731_init.v",
+      "SHA256": "45ba7fb0d3a381a640a75123019be05974102a8f5c2bcf36d475ce7ed7ad67a3"
+    },
+    {
+      "File": "rtl/i2s_loopback.v",
+      "SHA256": "d6f8f11802d6f12c408e37a499a5a7b15dfc2281dac885e8aca8bbaa8e44124b"
+    },
+    {
+      "File": "rtl/audio_latency.v",
+      "SHA256": "2e82b9fb37a259cfcd0b0a9558590ea8eeabef9c57a8d88cf2fd161ed976cd9c"
+    },
+    {
+      "File": "rtl/audio_regs.v",
+      "SHA256": "e3428102431e4ecaeec7a654370a2546a2d9af22a7e1c23db50b32ce89818d69"
+    },
+    {
+      "File": "rtl/audio_playback.v",
+      "SHA256": "dd3cc46c0d8194ef3e46c690a673022263cc089667dda2a7021e36d011772047"
+    },
+    {
+      "File": "rtl/audio_overlay.v",
+      "SHA256": "7a10b2918ad25793c03917bf4220581d8275dece056a120c01a519000c27e714"
+    },
+    {
+      "File": "rtl/audio_sample_tap.v",
+      "SHA256": "82448f80fc74d3fe8d034e6e2ff6fef9fa61d7bcd1ad7804fd7f7716579a3bec"
+    },
+    {
+      "File": "rtl/z7_nano_audio_top.v",
+      "SHA256": "9e9665022b856b1467e0618a92bb095cd572df100016fd6766046cd617dd3679"
+    },
+    {
+      "File": "rtl/framebuffer_video.v",
+      "SHA256": "84ef8fcbafae428c6562d75739d68585ad14c78a789df0eb52fa5f7132583cb5"
+    },
+    {
+      "File": "rtl/hdmi_clock.v",
+      "SHA256": "c1da59cae959a903b127ac3752082c10ffb68daf1d1d6d7a2183117e388f835e"
+    },
+    {
+      "File": "rtl/async_rst_sync.v",
+      "SHA256": "f2c4799019ffcfb37208f47738eb3e29ef1de0b211db65c6b9a54fd2e1d14867"
+    },
+    {
+      "File": "rtl/dvi_encoder.v",
+      "SHA256": "4f2a32ef85254ca319c914919d541e032dbeaea6aebad9f4393bda05c1b445ef"
+    },
+    {
+      "File": "rtl/dvi_transmitter_top.v",
+      "SHA256": "d4ed8ed2caed331fe0a01475483350e78aea41306164271716391f2e08984dfc"
+    },
+    {
+      "File": "rtl/serializer_10_to_1.v",
+      "SHA256": "27fdac63188bc93483ab7b72fb09003f5d7aa3acafae3e9b90ced7cd6e275aa4"
+    },
+    {
+      "File": "rtl/wifi_uart_axi.v",
+      "SHA256": "a4b45c65057b2774833759ba90bc6bd73e2a2c1b52c23de8f421772a146e7f7c"
+    },
+    {
+      "File": "rtl/wifi_uart_phy.v",
+      "SHA256": "3b14e6ad852185c29ea258944366eb3e0912aaac7d5d81f972bd68f33403a464"
+    },
+    {
+      "File": "rtl/wifi_byte_fifo.v",
+      "SHA256": "a58dc970c50e1eb7b850ed78b88fe06c76989e256bf4fae7eda454882e7be2d8"
+    },
+    {
+      "File": "scripts/build_z7_nano_audio.tcl",
+      "SHA256": "7907014ada7b510e9385055028e1c16d21a004d5ecd4a673cfe0925df4f521eb"
+    },
+    {
+      "File": "scripts/prepare_z7_nano.py",
+      "SHA256": "2009c4ca7afa27c16a99ea8762d236022662efdf734c5a60e8270ec9d714bf2c"
+    },
+    {
+      "File": "hardware/z7_nano/source.json",
+      "SHA256": "b9aad42a4aa52ff31b80724efcba40243a1b388affcbed5f448ddae7008bf9f5"
+    },
+    {
+      "File": "hardware/z7_nano/audio_module.json",
+      "SHA256": "1e847e5b6edbdda56d4c9e7dd7dad4e35b4b50abc77c5cfa060d25ea903dda11"
+    }
+  ],
+  "BitstreamSHA256": "de2837f2aebc29655eb89ddd9cb7746f2b0141106d62c0588ffd675542a1c7d6",
+  "VerifiedAtUTC": "2026-10-19T07:25:58.276705+00:00"
+}

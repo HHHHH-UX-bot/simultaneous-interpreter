@@ -35,6 +35,8 @@ int network_send(const uint8_t *data,uint32_t size);
 int network_stream_attach(void (*receive)(uint8_t));
 int network_stream_busy(void);
 int network_stream_detach(void);
+/* A broken WebSocket must release the TLS transport so setup can restart. */
+void network_stream_failed(void);
 /* Finish the queued raw block, escape passthrough and close its TCP link. */
 void network_stop(void);
 #endif

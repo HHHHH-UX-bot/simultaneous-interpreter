@@ -25,6 +25,8 @@ xsim.dir/
 *.lic
 *.pem
 !hardware/esp8266/globalsign_r3.pem
+# Public trust anchor for the opt-in ARM TLS transport.
+!software/network_ui/tls_root.pem
 *.key
 *.pfx
 *.p12

@@ -23,6 +23,7 @@ create_project nano_audio [file join $out vivado] -part $board_part -force
 
 add_files [file join $root rtl framebuffer_video.v]
 add_files [file join $root rtl audio_regs.v]
+add_files [file join $root rtl audio_playback.v]
 # The ESP8266 UART is a module reference inside the block design, so its
 # sources must be in the project before create_bd_cell resolves them.
 foreach filename {ps_wifi_uart.v wifi_uart_axi.v wifi_uart_phy.v wifi_byte_fifo.v} {
@@ -117,10 +118,10 @@ set audio_status_in {live codec_found codec_addr_sel init_busy init_done init_er
                      overruns underruns bclk_cycles latency_us min_us max_us max_valid \
                      pin_count0 pin_count1 pin_count2 pin_count3 \
                      rb_r4 rb_r7 rb_r8 rb_r9 rb_valid sda_idle scl_idle \
-                     sample_data sample_toggle sample_count}
+                     sample_data sample_toggle sample_count playback_bclk playback_lrclk}
 set audio_ctrl_out {init_trigger clear_extremes freeze_display translation_ms translation_valid \
                     cfg_r0 cfg_r1 cfg_r2 \
-                    cfg_r3 cfg_r4 cfg_r5 cfg_r7 cfg_r8}
+                    cfg_r3 cfg_r4 cfg_r5 cfg_r7 cfg_r8 playback_dac playback_enable}
 foreach pin [concat $audio_status_in $audio_ctrl_out] {
     make_bd_pins_external [get_bd_pins aregs/$pin]
     set port [get_bd_ports ${pin}_0]

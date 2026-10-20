@@ -10,3 +10,10 @@ uint64_t wslay_byteswap64(uint64_t value) {return __builtin_bswap64(value);}
 #define htons(value) __builtin_bswap16((uint16_t)(value))
 #define NDEBUG
 #include "../../third_party/wslay/lib/wslay_frame.c"
+/* Protocol metadata only: never export the parser's payload buffer. */
+void cloud_frame_debug(uint32_t *out) {
+    out[0]=0x31444657u;out[1]=(uint32_t)cloud_frame_storage.istate;
+    out[2]=cloud_frame_storage.iom.opcode;out[3]=cloud_frame_storage.iom.fin;
+    out[4]=cloud_frame_storage.iom.rsv;out[5]=cloud_frame_storage.imask;
+    out[6]=(uint32_t)cloud_frame_storage.ipayloadlen;out[7]=(uint32_t)cloud_frame_storage.ipayloadoff;
+}

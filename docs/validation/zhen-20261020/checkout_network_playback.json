@@ -1,0 +1,43 @@
+{
+  "status": "passed",
+  "tests": {
+    "speech_playback": "PASS_SPEECH_PLAYBACK real WS/JSON/base64, signed PCM order, >4k events, 12s ring wrap, jitter without underruns, prefill and short tails",
+    "network_duplex": "PASS_NETWORK_DUPLEX microphone CIPSEND progresses with continuous IPD; all incoming and outgoing bytes exact",
+    "network_tls": "PASS_NETWORK_RUNTIME checks=3806\r\nPASS_NETWORK_TLS checks=13980",
+    "network_tls_audio": "PASS_NETWORK_RUNTIME checks=4076\r\nPASS_NETWORK_TLS checks=14592",
+    "network_speech_recovery": "PASS_NETWORK_SPEECH_RECOVERY checks=3914 interrupted binary CIPSEND resynchronizes before TLS retry",
+    "network_speech_passive": "PASS_NETWORK_SPEECH_PASSIVE checks=134994 52507 binary bytes, bounded receive priority, short SSL reads fully drain, rejected uploads and empty reads recover",
+    "network_speech_drain_first": "PASS_NETWORK_SPEECH_PASSIVE checks=91053 52507 binary bytes, bounded receive priority, short SSL reads fully drain, rejected uploads and empty reads recover",
+    "network_speech_no_length": "PASS_NETWORK_SPEECH_NO_LENGTH checks=89151 52507 exact bytes, short reads, transient/empty errors, lost notifications and close recovery; zero encrypted-length queries",
+    "network_tls_raw": "PASS_NETWORK_TLS_RAW verified single SSL, exact full duplex, close recovery and host quiesce",
+    "network_arm_tcp": "PASS_NETWORK_ARM_TCP no ESP SSL, exact full duplex, close recovery and host quiesce",
+    "wifi_recover": "PASS_WIFI_RECOVER fast/slow peers, volatile reset, verified baud, silent/wrong-speed/stuck-TX failures bounded",
+    "wifi_recover_921600": "PASS_WIFI_RECOVER fast/slow peers, volatile reset, verified baud, silent/wrong-speed/stuck-TX failures bounded",
+    "wifi_recover_460800": "PASS_WIFI_RECOVER fast/slow peers, volatile reset, verified baud, silent/wrong-speed/stuck-TX failures bounded",
+    "wifi_recover_1m": "PASS_WIFI_RECOVER fast/slow peers, volatile reset, verified baud, silent/wrong-speed/stuck-TX failures bounded",
+    "network_framing_recovery": "PASS_NETWORK_FRAMING_RECOVERY latched error 1946, rebooted 115200 peer and corrupt AT line recover through verified serial/TLS reset"
+  },
+  "scope": "native real WebSocket/JSON/Base64 to simulated DAC, buffer pacing and full-duplex IPD/AT framing; not subjective speech quality",
+  "input_sha256": {
+    "output/subtitle_ui/ui_assets.c": "c4274a35229313067bda3e97a912c9211f189ccf43a85d66e76c5686011f2f19",
+    "software/network_ui/cloud_events.c": "76b93d2c05033af98be9f77febe69424dd5849d77db674fb20cf987ce9282c70",
+    "software/network_ui/cloud_events.h": "cc12ac1f73a302161e8d10b7b6b21d39092160f657740042692758c503d3404c",
+    "software/network_ui/cloud_frame.c": "05d1d7a8f4bf018b2ca15c7cab34516104800b6058c135986ad11c1a9ec7d3f3",
+    "software/network_ui/cloud_wire.c": "5aee969cb3c0ac340aa05edf1e7dadc5e3229710acbff82dc89ae8a81f4375f1",
+    "software/network_ui/network.c": "bffd4099c41f330bde29006dd477d2d1fa4b5b3ae651e7488d9a9a9364091d4d",
+    "software/network_ui/protocol.c": "19b5f8d10382e963ee3eaccc42138f33bd9637b6e108d4943e3c9801db10c204",
+    "software/network_ui/speech_playback.c": "83f6f14d10e22f4cbab7356cb2f475f8a34f1f70e28852e7f43068d80cb046a5",
+    "software/network_ui/speech_playback.h": "f9dacf1af940927ab59b9d58188b0f223e42010effb6c6dc63af3ca5eb10f718",
+    "software/network_ui/wifi_recover.c": "6c22fa2942ca43e5e75dae3192675138e43ec7e59a96cb9711c9cb690b9f82ed",
+    "software/subtitle_ui/ui_model.c": "54b23c8b77c62f13b132d761c413295482125e58275e8835f78c7cc6dfa76f2b",
+    "tests/network_duplex_test.c": "442e79ad81684402223979602789b453309eda1b29beb6ba7e546584ccf9c8af",
+    "tests/network_framing_recovery_test.c": "8389a2f4d4754c47a91d77a2ba81d606576f2c7230dd8481908ce42c515b6f13",
+    "tests/network_speech_no_length_test.c": "80726c5356e611b59889bc768c5e9554dd64c67b25b2d9bff78e418407806cb7",
+    "tests/network_speech_passive_test.c": "f535700fd3c3eab4308e498443d86b7a5dc74bfc0653845ad8f9fa6d2da0effd",
+    "tests/network_speech_recovery_test.c": "212b9a89cce66b621d14f4269b03a57777cece8b6492c815dc465c5d271c3965",
+    "tests/network_tls_raw_test.c": "0a8746e04b8f84d98b94f35a347016fb139eb4f9a494c497a812fbd79a8f975c",
+    "tests/network_tls_test.c": "f45020036e87a6101451239b82b4bff88f2f6c3e6fbdb1579157cb7e16312b1c",
+    "tests/speech_playback_test.c": "3f560f1921c92a48244966df4f48c35d421f8a9e16839d8de6d02f09ffc1bab8",
+    "tests/wifi_recover_test.c": "167019e3be1a8220a2feecd08a946f46457df4d8417a0053ad8ea9f7f51f1fb6"
+  }
+}

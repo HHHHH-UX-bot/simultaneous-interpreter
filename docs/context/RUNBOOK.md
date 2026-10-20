@@ -4,6 +4,27 @@
 
 2026-10-13 当前硬件已更换为 Z7-Nano 7010，新板按 [BOARD_MIGRATION](../design/BOARD_MIGRATION.md) 的 M 阶段执行。下面原 P2b/W 阶段的板级命令针对 RevB，不绕过身份保护操作新板。电脑模型阶段保持其原范围。
 
+## 中文译英候选（2026-10-20）
+
+对应范围和证据先按需读取 [ZHEN](ZHEN.md)。使用已有 Vivado/SDK 2018.3、原生 GCC 和可用 Python；`machine` 环境在本轮设备不可用，实际使用已有 Python 运行时，没有安装依赖。
+
+新检出先准备 `output/display/framebuffer_hw.h` 和 `output/subtitle_ui/ui_assets.c`；分别来自已有显示/字库资产生成流程；字库命令为 `python -B scripts/generate_subtitle_assets.py --font <已有中文字体>`。Z7-Nano 显示准备脚本在完成 DDR 核验后生成 `output/z7_nano/display/framebuffer_hw.h`，供当前云应用使用时应复制到 `output/display/framebuffer_hw.h`。桌面完整保存版附带了本轮已使用的生成输入。自测音频可由 `scripts/generate_selftest_audio.py` 使用 Windows 中文 TTS 生成；不同声音版本不保证生成相同的 PCM 或 ELF 哈希。普通麦克风构建不需要自测 PCM。
+
+```text
+python -B scripts/build_cloud_app.py --gcc <ARM-GCC> --mode zhen --speech --arm-tls --uart-baud 1000000 --output-dir output/repair/microphone
+python -B scripts/validate_speech_playback.py --gcc <Windows-native-GCC>
+python -B scripts/validate_asr_accuracy.py --gcc <Windows-native-GCC> --mode zhen --speech --tls-passthrough
+python -B scripts/validate_arm_tls.py --gcc <Windows-native-GCC>
+```
+
+增加 `--selftest` 才构建固定输入版。脚本默认仍保留历史方式，当前候选须显式传入上面的模式、译音、TLS 和波特率选项。认证检查会访问真实 TLS 服务，但不需要 API 密钥、不加载板卡。
+
+加载前关闭旧云连接并核对板型/JTAG 身份。使用 `scripts/z7_nano_audio.tcl run <serial> <bit> <record.json> <matching-ps7-init.tcl> <elf>` 完整配置；脚本先系统复位，再配置 PL/PS、加载 ELF，并打开 USB0 屏幕供电。不能仅凭工具退出码判成功，必须看到 `PASS_Z7_NANO_AUDIO_RUN`。
+
+配置源码入口为 `scripts/configure_cloud_runtime.py --env --yes --speech --model translate --symbols <matching-symbols.log>`，只在进程环境传入 `Z7_WIFI_SSID`、`Z7_WIFI_PASSWORD`、`Z7_CLOUD_KEY`，调用后清除。工具自动将一次性系统随机种子和 UTC 写入匹配 ELF 的私有 OCM 区，再发布网络请求；缺少有效种子时不会发送云鉴权。必须以 `CLOUD_READY` 及公共计数确认成功。
+
+`scripts/repair/board_soak.py` 对已知自测 ELF 做有界观察，`check_microphone_ready.py` 检查真实采集和上传；只读取白名单公共计数。样本匹配其父目录 ELF 与符号，不混用固件。自测、实际麦克风、主观听感和独立启动分别验收。
+
 ## P0 方案与基础文档（本轮）
 
 前置：项目根目录和规则已确认，优先使用有效现有信息。

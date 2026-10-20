@@ -31,6 +31,7 @@ RTL_INPUTS = [
     "rtl/i2s_loopback.v",
     "rtl/audio_latency.v",
     "rtl/audio_regs.v",
+    "rtl/audio_playback.v",
     "rtl/audio_overlay.v",
     "rtl/audio_sample_tap.v",
 ]
@@ -40,6 +41,7 @@ SIM_INPUTS = [
     "sim/tb_i2s_loopback.v",
     "sim/tb_audio_latency.v",
     "sim/tb_audio_regs.v",
+    "sim/tb_audio_playback.v",
     "sim/tb_audio_overlay.v",
 ]
 TESTS = [
@@ -48,6 +50,7 @@ TESTS = [
     ("tb_i2s_loopback", "PASS_I2S_LOOPBACK"),
     ("tb_audio_latency", "PASS_AUDIO_LATENCY"),
     ("tb_audio_regs", "PASS_AUDIO_REGS"),
+    ("tb_audio_playback", "PASS_AUDIO_PLAYBACK"),
     ("tb_audio_overlay", "PASS_AUDIO_OVERLAY"),
 ]
 BUILD_INPUTS = RTL_INPUTS + [
