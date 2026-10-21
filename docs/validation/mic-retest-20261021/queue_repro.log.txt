@@ -1,0 +1,5 @@
+CASE 0 committed=1 queued=0 preview_valid=1 error=0
+CASE 1 committed=0 queued=2 preview_valid=1 error=0
+CASE 2 committed=0 queued=2 preview_valid=1 error=0
+CASE 3 committed=0 queued=2 preview_valid=1 error=0
+REPRODUCED_QUEUE_BLOCKAGE actual source; synthetic missing/empty transcript events; not physical event chronology

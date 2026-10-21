@@ -1,0 +1,144 @@
+{
+  "status": "microphone_short_test_passed_but_queue_blockage_and_later_service_error_confirmed",
+  "reference_phrases": [
+    "Good morning.",
+    "I would like a cup of coffee."
+  ],
+  "user_acceptance": "两句都有新的英文和中文",
+  "observed_seconds": 63.9,
+  "samples": 9,
+  "first": {
+    "seconds": 3.2,
+    "utc": "2026-10-21T08:41:45.274064+00:00",
+    "epoch": 20,
+    "ui_session": 1,
+    "ui_stage": 2,
+    "language": 0,
+    "network": [
+      4,
+      0
+    ],
+    "cloud": [
+      1,
+      0
+    ],
+    "client": 4,
+    "asr": 1,
+    "translations": 3,
+    "finals": 0,
+    "pages": 9734,
+    "drops": 0,
+    "cloud_failures": 1,
+    "tls_failures": 1,
+    "uart_errors": [
+      0,
+      0
+    ],
+    "capture_overflows": 0,
+    "audio_ms": 930060,
+    "speech_started": 15,
+    "speech_stops": 17,
+    "dump_header": [
+      826561857,
+      21239040,
+      786432,
+      16000,
+      21121920,
+      21239040,
+      1
+    ],
+    "last_error": "UNEXPECTED_ASR_ERROR",
+    "evidence": "sample_000.json"
+  },
+  "last": {
+    "seconds": 67.1,
+    "utc": "2026-10-21T08:42:49.197381+00:00",
+    "epoch": 20,
+    "ui_session": 1,
+    "ui_stage": 2,
+    "language": 0,
+    "network": [
+      4,
+      0
+    ],
+    "cloud": [
+      1,
+      0
+    ],
+    "client": 4,
+    "asr": 3,
+    "translations": 5,
+    "finals": 0,
+    "pages": 10133,
+    "drops": 0,
+    "cloud_failures": 1,
+    "tls_failures": 1,
+    "uart_errors": [
+      0,
+      0
+    ],
+    "capture_overflows": 0,
+    "audio_ms": 994000,
+    "speech_started": 17,
+    "speech_stops": 19,
+    "dump_header": [
+      826561857,
+      21347200,
+      786432,
+      16000,
+      21176320,
+      21347200,
+      1
+    ],
+    "last_error": "UNEXPECTED_ASR_ERROR",
+    "evidence": "sample_008.json"
+  },
+  "delta": {
+    "asr": 2,
+    "translations": 2,
+    "finals": 0,
+    "pages": 399,
+    "drops": 0,
+    "cloud_failures": 0,
+    "tls_failures": 0,
+    "audio_ms": 63940
+  },
+  "queue_blockage": "orders 1/2 missing source; complete orders 3/4/5 cannot commit",
+  "synthetic_repro": "baseline commits; missing source, empty ASR before target, empty ASR after target all block; a later nonempty matching ASR unblocks",
+  "physical_missing_source_cause": "not established: actual raw event sequence was not captured",
+  "later_error": {
+    "code": "UNEXPECTED_ASR_ERROR",
+    "new_cloud_failures": 1,
+    "tls_failures_added": 0
+  },
+  "recovery": {
+    "ui_epoch": 22,
+    "language": 0,
+    "ui_session": 1,
+    "ui_stage": 0,
+    "cloud": [
+      1,
+      0
+    ],
+    "client": 4
+  },
+  "business_code_changed": false,
+  "raw_voice_exported": false,
+  "board_reprogrammed": false,
+  "source_sha256": {
+    "tests/english_profile_test.c": "dba3a4f57042b382b2ab9143b67f9f680118c5c1dbdf53f55fae197d24587736",
+    "software/network_ui/cloud_live.c": "8c0e1d12a525a9842d09e25961d930cbf338357b656a1f8e5dd976b0caee899e",
+    "software/network_ui/cloud_events.c": "99e0719f8612391e3478bf55072b36c5d576110f5e04c57483fd78ae6cfc7ba6",
+    "software/network_ui/cloud_client.c": "5d4002403a0410e8083b275864385cb4ff6ebecdee154396fa1f83f30d5edb78"
+  },
+  "evidence_sha256": {
+    "later_fault.json": "ea9b0add57920d28c634251c008302dae1e6dd77a48523c98b1c2266af009658",
+    "observation.json": "aa2895e7161ec47818462412a7ecdea920cfeebdef75592a7b1c1a5fce11a4fe",
+    "queue.json": "6386160b58c81fe8fe0a144ff0d8310fadcc513eb75087032fe75d0cf01facf9",
+    "queue_repro.c.txt": "6de25d300fd55e527ece41ef8b3a9acf152921bf010403edfb2728785a35e24f",
+    "queue_repro.log.txt": "a70777496d39d1a3b3b6ea6e28e1b85207ab043e104b80492033fc3684e34b67",
+    "recovery.json": "c8d102ca6fb2ba66fc55def42a98ed6dd5cc4ea3f85aec411620cb64c8eb2b75",
+    "resume_command.log.txt": "955830f2f991538be47a022df662499bb2b78e556a50c049f20d6f9e0b6371de",
+    "session.json": "61e93c3f3aa788a40dbc13ce5a67222e36b2c1e74fdb3ba9eaddf07cbcab899b"
+  }
+}

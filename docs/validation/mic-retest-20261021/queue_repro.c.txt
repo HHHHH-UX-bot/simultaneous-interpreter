@@ -1,0 +1,39 @@
+#define main original_profile_main
+#include "../../tests/english_profile_test.c"
+#undef main
+static void target(void) {
+    event("{\"type\":\"conversation.item.created\",\"item\":{\"id\":\"T0\"},\"previous_item_id\":\"S0\"}");
+    event("{\"type\":\"response.text.done\",\"item_id\":\"T0\",\"response_id\":\"R0\",\"text\":\"translated\"}");
+    event("{\"type\":\"response.done\",\"response\":{\"id\":\"R0\",\"status\":\"completed\"}}");
+}
+static void empty_source(void) {
+    event("{\"type\":\"conversation.item.input_audio_transcription.completed\",\"item_id\":\"S0\",\"transcript\":\"\"}");
+}
+static void good_pair(void) {
+    event("{\"type\":\"conversation.item.input_audio_transcription.completed\",\"item_id\":\"S1\",\"transcript\":\"Good morning.\"}");
+    event("{\"type\":\"conversation.item.created\",\"item\":{\"id\":\"T1\"},\"previous_item_id\":\"S1\"}");
+    event("{\"type\":\"response.text.done\",\"item_id\":\"T1\",\"response_id\":\"R1\",\"text\":\"valid\"}");
+    event("{\"type\":\"response.done\",\"response\":{\"id\":\"R1\",\"status\":\"completed\"}}");
+}
+int main(void) {
+    CHECK(VirtualAlloc((void *)0x43c20000,65536,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE)!=0);
+    CHECK(VirtualAlloc((void *)0x01d30000,65536,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE)!=0);
+    AUDIO_DUMP_HEADER[0]=AUDIO_DUMP_MAGIC;AUDIO_DUMP_HEADER[6]=1;
+    struct ui_state model;ui_init(&model);cloud_live_init(&model);cloud_client_init();speech_playback_init();
+    for(unsigned mode=0;mode<4;++mode) {
+        cloud_live_begin(1000+mode*1000);client.phase=CLOUD_STREAMING;
+        if(mode==2) empty_source();
+        if(mode) target();
+        if(mode==3) empty_source();
+        good_pair();
+        unsigned pending=0;for(unsigned i=0;i<CLOUD_PAIRS;++i)pending+=cloud.pairs[i].order!=0;
+        CHECK(cloud.live.error==0 && model.translated[0]=='v');
+        CHECK(cloud.live.committed==(mode?0u:1u));
+        printf("CASE %u committed=%u queued=%u preview_valid=%u error=%u\n",mode,cloud.live.committed,pending,model.translated[0]=='v',cloud.live.error);
+        if(mode) {
+            event("{\"type\":\"conversation.item.input_audio_transcription.completed\",\"item_id\":\"S0\",\"transcript\":\"late source\"}");
+            CHECK(cloud.live.committed==2u);
+        }
+    }
+    puts("REPRODUCED_QUEUE_BLOCKAGE actual source; synthetic missing/empty transcript events; not physical event chronology");return 0;
+}

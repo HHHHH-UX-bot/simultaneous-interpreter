@@ -1,0 +1,18 @@
+{
+  "utc": "2026-10-21T08:38:49.033169+00:00",
+  "scope": "Actual microphone diagnostic; existing firmware and UI, no business-code edits",
+  "elf_sha256": "46a2c7033f39e3f4c6f1f49b427db1b0c4919374f1b8290ddecd90b74263a124",
+  "load_sha256": "8f34b502f94e1b5e97f38a3439d115d96d8be7ee928312925c0619506b572906",
+  "selftest": false,
+  "hardware": {
+    "status": "passed",
+    "part": "xc7z010",
+    "cable_serial": "210241277120",
+    "usr_access": 1513575512,
+    "done": 1,
+    "eos": 1,
+    "crc_error": 0,
+    "action": "probe",
+    "screen_acceptance": "pending"
+  }
+}
