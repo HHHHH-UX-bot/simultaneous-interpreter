@@ -1,5 +1,7 @@
 # 音频压缩（Opus）与低带宽实时同传方案
 
+现行范围（2026-10-21）：MMU/Cache、DDR 应用/栈、固定点 Opus/Ogg 与真实麦克风云译已实现；下方 2026-10-18 的前置和勾选表是当时过程，不再表示仍未接音频。当前 ARM TLS + ESP TCP、1 Mbaud，固定样本长测与真人故障的边界见 [NOW](../context/NOW.md)和[复测](../validation/mic-retest-20261021/README.md)。
+
 核验日期：2026-10-18。目标是把板端上行从 16 kHz PCM/Base64 的约 44 kB/s 降到 ESP8266 单连接 TLS 能稳定承载的范围（实测约 13–14 kB/s，好时约 38 kB/s），从而让连续多句识别不再丢语音。相关现状见 [NOW](../context/NOW.md) 和 [CLOUD_SPEECH](CLOUD_SPEECH.md)。
 
 ## 为什么需要压缩
@@ -17,7 +19,7 @@
 
 ## 关键前置：MMU / Cache
 
-`software/ps_bringup/start.S` 当前关闭 MMU（SCTLR.M=0）和 I/D Cache，堆栈也在 OCM 顶端（`__stack_top=0x0001FFF0`，可用余量仅数 KB）。Opus 不能以未缓存 DDR 指令运行，动态栈也放不下。
+2026-10-18 早期启动基线 `software/ps_bringup/start.S` 在未启用相应构建宏时关闭 MMU/Cache、栈在 OCM；当前云应用已使用 `Z7_MMU_CACHE` 和 DDR 栈，不能直接套用早期启动限制。
 
 计划（下一阶段实施）：
 
@@ -63,4 +65,4 @@
 2. ✅ 把 `third_party/opus` 接入 `scripts/build_cloud_app.py`：独立编译 128 个 C 文件、静态内存池、`opus_codec` 封装（20 ms 帧、16 kbit/s CBR、VOIP）。
 3. ✅ 新增 Ogg Opus 上行路径：16 kHz PCM FIFO → 320 样本帧 → `opus_encode` → Ogg 页（10 包/页）→ Base64 append；PCM 路径仍在源码中作为回退（`Z7_OPUS` 未定义时编译）。
 4. ✅ 切换 `cloud_config.path` 到 qwen3.5 模型并验证会话与流式发送；✅ 板端无麦克风自测（中文 TTS 循环）验证多句连续、长静音后首句、T1 稳定；⬜ 真实麦克风语音与 30 分钟稳定性的用户验收。
-5. ⬜ 达标后再拆英译中/中译英/英译英工程。
+5. 后续已经形成共享源码的显式 enzh/enen/zhen/zhzh 构建，并实现英中双向菜单；不再将“拆独立工程”列为当前必要步骤。验收仍按各模式/ELF 分开。

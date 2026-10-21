@@ -1,5 +1,7 @@
 # PS 与 DDR 最小验证
 
+适用范围：本文 PS 初始化与验证源码针对旧 ZYNQ_MINI_REVB；当前 Z7-Nano 使用其独立 source.json/PS 初始化和 BOARD_MIGRATION 入口。DDR 检查会改写内存，不得在当前云应用/显示/USB DMA 运行时直接执行旧 bring-up 命令。
+
 ## 范围与实现
 
 本阶段在保留当前 PL 位流的情况下，通过 XSDB 临时运行 Cortex-A9 核 0 的裸机检查程序；不生成启动镜像，不写 QSPI/SD。长期操作规则仍以 [AGENTS](../../AGENTS.md) 为准，当前结论以 [NOW](../context/NOW.md) 为准。

@@ -1,5 +1,7 @@
 # PS 自主通信接管
 
+适用范围：本文是旧 RevB W4 的自主 AT/模拟网络过渡平台；当前产品运行在 Z7-Nano 音频平台，UART/AT/TCP/TLS 均由运行中的 CPU0 拥有。操作按 [NOW](../context/NOW.md)/RUNBOOK，不能把本页旧平台和 ELF 覆盖当前应用。
+
 核验日期：2026-10-11。本文负责 W4 新平台、PS 软件与调试保护的实际方法；原 UART 寄存器合同与 W0–W3 历史结果沿用 [WIFI_LINK](WIFI_LINK.md)。W4-0 自主 AT 与新平台实屏均已通过；W4-1 自主关联和网络模拟字幕及实屏已通过，后续网络协议/证据由 [NETWORK_UI](NETWORK_UI.md)维护，当前状态见 [NOW](../context/NOW.md)。
 
 ## 平台与边界

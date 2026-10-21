@@ -1,42 +1,32 @@
-# 译声：语音中文字幕终端
+# 译声：Zynq 英中语音字幕终端
 
-当前 ARM 字幕版可通过顶部下拉按钮在 `English → Chinese` 与 `Chinese → English` 间切换，用户已实屏确认两种方向。使用规则见[语言切换](docs/design/UI_SPEC.md#板端翻译方向切换2026-10-21)。英语独立识别仍保留显式构建入口；本轮板测进展与限制见 [ENGLISH](docs/context/ENGLISH.md)，当前接续见 [NOW](docs/context/NOW.md)。
+目标是连接 Wi-Fi 后独立进行语音识别、英中翻译、HDMI 显示和 USB 触摸操作。现阶段为 Z7-Nano 7010 的 JTAG 易失原型，仍需要电脑完成下载、运行期凭据与开发调试，尚未实现独立上电启动。
 
-2026-10-21 已确认初版以字幕为主、保留麦克风到耳机的本地回环，见 [D16](docs/context/DECISIONS.md#d16-初版以字幕为主保留本地回环)。产品构建显式增加 `--text-only-response`，沿用同一采音、上传和 PL 回环；[本轮验证](docs/validation/text-response-20261021/README.md)已完成仅字幕固定样本 30 分钟板测，以及真实麦克风、字号和画面短验收。本地回环输出选择已核对；云端译音停更根因仍未确认。
+真实链路为 AN831/WM8731 麦克风 → PL I2S/16 kHz PCM → Cortex-A9 Opus/Ogg → ARM 可信 TLS → ESP8266 TCP/Wi-Fi → 百炼 → 双语字幕。CPU0 绘制 DDR 双缓冲，CPU1 执行 USB Host；采用裸机 C，未迁移 Linux/LVGL。硬件及接线见 [MAP](docs/context/MAP.md)，接口分工见 [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md)。
 
-中文独立识别现可使用共享 Zynq TLS 与 1 Mbps UART，入口见 [ZHZH](docs/context/ZHZH.md) 和 [构建/配置](docs/context/RUNBOOK.md#中译中共享-tls2026-10-20)。实际已加载副本与本 PR 共享代码检出的验证范围分别记录，保留中译英功能。
+## 已有能力与限制
 
-新增 Z7-Nano 中文译英字幕与 lineout 译音候选：连续流修复、真实板测和验收边界见 [ZHEN](docs/context/ZHEN.md)，构建/配置见 [RUNBOOK](docs/context/RUNBOOK.md#中文译英候选2026-10-20)。原有阶段记录保留各自的日期与范围。
+- 顶部菜单支持 English → Chinese / Chinese → English，实际麦克风、触摸、三档字幕字号和清晰画面已有用户短验收。
+- 产品使用 `--text-only-response`，保留 PL 本地回环；L1/T1 使用与 UI 一致的抗锯齿卡片。本地耳机听感仍需单独验收。
+- 仅字幕固定样本通过 30 分钟观察；真实麦克风仍存在**定稿队列阻塞**与 `UNEXPECTED_ASR_ERROR`。两句能显示不等于历史已正常，不宣布长期可靠。证据见[真实麦克风复测](docs/validation/mic-retest-20261021/README.md)。
+- 用户本轮要求暂缓定稿排障，先实现**独立历史记录页：左英文、右中文、滑动和页内清空**。这还是待实现需求，行为见 [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)；实际进度、运行身份和下一步唯一由 [NOW](docs/context/NOW.md)维护。
+- 断电会丢失应用和运行期配置；持久历史、启动镜像、可信上电时间/熵、长期稳定性及代表性语音质量未放行。未写 Flash/SD 或 ESP 固件。
 
-目标是音频模块经 Zynq 采集与必要前处理，通过 ESP8266/Wi-Fi 访问云端语音翻译服务，把中文字幕显示在 HDMI 屏幕上，并支持 USB 触摸交互。最终使用时不依赖电脑；当前选择阿里云百炼实时语音翻译一体方案，见 [DECISIONS](docs/context/DECISIONS.md#d13-云端语音翻译与独立终端)和[云端方案](docs/design/CLOUD_SPEECH.md)。
+## 使用与开发入口
 
-当前包含方案、离线交互原型、旧 RevB 基线及电脑端模型/文件接口试验。Z7-Nano 7010 已有 PS/DDR、动态中文、USB 触摸、ESP8266 及 ARM 可信 TLS 的分项证据；真实英语麦克风到云端原文/中文字幕、字号与画面短验收已通过，范围见 [ENGLISH](docs/context/ENGLISH.md)。带译音的长测出现停更；字幕优先固定样本长测已通过，真实麦克风长期运行、耳机听感、独立启动、上电可信时间/熵与持久化配置仍待完成。板卡方法由[迁移专题](docs/design/BOARD_MIGRATION.md)维护，实际运行状态由 [NOW](docs/context/NOW.md)维护。
+先读 [AGENTS](AGENTS.md)，再按 [PROJECT_INDEX](PROJECT_INDEX.md)查对应章节。板卡构建与受控启动看 [RUNBOOK](docs/context/RUNBOOK.md#当前产品构建与运行范围2026-10-21)，不要直接照旧 RevB 命令操作新板；实际加载身份必须与位流、PS 初始化和 ELF 一致。凭据仅通过已有私有运行期输入，不提交源码或日志。
 
-## 查看本轮成果
+| 对象 | 入口与范围 |
+| --- | --- |
+| 当前产品与规划 | [NOW](docs/context/NOW.md)、[SYSTEM_PLAN](docs/design/SYSTEM_PLAN.md) |
+| UI 与真实 USB 触摸 | [UI_SPEC](docs/design/UI_SPEC.md)、[USB_TOUCH](docs/design/USB_TOUCH.md) |
+| 新板配置、HDMI、音频与供电 | [BOARD_MIGRATION](docs/design/BOARD_MIGRATION.md)、[AUDIO_LOOPBACK](docs/design/AUDIO_LOOPBACK.md)、[MAP](docs/context/MAP.md) |
+| 当前英语/双向云译 | [ENGLISH](docs/context/ENGLISH.md)、[CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md)、[AUDIO_COMPRESSION](docs/design/AUDIO_COMPRESSION.md) |
+| 独立中文 ASR / 中译英译音候选 | [ZHZH](docs/context/ZHZH.md)、[ZHEN](docs/context/ZHEN.md)，保留各自构建与证据范围 |
+| 早期 HTML 原型 | 本机生成的 [output/ui/index.html](output/ui/index.html)，内容是模拟，不能当作板端实现 |
+| 旧板静态/动态显示与局域网文本 | [STATIC_DEMO](docs/design/STATIC_DEMO.md)、[DYNAMIC_UI](docs/design/DYNAMIC_UI.md)、[NETWORK_UI](docs/design/NETWORK_UI.md)，仅属原阶段 |
+| PS/DDR 与显示基础 | [PS_BRINGUP](docs/design/PS_BRINGUP.md)、[FRAMEBUFFER](docs/design/FRAMEBUFFER.md)，当前板独立配置由迁移专题路由 |
+| 电脑模型/文件接口与 DeepSeek 对照 | [MODEL_BACKEND](docs/design/MODEL_BACKEND.md)，不在当前产品运行主链路 |
+| 原始决策、风险与历史 | [DECISIONS](docs/context/DECISIONS.md)、[RISKS](docs/context/RISKS.md)、[history](docs/context/history/README.md) |
 
-1. 浏览器直接打开 [界面原型](output/ui/index.html)，不需要安装依赖或启动服务器。
-2. 点击“开始翻译”，体验原文逐步出现、中文字幕定稿、会话记录与暂停。
-3. 试用字号、原文开关、设置、会话记录；页面下方的演示面板可模拟缺少音频、后端断开、输入过载、静音和长句。
-4. 阅读 [系统详细方案](docs/design/SYSTEM_PLAN.md)、[UI 规范](docs/design/UI_SPEC.md) 和 [分阶段验收](docs/context/RUNBOOK.md)。
-5. 板卡静态版已完成构建、JTAG 临时配置和用户实屏验收，文字与布局清楚；画面见 [量化预览](output/static_ui/ui_quantized.png)。构建与重新下载见 [RUNBOOK P2a](docs/context/RUNBOOK.md#p2a-纯-pl-静态-ui-演示)，技术结构见 [STATIC_DEMO](docs/design/STATIC_DEMO.md)。
-6. ESP8266 的实现、寄存器及凭据处理见 [WIFI_LINK](docs/design/WIFI_LINK.md)，操作顺序见 [RUNBOOK W](docs/context/RUNBOOK.md#w-esp8266-串口与联网)。AT、Wi-Fi 和局域网双向数据已验证；当前阶段结果及显示稳定性以 NOW 为准。
-7. PS/DDR 最小检查与双缓冲显示已完成真实运行；用户确认彩条、棋盘格和移动方块清楚稳定。来源与入口见 [PS_BRINGUP](docs/design/PS_BRINGUP.md)、[FRAMEBUFFER](docs/design/FRAMEBUFFER.md)。图形测试源码和独立执行快照保留为基线。
-8. 新板支持预设中文文案、分页、三档字号、定稿历史、JTAG 测试控制及真实 USB 按钮；显示见 [DYNAMIC_UI](docs/design/DYNAMIC_UI.md)，触摸与常驻入口见 [USB_TOUCH](docs/design/USB_TOUCH.md)。部分界面文字仍是原演示占位；JTAG 加载断电后需重新下载。
-9. 旧 RevB 网络应用能自主关联 ESP8266，并接收电脑通过 TCP 发送的有界模拟字幕和控制；运行入口与边界见 [NETWORK_UI](docs/design/NETWORK_UI.md)。该旧板验收不替代新板网络验证；电脑须处于可访问模块的局域网。
-10. 电脑端已用合成英语音频完成真实识别与中文翻译；模型、文件证据、HTTP 接口和运行方法见 [MODEL_BACKEND](docs/design/MODEL_BACKEND.md)。现有板端演示尚未消费模型译文，单文件结果不代表麦克风或整机效果。
-11. PS 自主调度的加密音频文件收发见 [C1-4](docs/design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)，该历史版本的 WSS 控制和返回解析在电脑。新增 [C1-6](docs/design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)把有界事件消费与真实译文更新移入 ARM；2026-10-16 已通过同一程序的短文件真实云译、像素比对及用户实屏验收，电脑仍负责建连和预装音频。验证与后续入口见 [云接入操作](docs/context/RUNBOOK.md#c-云端语音接入)。
-12. 音频模块已在 PL 内实现并完成构建/下载（2026-10-17）：WM8731 作 I2S 时钟主（R7=0x042）、软 I2C 初始化含总线恢复（R4=0x015 麦克风+DAC、R8=0x000 normal 48 kHz）、I2S 从机回环（2 帧 FIFO、位精确、恒定 3 帧延迟）、L1 时延时间戳、屏幕右上角 `L1 nnnn us` 叠加；六个自检 testbench 通过，Vivado 2018.3 构建（setup/hold 7.289/0.044 ns）与下载通过，证据见 [simulation.json](output/z7_nano/audio_loopback/simulation.json)。**已打通**：根因是 5 V 供电余量不足——模块 3.3 V 由板上 LT1117-3.3 从 J3-2 的 5 V 产生（J3-39/40 的 D3V3 与 codec 的 VCC3V3 不是同一网络），开发板 USB 5 V 被屏幕拖到 4.3 V 后 LT1117 掉出稳压区，codec 能应答 I2C 但晶振不启动。改用充电宝主供电、排针 5V 直供模块后，`live=1`、BCLK 3.072 MHz、`L1=192 BCLK=62 µs`、`over/under=0`、显示 `format_errors=0`。实现、寄存器映射与板级取证见 [AUDIO_LOOPBACK](docs/design/AUDIO_LOOPBACK.md#10-板级取证2026-10-17)，风险见 [RISKS](docs/context/RISKS.md) R18/R21/R23。
-
-界面按目标屏幕的逻辑像素设计，窄窗口会等比例缩放。浏览器鼠标/键盘和板端真实 USB 触摸分别取证，当前板级能力由 NOW 路由。
-
-## 接续开发
-
-先读取 [AGENTS](AGENTS.md)，根据 [PROJECT_INDEX](PROJECT_INDEX.md) 定位需要的内容。接手任务从 NOW 确认范围、当前证据和下一步；不要把本轮方案中的操作步骤当成执行授权。
-
-当前移植先复用现有 PS 裸机 UI 与 PL 视频链路，并独立验证新板 USB Host 和触摸 HID。Linux + LVGL 是早期方案中的可选建议，未安装或构建；是否需要更换软件栈以实际 USB/网络验证为依据。
-
-已有 [HDMI 项目](../hdmi/README.md) 的 PL 显示链路已经验收。本项目保留它作为独立基线；DDR、中文渲染和 USB 触摸分别取证，真实音频及模型译文上屏仍须实现并验证。
-
-用户已授权按阶段继续实施。当前优先执行 [换板迁移](docs/design/BOARD_MIGRATION.md)；旧板 P2b/W4 和电脑 P5 的证据保留其原范围。现有 JTAG 原型与短包联网不能当作独立产品启动或连续语音传输能力。
-
-DeepSeek 独立英译中已取得一条真实结果，保留为文本翻译对照，见 [模型专题](docs/design/MODEL_BACKEND.md#p5c-0-deepseek-独立文本翻译)。电脑模型服务是开发试验入口，最终云端链路由 [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md)维护。源码仓库及本地产物边界见 [Git 映射](docs/context/MAP.md#git-与-github)；文档中的 output/tmp 和同级工程链接是本机材料入口，运行缓存不随源码仓库上传。
+`output/`、`tmp/`、厂商资料、二进制、模型缓存和安装字体不随 Git 上传。文档中的这些路径是本机生成材料入口，克隆后应按对应方法重建；可共享的阶段摘要与公开证据在 `docs/validation/`。同级 HDMI/LED 是独立工程，本轮不修改。Git 流程见 [RUNBOOK](docs/context/RUNBOOK.md#git-维护)。

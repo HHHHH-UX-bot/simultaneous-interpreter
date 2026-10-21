@@ -1,0 +1,314 @@
+{
+  "base_commit": "33d7d43",
+  "scope": "all tracked project-owned Markdown; third-party untouched",
+  "files": [
+    {
+      "file": "AGENTS.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "82b3038ce62cea3e8e8669e32ba63db9672b56d492c680594f6480505c420b4d",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "PROJECT_INDEX.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "0885a5996c0a765dfbf3a5b38c57cf8fc9da6a5af6a3188fa8dd4f3e592e8dc3",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "fb1fd20206beffb139c5289ee930e0c7350182ce3a8a40c7491aa969bbb0459b",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/context/DECISIONS.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "af6b3f854ee70cb560dfa75e66836fe7063e553e0f1ce9ea4167debbb21cd6f0",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/context/ENGLISH.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "86357b0df1f30dfa7239ecc2cdc84c3c67dcbff5fd4954955b32b94f93791dc5",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/context/MAP.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "893786a71d37c6f08973283d41dd122cfab1d9d9d2c78dd27546624ed8a5d7e1",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/context/NOW.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "dd301972bfb57a13589ef1ff2ac3e64b827a5615e5eecdc47ac3376b61adecf0",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/context/RISKS.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "fa0e692e3a71823c977bd26741f749217371b6b74214ab259247a01b76cd1297",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/context/RUNBOOK.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "c198c1a6f404fb88fcbc390824f3c35d767075137d4a632b324634b80f2e13fb",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/context/ZHEN.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "d646ba493436a1b8d9240255d30e929f71d7d7a73dbdce9a25dfb05d1209ff61",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/context/ZHZH.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "aa9863484e3dad8b7f17809325c18b7b1d9312dbd51a933fe207ef32aafac441",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/context/history/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "1f5e721d20a1266f5925feb0fe9f2190a2788bcf17f74a94648edc149c358298",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/context/history/revb_baseline_2026-10-12.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": false,
+      "sha256": "ca3de4edb4e63241788446f62e04ff0e090c9c96bb24028a119309e3619d7be5",
+      "reason": "existing dated historical scope already explicit; retain original"
+    },
+    {
+      "file": "docs/design/AUDIO_COMPRESSION.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "63c73bf5ed437c0060f035617dcd84dd1fd17eb4a3d5554856c3f4ea4f361b6e",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/AUDIO_LOOPBACK.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "d4be422033f4d93ea542e6a2d77054a0e511b5208a3b766c104bdcc864c7f582",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/BOARD_MIGRATION.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "1a3c4fb9e1d9426f02d7f58c0a28663901b8fecb27ba0d2b6e126efcf125aff7",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/CLOUD_SPEECH.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "c000d6a877df788039d3d6e5e421a1c12c4b65605fdee6f34ac6f34811e7c316",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/DYNAMIC_UI.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "96bf82b1b02fb0ce43fbce57b10940493d3f856d632c6e46278b4164c89ef94b",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/FRAMEBUFFER.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "3b0bda1e42b734fd73c3c4bede090bcef751e17d622c7b72afa2893762d66dcb",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/INTERFACES.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "93605ce51635c746039fa1b739cbf1cb7e21bbfb56c2a3d6c975a745e6d3e64d",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/MODEL_BACKEND.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "31217d1e29fc282196b6d2864cc22dbddf0c544e591b431f7dd7ee37dc3f281d",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/NETWORK_UI.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "3efdd44d108b182ee7f53de8fa39eb64914205e17a6c61be1ed32efc950e0319",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/PS_BRINGUP.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "53367b4b6bfaa87a1afaed04fe198c900ce74d98eec63b3dfe3983544c45dee4",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/PS_WIFI.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "18b4f77f164dc378901015dca30a04a3918ac01e1d834a46e61c4065cd19319f",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/SOURCES.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "8be8012962b07f8a27a7931bef2ea3e205bc5fe633408428e7b9f537d1bc5162",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/STATIC_DEMO.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "796031a390808599ebc44e33188c28ebf7ccbcc330b804e77b66f2de62b2dfce",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/SYSTEM_PLAN.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "c088c1b0f89182409610c919c06cddcbd8d525f390b5c1c3cbb8586ff516a37b",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/UI_SPEC.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "97431a1584cfdf2cd832717c182237b33b0c61218dbda1ad4b2b2a4a20df874b",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/USB_TOUCH.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "aefa5bc2b5f71d7131b7b57eea5a8ff6f69698dfd7e38dfca86f0ba2008548d9",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/design/WIFI_LINK.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "d097c2f0976499d44d9090537fdf0b429a1bda7c05685272d9994021509b14b7",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/arm-packets-20261021/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "1bb91802201c1b6ea4a9e26aea85add3c2ceb2e9f744ee6e690da79e37439af3",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/connection-ui-20261020/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "a374a528f4c36a31ffee4e8779c265ed73f52d80ccf453d3cbd4c3f21482cecf",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/english-20261020/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "6947552c7c2eadab2071214b619d24cc564ab2291b3f38a986abb2ae1fba0839",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/esp-tcp-20261020/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "bd32e7a0536ad88568d307bbb58360b1126e557dcf23eea9b67609f640319ce2",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/language-picker-20261021/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "fffdcba2b2066ff2308f9e8fdcba9e621bb9c1d2f0efc9275dd35452aa07fd95",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/logic-analyzer-20261020/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "7674b546a1b373e032c6a2de0ea587129ef41c17972d029807812494ca13c2e8",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/mic-retest-20261021/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "a00337879585d08537aed62d0cd1c18ff11bc668ac852c45672286c0005fd867",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/text-response-20261021/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "4f86c2bfcacb84fed2bfd283ca2fb11d884d9dda0f049de8481f0260019847fa",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/tls-transport-20261020/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "327cf78ebd9df135eff335b1d652c4fea956a149bddc2613d16093d26dcf51b5",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/touch-latency-20261020/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "7c66015a9c7c70807139b1fc36975cb8c0bbf284dba4b1be49c12f7e391fbeb4",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/uart-wire-20261020/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "50ef8f1e65388460b0bf341822537afd363fc4e100fab78ee13e9d269bef773c",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/zhen-20261020/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "4e50f89dd20286f46cb4d690bcf865b9988307ade77a75c484c7144d61995f31",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    },
+    {
+      "file": "docs/validation/zhzh-20261020/README.md",
+      "review": "headings, applicability, current-state claims and direct source/evidence routing",
+      "changed": true,
+      "sha256": "919891331f711e0e59c364f12ca798d5f79f6712a049f65cfb069e9f8ae0a20d",
+      "reason": "clarify current vs historical scope, correct stale claims or route confirmed new task"
+    }
+  ],
+  "reviewed": 43,
+  "modified": 42,
+  "new_files": [
+    "docs/context/history/progress-through-20261021.md"
+  ],
+  "hardware_actions": false,
+  "business_code_changed": false
+}

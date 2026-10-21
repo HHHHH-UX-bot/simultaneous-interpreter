@@ -1,5 +1,7 @@
 # PS 自主网络模拟字幕
 
+适用范围：本文维护旧 RevB W4-1 LAN 模拟字幕协议与当时工具，不能按它的“电脑连接 ESP/无真实采音”推断当前产品。现行 Z7-Nano 麦克风→ARM TLS→百炼与 CPU1 触摸看 [NOW](../context/NOW.md)，旧协议及证据保留其对象范围。
+
 核验对象：2026-10-11 的 W4-1 文本试验。它把局域网电脑提供的已知模拟结果送入现有中文模型和 HDMI 双缓冲；没有采样声音或执行识别/翻译模型。平台、引脚和 UART 寄存器分别沿用 [PS_WIFI](PS_WIFI.md) 和 [WIFI_LINK](WIFI_LINK.md)，显示/模型权威来源为 [DYNAMIC_UI](DYNAMIC_UI.md)。当前阶段进度以 [NOW](../context/NOW.md) 为准。
 
 ## 软件与所有权

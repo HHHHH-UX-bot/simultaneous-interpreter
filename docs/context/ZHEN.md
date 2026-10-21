@@ -1,5 +1,7 @@
 # 中文译英与 lineout 译音（2026-10-20）
 
+范围更新（2026-10-21）：本页是显式 `--mode zhen --speech` 的译音候选及其历史证据。当前产品主线为顶部菜单双向字幕、只请求文本，不能把本页“当前候选/待触摸”等描述外推到它；本轮历史页与故障优先级见 [NOW](NOW.md)。
+
 ## 当前范围
 
 Z7-Nano / xc7z010，WM8731 主时钟 I2S 48 kHz、PL 降采样至 16 kHz；固定点 Opus/Ogg 上传到实时服务，英文字幕在中文原文上方，PCM 24 kHz 译音经 PL 送 DAC。当前实现选择 Zynq 执行 TLS 1.2，ESP8266 单连接转发 TCP，UART 1 Mbps；显式使用 `--mode zhen --speech --arm-tls --uart-baud 1000000`。原有不带这些选项的路径保留其验证范围。

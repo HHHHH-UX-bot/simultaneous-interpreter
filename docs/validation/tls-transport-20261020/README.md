@@ -1,5 +1,7 @@
 # TLS 传输边界诊断
 
+记录范围说明（2026-10-21 文档核对）：本文及 JSON/哈希只证明以下原日期、对象、源码和测试范围，不是此刻板态，也不因新功能而重算旧结果。最新任务与已知故障看 [NOW](../../context/NOW.md)，历史页需求看 [UI_SPEC](../../design/UI_SPEC.md#板端历史记录页2026-10-21)。
+
 本阶段完成到故障边界定位，TLS 间歇故障尚未修复。实现、分析与下一阶段由 [ENGLISH](../../context/ENGLISH.md#tls-传输诊断进行中2026-10-20)维护；当前状态见 [stage.json](stage.json)，用户验收及其范围见 [acceptance.json](acceptance.json)。
 
 ## 证据路由

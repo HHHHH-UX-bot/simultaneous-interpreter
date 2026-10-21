@@ -1,5 +1,7 @@
 # 接口契约草案
 
+现行合同分层（2026-10-21）：以下 LAN 会话/帧格式是早期草案，不作为当前百炼协议。实际音频为 PL PCM→PS Opus/Ogg，ARM 客户端处理 WSS/云事件，内部 UI 使用 UTF-32 与 epoch/segment；源/目标方向由语言菜单维护。源码合同见 ui_model.h/cloud_events.h，当前历史页和清空语义见 [UI_SPEC](UI_SPEC.md#板端历史记录页2026-10-21)。定稿缺源阻塞仍未修复。
+
 草案日期：2026-10-10；接续说明更新：2026-10-12。本文定义拟议产品接口，以便采样、电脑后端和 UI 独立开发；这里的音频/会话/字幕合同尚未实现。已实现的 UART/TCP 诊断由 [WIFI_LINK](WIFI_LINK.md)、自主网络文本由 [NETWORK_UI](NETWORK_UI.md)、电脑 HTTP 文件接口由 [MODEL_BACKEND](MODEL_BACKEND.md) 定义；它们与本草案分别维护。实施前根据 [MAP](../context/MAP.md) 和 [SYSTEM_PLAN](SYSTEM_PLAN.md) 确认合同版本。
 
 ## 1. 模块到 PL 的接线合同

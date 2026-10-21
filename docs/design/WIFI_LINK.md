@@ -1,5 +1,7 @@
 # ESP8266 联网验证
 
+适用范围：本文 W0–W3 的 JTAG→UART、115200 缺省及旧 RevB 引脚是配件诊断基线。当前产品为 Z7-Nano CPU0→PL UART（1 Mbaud）→ESP TCP→ARM TLS/WSS，不需要电脑作翻译中继；接线/运行身份看 [MAP](../context/MAP.md)/[NOW](../context/NOW.md)。
+
 日期：2026-10-11。用户已连接 ATK-MW8266D（板载 ATK-ESP-01），授权继续串口、Wi-Fi 与局域网数据收发。接线与电气来源以 [MAP](../context/MAP.md#esp8266-连接) 为准，阶段结果在 [NOW](../context/NOW.md) 汇总。
 
 ## 当前结构

@@ -6,6 +6,8 @@
 
 | 任务或问题 | 权威入口 | 职责 |
 |---|---|---|
+| 开发或验收独立历史记录页、英中对照与滑动 | [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)、[NOW](docs/context/NOW.md) | 已确认需求、记录来源、清空语义、容量及本轮实现范围 |
+| 核对真实麦克风异常及本轮暂缓事项 | [复测](docs/validation/mic-retest-20261021/README.md)、[RISKS](docs/context/RISKS.md) | 预览成功、定稿阻塞与 ASR 错误分开记录，不当作已修复 |
 | 使用顶部英中双向翻译菜单或修改其生命周期 | [UI_SPEC](docs/design/UI_SPEC.md#板端翻译方向切换2026-10-21)、[验证](docs/validation/language-picker-20261021/README.md) | 两项菜单、实际语言切换、旧会话隔离及验收边界 |
 | 接续英译中、英译英，核对桌面候选和当前板测 | [ENGLISH](docs/context/ENGLISH.md) | 共享模式、修正、真实验证与未放行项 |
 | 使用或修改中文译英字幕、译音、Zynq TLS | [ZHEN](docs/context/ZHEN.md) | 当前能力、故障修复、板测证据、代码和操作入口 |
@@ -19,20 +21,20 @@
 | 连接新板 ESP8266 | [新板接线](docs/design/BOARD_MIGRATION.md#esp8266-新板接线)、[新板 UART](docs/design/BOARD_MIGRATION.md#m5-新板-uart-与自主-at) | JP1 针位、UART/AT 入口及后续网络验证 |
 | 接音频模块、做实时回环与延迟显示 | [AUDIO_LOOPBACK](docs/design/AUDIO_LOOPBACK.md)、[接线与球号](docs/context/MAP.md#音频模块连接)、[A 阶段操作](docs/context/RUNBOOK.md#a-音频实时回环与时延显示后续) | 需求、实现、寄存器、板级取证；回环已通（5 V 供电余量是根因），听感/L3 待验收（§2/§10） |
 | 核对音频引脚占用与新板显示是否冲突 | [风险 R17/R18](docs/context/RISKS.md)、[接线事实](hardware/z7_nano/audio_module.json) | 已核对不重叠（Bank35 JP2 vs Bank34 HDMI）；残留项为 MCLK、电平与丝印方向 |
-| 调整时延读数在屏幕上的呈现 | [UI_SPEC 时延读数](docs/design/UI_SPEC.md#时延读数)、[叠加实现](rtl/audio_overlay.v) | 右上角 120x16 框、5x7 字体、框外像素不改；已实现 |
+| 调整时延读数在屏幕上的呈现 | [UI_SPEC 时延读数](docs/design/UI_SPEC.md#时延读数)、[PS 渲染](software/subtitle_ui/ui_render.c) | 当前为抗锯齿 L1/T1 卡片；旧 PL 像素文字层已关闭，数字测量仍由 PL 提供 |
 | 查看/修改音频回环实现与寄存器映射 | [AUDIO_LOOPBACK 已实现](docs/design/AUDIO_LOOPBACK.md#7-已实现2026-10-17)、[寄存器文件](rtl/audio_regs.v)、[回环](rtl/i2s_loopback.v) | 文件职责、AXI `0x43c20000` 寄存器表、L1 定义与仿真证据 |
 | 跑音频仿真或构建音频位流 | [仿真/构建运行器](scripts/run_audio_loopback.py)、[构建脚本](scripts/build_z7_nano_audio.tcl)、[A 阶段操作](docs/context/RUNBOOK.md#a-音频实时回环与时延显示后续) | simulate 六个 testbench 通过；Vivado 2018.3 构建+下载通过；板级回环已通（稳定 5 V 供电后 live=1、L1=62 µs），见 AUDIO_LOOPBACK §10 |
 | 理解系统分工、选型、资源和时延预算 | [SYSTEM_PLAN](docs/design/SYSTEM_PLAN.md) | 产品与系统方案 |
 | 接入云端语音翻译、脱离电脑运行 | [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md) | 已选百炼方案、官方接口来源、凭据准备、音频带宽与分阶段接入 |
 | 低带宽实时音频（Opus、qwen3.5、Cache/MMU） | [AUDIO_COMPRESSION](docs/design/AUDIO_COMPRESSION.md) | 上行 13–14 kB/s 瓶颈、libopus v1.4 供应商化与主机/ARM 可行性验证、MMU/Cache 前置与实施步骤 |
-| 复盘产品瓶颈、选择后续验证顺序 | [2026-10-15 计划](docs/design/CLOUD_SPEECH.md#2026-10-15-复盘后的验证顺序建议)、[当前系统主线](docs/design/SYSTEM_PLAN.md#当前产品主线与实施取舍) | 建议、依赖、停止条件与预存音频闭环；不是恢复实验或已确认换型 |
-| 将新板 UART 切换至 921600 | [高速 UART](docs/design/BOARD_MIGRATION.md#m5-2-921600-串口) | 临时波特率协商、冷启动与暖重载、验证入口和放行边界 |
+| 复盘产品瓶颈、选择后续验证顺序 | [NOW](docs/context/NOW.md)、[当前系统主线](docs/design/SYSTEM_PLAN.md#当前产品主线与实施取舍) | 本轮先 UI 历史页，定稿故障保留；2026-10-15 的预存音频顺序仅为历史计划 |
+| 追溯 921600 阶段或核对当前 1 Mbaud | [BOARD_MIGRATION](docs/design/BOARD_MIGRATION.md)、[MAP](docs/context/MAP.md) | 921600 为旧阶段；当前字幕候选为 1,000,000 baud/分频 50，不能混用旧参数 |
 | 查询当前 ESP 固件的加密配置 | [C1-0](docs/design/CLOUD_SPEECH.md#c1-0-固定加密配置查询)、[操作](docs/context/RUNBOOK.md#c-云端语音接入) | 固定查询、实际应答与后续 TLS/带宽边界 |
 | 检查 CYEA、板端 TLS 与客户端 CA | [C1-2](docs/design/CLOUD_SPEECH.md#c1-2-cyea-与板端-tls-预检)、[操作](docs/context/RUNBOOK.md#c-云端语音接入) | 无 Key 预检、证书来源、备份/更新及安全握手边界 |
 | 验证 ESP8266 到百炼的 WSS 会话 | [C1-3](docs/design/CLOUD_SPEECH.md#c1-3-esp8266-云端-wss-会话)、[工具](scripts/probe_z7_nano_wss.py) | 经 ESP 真实鉴权/配置，无音频，尚非 ARM 自主客户端 |
 | 验证 ARM 调度的 ESP 加密音频收发 | [C1-4](docs/design/CLOUD_SPEECH.md#c1-4-ps-调度的加密音频短测)、[文件客户端](scripts/pilot_z7_nano_cloud_file.py) | 预编码文件、PS CIPSEND/IPD、公开内存与安全交接；WSS 控制/解析仍在电脑 |
-| 开发 ARM 自主 TLS 与会话 | [C1-7a](docs/design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)、[板测工具](scripts/probe_z7_nano_tls_boot.py) | 实现/本机/显示触摸通过，修正版 TLS 身份对照待重跑；通过后再接 WSS |
-| 开发 ARM 云事件消费与真实字幕 | [C1-6](docs/design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)、[实现](software/network_ui/cloud_live.c)、[离线验证](scripts/validate_cloud_live.py) | 有界 WebSocket、ID/epoch 映射、字形检查、DDR/栈及真实短文件上屏证据；独立云客户端待完成 |
+| 开发 ARM 自主 TLS 与会话 | [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md)、[ENGLISH](docs/context/ENGLISH.md) | ARM TLS/WSS 与真实麦克风已经接通；历史 C1-7a 不是当前未完成项，长期故障和独立启动仍待验收 |
+| 开发 ARM 云事件消费与真实字幕 | [实现](software/network_ui/cloud_live.c)、[麦克风复测](docs/validation/mic-retest-20261021/README.md) | 原文/译文预览已有实测，当前定稿队列异常按用户要求暂缓，不能用旧短文件证据放行 |
 | 测试百炼实时语音翻译接口或 PCM/Opus 负载 | [C2-PC](docs/design/CLOUD_SPEECH.md#c2-pc-受控音频云端对照)、[客户端](scripts/run_bailian_file.py) | 同样本三组对照、Ogg 封装、定稿和实际帧字节，尚非 ARM 自主云端链路 |
 | 测量新板连续上传与透传 | [C1-1](docs/design/CLOUD_SPEECH.md#c1-1-连续上传与串口调度)、[逐包测量](scripts/measure_z7_nano_upload.py)、[透传测量](scripts/measure_z7_nano_passthrough.py) | 已知数据块核账、时长、有效带宽与退出清理；不替代音频/TLS 验收 |
 | 核对 UART 波形、ESP 透传与分块发送 | [当前实机验证](docs/context/ENGLISH.md#分块-tls-实机验证2026-10-21)、[单端采样](docs/validation/uart-wire-20261020/README.md)、[TCP 对照](docs/validation/esp-tcp-20261020/README.md)、[产品板测](docs/validation/arm-packets-20261021/README.md) | 历史译音停更未定位；当前字幕版固定样本长测与麦克风短验收见[新证据](docs/validation/text-response-20261021/README.md)，不混用两阶段范围 |
@@ -45,7 +47,7 @@
 | 运行或接续英语识别/中文翻译与电脑服务 | [MODEL_BACKEND](docs/design/MODEL_BACKEND.md) | 隔离运行环境、固定模型、真实文件证据、HTTP 接口、噪声修复及放行边界 |
 | 接入 DeepSeek 中文翻译 | [P5c-0](docs/design/MODEL_BACKEND.md#p5c-0-deepseek-独立文本翻译) | 官方接口、隐藏密钥输入、文本实测及尚未接通的环节 |
 | 维护 Git 与上传 GitHub | [MAP](docs/context/MAP.md#git-与-github)、[RUNBOOK](docs/context/RUNBOOK.md#git-维护) | 账号/仓库映射、分支、提交范围与远程核验 |
-| 实现采样、网络、结果更新接口 | [INTERFACES](docs/design/INTERFACES.md) | 拟议数据契约 |
+| 实现采样、网络、结果更新接口 | [INTERFACES](docs/design/INTERFACES.md) | 区分旧 LAN 草案与当前实际 C/Opus/WSS/UI 合同 |
 | 接续动态字幕与板端自主运行 | [RUNBOOK P2b](docs/context/RUNBOOK.md#p2b-ps-实时中文与模拟-ui后续)、[W4](docs/context/RUNBOOK.md#w4-板端自主网络与音频传输带宽后续) | 子阶段、依赖和放行条件；实际进度见 NOW |
 | 修改、启动或观察板上动态中文 UI | [DYNAMIC_UI](docs/design/DYNAMIC_UI.md)、[run_subtitle_ui](scripts/run_subtitle_ui.py) | 有界模型、字库、绘制、JTAG 控制和实际像素比对 |
 | 运行或维护最小 PS/DDR 检查 | [PS_BRINGUP](docs/design/PS_BRINGUP.md)、[run_ps_bringup](scripts/run_ps_bringup.py) | 初始化来源、OCM/DDR 范围、受控下载与失败恢复 |
