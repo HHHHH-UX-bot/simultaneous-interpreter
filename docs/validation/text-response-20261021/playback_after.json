@@ -1,0 +1,16 @@
+{
+  "results": {
+    "audio": {
+      "exit_code": 0,
+      "message": "PASS_SPEECH_OUTPUT_MODE warm load, idle, completion and stop"
+    },
+    "text": {
+      "exit_code": 0,
+      "message": "PASS_SPEECH_OUTPUT_MODE warm load, idle, completion and stop"
+    }
+  },
+  "input_sha256": {
+    "software/network_ui/speech_playback.c": "c6fa0ede2fb795ae181129e81a7fd1808ff2b21acf41ca6dd77280881b1adb4f",
+    "tests/speech_output_mode_test.c": "68d1c8089439d8d07a55a09ce3793cf1f634ea40c451f3e1394e4acfaba8b789"
+  }
+}

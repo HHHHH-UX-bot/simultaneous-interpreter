@@ -118,6 +118,7 @@ def main():
                         help="build the microphone-less self-test ELF from the matching generated TTS PCM")
     parser.add_argument("--touch",action="store_true",help="enable the Z7-Nano CPU1 touch consumer")
     parser.add_argument("--speech", action="store_true",help="translated audio on lineout (requires playback PL; automatic for enzh)")
+    parser.add_argument("--text-only-response", action="store_true", help="diagnostic: request text only while retaining the same audio upload/playback build")
     parser.add_argument("--output-dir", type=Path, help="separate build directory, including ELF, symbols and metadata")
     parser.add_argument("--link-diagnostics", action="store_true", help="sample ESP heap at idle AT boundaries")
     parser.add_argument("--tls-passthrough", action="store_true", help="single verified TLS connection with raw duplex UART")
@@ -134,6 +135,8 @@ def main():
         parser.error("This folder belongs to " + PROFILE["mode"] + "; use its matching project")
     if args.mode == "enzh":
         args.speech = True
+    if args.text_only_response and not args.speech:
+        parser.error("--text-only-response requires translated-audio mode")
 
     if args.arm_tls_packets and (not args.arm_tls or args.tls_passthrough):
         parser.error("--arm-tls-packets requires --arm-tls without --tls-passthrough")
@@ -232,6 +235,8 @@ def main():
             tls_objects.append(str(obj))
     if args.speech:
         flags.append("-DZ7_TRANSLATE_AUDIO")
+    if args.text_only_response:
+        flags.append("-DZ7_TEXT_ONLY_RESPONSE")
     elf_name = "cloud_app.elf"
     if args.selftest:
         generated = ROOT / ("output/selftest_en/selftest_pcm.c" if args.mode in ("enzh", "enen") else "output/cloud_app/selftest_pcm.c")
@@ -289,6 +294,7 @@ def main():
         "Touch": bool(args.touch),
         "Mode": args.mode,
         "Speech": bool(args.speech),
+        "TextOnlyResponse": bool(args.text_only_response),
         "ArmTLS": bool(args.arm_tls),
         "ArmTLSPackets": bool(args.arm_tls_packets),
         "ArmTLSReceiveProbe": bool(args.arm_tls_recv_probe),

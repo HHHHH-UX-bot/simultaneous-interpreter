@@ -1,0 +1,32 @@
+import json,subprocess,sys,time
+from datetime import datetime,timezone
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2]
+app=ROOT/sys.argv[1];out=ROOT/sys.argv[2];out.mkdir(parents=True,exist_ok=True)
+limit=int(sys.argv[3]);start=time.monotonic();last_change=start;last_final=None;points=[]
+while True:
+ path=out/('sample_%03d.json'%len(points))
+ subprocess.run([sys.executable,'-B',str(ROOT/'scripts/repair/board_snapshot.py'),
+  '--symbols',str(app/'symbols.log'),'--elf',str(app/'cloud_app.elf'),'--output',str(path),
+  '--xsdb','D:/AMDDesignTools/2026.1/Vitis/bin/xsdb.bat'],check=True,stdout=subprocess.DEVNULL,timeout=35)
+ record=json.loads(path.read_text());c=record['counters'];t=c['arm_tls_diag'];h=c['cloud_report'];u=c['upload_diag'];client=c['client'];now=time.monotonic()
+ if h[9]!=last_final:last_change=now;last_final=h[9]
+ point=dict(seconds=round(now-start,1),app_ms=client[12],audio_ms=client[21]//48,
+  encoded_ms=client[17]*20,asr=h[7],translations=h[8],committed=h[9],
+  final_silence_seconds=round(now-last_change,1),cipher_rx=t[4],plain_rx=t[13],cipher_tx=t[5],
+  pages=u[2],drops=u[1],queue_peak=u[3],speech_started=u[6],network=c['network_report'][2:4],
+  client=client[0],tls_phase=t[1],tls_error=t[2],tls_failures=t[10],handshakes=t[9],
+  uart_errors=c['uart'][2:4],audio_chunks=c['speech_diag'][1],evidence=path.name)
+ points.append(point)
+ print(json.dumps(point),flush=True)
+ if t[10] or t[2] or point['network'][1] or any(point['uart_errors']) or u[1]:status='transport_or_upload_failure';break
+ if point['network'][0]!=4 or client[0]!=4:status='session_not_streaming';break
+ if now-last_change>150:status='useful_output_stall';break
+ if now-start>=limit:
+  status='passed_fixed_fixture_interval' if points[-1]['seconds']-points[0]['seconds']>=1800 else 'bounded_interval_only'
+  break
+ time.sleep(min(12,max(0,limit-(time.monotonic()-start))))
+result=dict(status=status,utc=datetime.now(timezone.utc).isoformat(),elf_sha256=record['elf_sha256'],
+ scope='actual board fixed English fixture; no new microphone/listening acceptance',seconds_requested=limit,samples=points)
+(out/'summary.json').write_text(json.dumps(result,indent=2)+'\n')
+print('OBSERVATION_RESULT',status,flush=True)

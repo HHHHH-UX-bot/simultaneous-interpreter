@@ -13,6 +13,15 @@ volatile struct network_status network_info;
 volatile struct stream_pilot_status stream_pilot;
 static unsigned checks,failures,pings,pongs,blocked;
 static char session[2048];
+#ifdef Z7_TEXT_ONLY_RESPONSE
+#define TRANSLATION_PARTIAL "response.text.text"
+#define TRANSLATION_FINAL "response.text.done"
+#define TRANSLATION_FIELD "text"
+#else
+#define TRANSLATION_PARTIAL "response.audio_transcript.text"
+#define TRANSLATION_FINAL "response.audio_transcript.done"
+#define TRANSLATION_FIELD "transcript"
+#endif
 #define CHECK(x) do {++checks;if(!(x)){fprintf(stderr,"failed line %d\n",__LINE__);exit(1);}}while(0)
 void cache_clean_range(const void *p,unsigned n){(void)p;(void)n;}
 int opus_codec_init(void){return 1;}
@@ -82,9 +91,9 @@ int main(void){
 #ifndef Z7_ASR_SUBTITLE
         CHECK(cloud.live.committed==i);
         snprintf(json,sizeof(json),"{\"type\":\"conversation.item.created\",\"item\":{\"id\":\"t%u\"},\"previous_item_id\":\"a%u\"}",i,i);event(json);
-        snprintf(json,sizeof(json),"{\"type\":\"response.audio_transcript.text\",\"item_id\":\"t%u\",\"response_id\":\"r%u\",\"text\":\"\\u65e9\\u4e0a\",\"stash\":\"\\u597d\\u3002\"}",i,i);event(json);
+        snprintf(json,sizeof(json),"{\"type\":\"" TRANSLATION_PARTIAL "\",\"item_id\":\"t%u\",\"response_id\":\"r%u\",\"text\":\"\\u65e9\\u4e0a\",\"stash\":\"\\u597d\\u3002\"}",i,i);event(json);
         CHECK(model.translated[0]==0x65e9 && model.translated[2]==0x597d);
-        snprintf(json,sizeof(json),"{\"type\":\"response.audio_transcript.done\",\"item_id\":\"t%u\",\"response_id\":\"r%u\",\"transcript\":\"\\u65e9\\u4e0a\\u597d\\u3002\"}",i,i);event(json);
+        snprintf(json,sizeof(json),"{\"type\":\"" TRANSLATION_FINAL "\",\"item_id\":\"t%u\",\"response_id\":\"r%u\",\"" TRANSLATION_FIELD "\":\"\\u65e9\\u4e0a\\u597d\\u3002\"}",i,i);event(json);
         snprintf(json,sizeof(json),"{\"type\":\"response.done\",\"response\":{\"id\":\"r%u\",\"status\":\"completed\"}}",i);event(json);
 #endif
         CHECK(cloud.live.committed==i+1u && model.final_count==i+1u && !cloud.live.error);

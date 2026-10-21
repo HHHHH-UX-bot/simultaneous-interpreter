@@ -2,13 +2,15 @@
 
 英语输入的英译中、英译英已接入同一工程，采用显式模式选择；本轮板测进展与限制见 [ENGLISH](docs/context/ENGLISH.md)，当前接续见 [NOW](docs/context/NOW.md)。
 
+2026-10-21 已确认初版以字幕为主、保留麦克风到耳机的本地回环，见 [D16](docs/context/DECISIONS.md#d16-初版以字幕为主保留本地回环)。产品构建显式增加 `--text-only-response`，沿用同一采音、上传和 PL 回环；[本轮验证](docs/validation/text-response-20261021/README.md)已完成仅字幕固定样本 30 分钟板测，以及真实麦克风、字号和画面短验收。本地回环输出选择已核对；云端译音停更根因仍未确认。
+
 中文独立识别现可使用共享 Zynq TLS 与 1 Mbps UART，入口见 [ZHZH](docs/context/ZHZH.md) 和 [构建/配置](docs/context/RUNBOOK.md#中译中共享-tls2026-10-20)。实际已加载副本与本 PR 共享代码检出的验证范围分别记录，保留中译英功能。
 
 新增 Z7-Nano 中文译英字幕与 lineout 译音候选：连续流修复、真实板测和验收边界见 [ZHEN](docs/context/ZHEN.md)，构建/配置见 [RUNBOOK](docs/context/RUNBOOK.md#中文译英候选2026-10-20)。原有阶段记录保留各自的日期与范围。
 
 目标是音频模块经 Zynq 采集与必要前处理，通过 ESP8266/Wi-Fi 访问云端语音翻译服务，把中文字幕显示在 HDMI 屏幕上，并支持 USB 触摸交互。最终使用时不依赖电脑；当前选择阿里云百炼实时语音翻译一体方案，见 [DECISIONS](docs/context/DECISIONS.md#d13-云端语音翻译与独立终端)和[云端方案](docs/design/CLOUD_SPEECH.md)。
 
-当前包含详细方案、离线交互原型、旧 RevB 基线，以及电脑端模型试验和 HTTP 文件接口。2026-10-13 起移植至 Z7-Nano 7010，新板已完成 PS/DDR、动态中文、七类 USB 触摸控件及常驻运行、ESP8266 自主关联与已知字幕网络验收；方法见 [迁移专题](docs/design/BOARD_MIGRATION.md)，当前证据见 [NOW](docs/context/NOW.md)。921600 串口及 ESP 可信 TLS/WSS 已分项验证，PS 已完成一次预编码一分钟音频收发并取得真实云译。[ARM 云事件到字幕路径](docs/design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)已完成实现、离线验证、交叉编译及真实短文件上屏验收；[ARM 自主 TLS](docs/design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)已实现并通过本机检查、修正版显示/触摸验收，TLS 板测待重跑；完整云客户端、真实采音及独立启动仍待完成。
+当前包含方案、离线交互原型、旧 RevB 基线及电脑端模型/文件接口试验。Z7-Nano 7010 已有 PS/DDR、动态中文、USB 触摸、ESP8266 及 ARM 可信 TLS 的分项证据；真实英语麦克风到云端原文/中文字幕、字号与画面短验收已通过，范围见 [ENGLISH](docs/context/ENGLISH.md)。带译音的长测出现停更；字幕优先固定样本长测已通过，真实麦克风长期运行、耳机听感、独立启动、上电可信时间/熵与持久化配置仍待完成。板卡方法由[迁移专题](docs/design/BOARD_MIGRATION.md)维护，实际运行状态由 [NOW](docs/context/NOW.md)维护。
 
 ## 查看本轮成果
 

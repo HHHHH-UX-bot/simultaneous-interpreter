@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "result": "PASS_SPEECH_PLAYBACK real WS/JSON/base64, signed PCM order, >4k events, 12s ring wrap, jitter without underruns, prefill and short tails",
+  "executable_sha256": "a109b180a5a4d714f271dcb1c75d251ab410753c4409ee745e1f206c83b3f881",
+  "source_sha256": {
+    "tests/speech_playback_test.c": "863e8e70178a12f3a641bf016ad162d8786e1d6d075371e05517af6343e93040",
+    "software/network_ui/speech_playback.c": "c6fa0ede2fb795ae181129e81a7fd1808ff2b21acf41ca6dd77280881b1adb4f"
+  }
+}

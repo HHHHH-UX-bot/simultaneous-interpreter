@@ -1,0 +1,65 @@
+{
+  "status": "passed",
+  "default_loaded_image_unchanged": true,
+  "sessions": {
+    "audio": {
+      "modalities": [
+        "text",
+        "audio"
+      ],
+      "voice": "Tina",
+      "sample_rate": 16000,
+      "input_audio_format": "opus",
+      "output_audio_format": "pcm",
+      "input_audio_transcription": {
+        "model": "qwen3-asr-flash-realtime",
+        "language": "en"
+      },
+      "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.12,
+        "silence_duration_ms": 400,
+        "create_response": true,
+        "interrupt_response": false
+      },
+      "translation": {
+        "language": "zh",
+        "same_language_skip_options": {
+          "skip_text": false,
+          "skip_audio": false
+        }
+      }
+    },
+    "text": {
+      "modalities": [
+        "text"
+      ],
+      "voice": "Tina",
+      "sample_rate": 16000,
+      "input_audio_format": "opus",
+      "output_audio_format": "pcm",
+      "input_audio_transcription": {
+        "model": "qwen3-asr-flash-realtime",
+        "language": "en"
+      },
+      "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.12,
+        "silence_duration_ms": 400,
+        "create_response": true,
+        "interrupt_response": false
+      },
+      "translation": {
+        "language": "zh",
+        "same_language_skip_options": {
+          "skip_text": false,
+          "skip_audio": false
+        }
+      }
+    }
+  },
+  "scope": "actual ARM ELF session constants; PT_LOAD comparison for default microphone",
+  "default_original_elf_sha256": "f85d0df10714eb4d6bab4fba7e09193bfe554ee2c06e3b905c36cb6ca0637f97",
+  "default_rebuilt_elf_sha256": "bb645fc34fae2ba41a2f03c4a013eb710041d335994d677bacfac96831c8b847",
+  "text_selftest_elf_sha256": "8214ea7f3385986b40830b7026f14b87073aba81e4346eaa25c46d261559203d"
+}

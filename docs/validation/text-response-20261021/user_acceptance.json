@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-21",
+  "mode": "real microphone English to Chinese, text-only response",
+  "elf_sha256": "0661bbcd5a92209ede2a6fbcf4e883ec98eab3c7dad39f295b1e45d7fb885740",
+  "action": "User spoke reference English and pressed A+ after new subtitles appeared",
+  "answer": "识别、字号和画面都正常",
+  "status": "passed_user_short_acceptance",
+  "limits": [
+    "No headphone listening confirmation this stage",
+    "No real microphone endurance qualification"
+  ]
+}

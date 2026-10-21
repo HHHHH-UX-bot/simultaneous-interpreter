@@ -1,0 +1,16 @@
+{
+  "results": {
+    "audio": {
+      "exit_code": 0,
+      "message": "PASS_SPEECH_OUTPUT_MODE warm load, idle, completion and stop"
+    },
+    "text": {
+      "exit_code": 1,
+      "message": "DAC selection expected=0 actual=1"
+    }
+  },
+  "input_sha256": {
+    "software/network_ui/speech_playback.c": "65d1d37d06863ab7be36fb13b227eee48795f21d2602a4f009db83be3ee8e3b5",
+    "tests/speech_output_mode_test.c": "68d1c8089439d8d07a55a09ce3793cf1f634ea40c451f3e1394e4acfaba8b789"
+  }
+}

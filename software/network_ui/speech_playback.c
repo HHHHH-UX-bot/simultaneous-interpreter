@@ -7,6 +7,11 @@
 #define SPEECH_SAMPLES 240000u /* Ten seconds at the model's 24 kHz, no speed-up. */
 #define PREFILL_SAMPLES 48000u /* 2 s per response; completed short phrases start immediately. */
 #define HW_SAMPLES 8192u
+#ifdef Z7_TEXT_ONLY_RESPONSE
+#define SPEECH_DAC_SELECT 0u /* Keep the existing PL microphone loopback on LINE OUT. */
+#else
+#define SPEECH_DAC_SELECT 1u
+#endif
 #ifndef SPEECH_REG
 #define SPEECH_REG(offset) (*(volatile uint32_t *)(0x43c20000u+(offset)))
 #endif
@@ -51,7 +56,7 @@ void speech_playback_init(void) {
     memset((void *)speech_timeline,0,sizeof(speech_timeline));
     available=SPEECH_REG(0x98)==0x31594c50u;
     speech_diag.unsupported=!available;
-    if(available) SPEECH_WRITE(0x9c,5u); /* Select English, clear FIFO, silence. */
+    if(available) SPEECH_WRITE(0x9c,SPEECH_DAC_SELECT|4u); /* Clear translated FIFO and select the output. */
 }
 int speech_playback_audio(const char *s,uint32_t n) {
     if(!n) return 1;
@@ -118,7 +123,7 @@ void speech_playback_tick(uint32_t now) {
     if(complete && speech_diag.to_hardware==limit && !count) {
         stream_start=limit;++end_head;playing=0;
         /* Finish the old sample's stereo frame before starting another voice. */
-        SPEECH_WRITE(0x9c,1u);return;
+        SPEECH_WRITE(0x9c,SPEECH_DAC_SELECT);return;
     }
     if(playing && !count && !complete) {playing=0;speech_trace(4u,0u,queued);}
     uint32_t budget=HW_SAMPLES-count;
@@ -133,7 +138,7 @@ void speech_playback_tick(uint32_t now) {
         playing=1;++speech_diag.starts;
         speech_trace(3u,0u,count+remaining);
     }
-    SPEECH_WRITE(0x9c,1u|(playing?2u:0u)|((complete && !remaining)?8u:0u));
+    SPEECH_WRITE(0x9c,SPEECH_DAC_SELECT|(playing?2u:0u)|((complete && !remaining)?8u:0u));
     if(now-report_ms<200u) return;
     report_ms=now;speech_diag.hardware_count=count;speech_diag.software_count=queued;
     speech_diag.underruns=SPEECH_REG(0xa8);speech_diag.played=SPEECH_REG(0xac);

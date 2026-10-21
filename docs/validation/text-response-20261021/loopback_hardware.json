@@ -1,0 +1,48 @@
+{
+  "status": "passed_digital_local_loopback_route",
+  "utc": "2026-10-21T07:41:37.615916+00:00",
+  "samples": [
+    {
+      "base": [
+        1096107057,
+        184551075,
+        62,
+        192,
+        366358290,
+        366358289,
+        0,
+        0
+      ],
+      "clock": [
+        2,
+        3072000
+      ],
+      "route": [
+        827935824,
+        0
+      ]
+    },
+    {
+      "base": [
+        1096107057,
+        184551075,
+        62,
+        192,
+        366408975,
+        366408973,
+        0,
+        0
+      ],
+      "clock": [
+        2,
+        3072000
+      ],
+      "route": [
+        827935824,
+        0
+      ]
+    }
+  ],
+  "elf_sha256": "0661bbcd5a92209ede2a6fbcf4e883ec98eab3c7dad39f295b1e45d7fb885740",
+  "scope": "existing configured PL; read-only public registers; not acoustic listening or end-to-end sound latency"
+}

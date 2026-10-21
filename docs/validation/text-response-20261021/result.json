@@ -1,0 +1,16 @@
+{
+  "status": "passed_fixed_text_fixture",
+  "snapshot_span_seconds": 1830.1,
+  "new_committed": 174,
+  "new_asr": 174,
+  "new_translations": 174,
+  "maximum_sampled_final_silence_seconds": 30.5,
+  "maximum_audio_app_drift_ms": 153,
+  "minimum_fixture_commit_bound": 168,
+  "single_tls_connection": true,
+  "returned_audio_chunks": 0,
+  "limits": [
+    "text-only CYEA fixed synthetic audio; not cloud translated-audio root-cause proof",
+    "microphone and physical UI acceptance recorded separately"
+  ]
+}

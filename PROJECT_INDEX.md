@@ -34,7 +34,7 @@
 | 开发 ARM 云事件消费与真实字幕 | [C1-6](docs/design/CLOUD_SPEECH.md#c1-6-arm-云事件到字幕)、[实现](software/network_ui/cloud_live.c)、[离线验证](scripts/validate_cloud_live.py) | 有界 WebSocket、ID/epoch 映射、字形检查、DDR/栈及真实短文件上屏证据；独立云客户端待完成 |
 | 测试百炼实时语音翻译接口或 PCM/Opus 负载 | [C2-PC](docs/design/CLOUD_SPEECH.md#c2-pc-受控音频云端对照)、[客户端](scripts/run_bailian_file.py) | 同样本三组对照、Ogg 封装、定稿和实际帧字节，尚非 ARM 自主云端链路 |
 | 测量新板连续上传与透传 | [C1-1](docs/design/CLOUD_SPEECH.md#c1-1-连续上传与串口调度)、[逐包测量](scripts/measure_z7_nano_upload.py)、[透传测量](scripts/measure_z7_nano_passthrough.py) | 已知数据块核账、时长、有效带宽与退出清理；不替代音频/TLS 验收 |
-| 核对 UART 波形、ESP 透传与分块发送 | [当前实机验证](docs/context/ENGLISH.md#分块-tls-实机验证2026-10-21)、[单端采样](docs/validation/uart-wire-20261020/README.md)、[TCP 对照](docs/validation/esp-tcp-20261020/README.md)、[产品板测](docs/validation/arm-packets-20261021/README.md) | 分块短验收通过；停更诊断时 ESP 缓冲为 0，长时待定位；麦克风版已恢复 |
+| 核对 UART 波形、ESP 透传与分块发送 | [当前实机验证](docs/context/ENGLISH.md#分块-tls-实机验证2026-10-21)、[单端采样](docs/validation/uart-wire-20261020/README.md)、[TCP 对照](docs/validation/esp-tcp-20261020/README.md)、[产品板测](docs/validation/arm-packets-20261021/README.md) | 历史译音停更未定位；当前字幕版固定样本长测与麦克风短验收见[新证据](docs/validation/text-response-20261021/README.md)，不混用两阶段范围 |
 | 调整屏幕布局、按钮、字幕和异常交互 | [UI_SPEC](docs/design/UI_SPEC.md) | 界面与行为规范 |
 | 修改或重新下载纯 PL 静态 UI | [STATIC_DEMO](docs/design/STATIC_DEMO.md)、[run_static_ui](scripts/run_static_ui.ps1) | 静态像素结构、资产与阶段入口 |
 | 处理屏幕无画面、抖动和上电顺序 | [RUNBOOK 屏幕恢复](docs/context/RUNBOOK.md#hdmi-屏幕启动与异常恢复) | 本设备已验证的恢复流程，实际结论见 NOW |

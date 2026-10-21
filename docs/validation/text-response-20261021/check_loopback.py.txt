@@ -1,0 +1,42 @@
+import hashlib, json, sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts'))
+import run_z7_nano as board
+
+out = ROOT / 'output/speech_flow_20261021'
+script = ROOT / 'tmp/speech_flow_20261021/loopback_probe.tcl'
+script.write_text('''connect -url TCP:127.0.0.1:3121
+after 300
+set b [targets -target-properties -filter {name == "xc7z010"}]
+if {[llength $b]!=1 || [dict get [lindex $b 0] jtag_cable_serial] ne "210241277120"} {error "Wrong board"}
+targets -set -filter {name =~ "*Cortex-A9*#0"}
+for {set i 0} {$i < 2} {incr i} {
+ puts "PUBLIC $i base [mrd -force -value 0x43c20000 8]"
+ puts "PUBLIC $i clock [mrd -force -value 0x43c20050 2]"
+ puts "PUBLIC $i route [mrd -force -value 0x43c20098 2]"
+ after 1000
+}
+puts PASS_LOCAL_LOOPBACK_PROBE
+disconnect
+''', encoding='ascii')
+with board.hardware_lock():
+    board.run([board.XSDB, script], out / 'loopback_probe', 'PASS_LOCAL_LOOPBACK_PROBE', 35)
+samples = [{}, {}]
+for line in (out / 'loopback_probe/console.log').read_text().splitlines():
+    if line.startswith('PUBLIC '):
+        _, index, label, *values = line.split()
+        samples[int(index)][label] = [int(v, 0) for v in values]
+for p in samples:
+    assert p['base'][0] == 0x41554431 and p['route'][0] == 0x31594c50
+    assert p['route'][1] & 1 == 0
+    assert not any(p['base'][6:8])
+assert samples[1]['base'][4] > samples[0]['base'][4]
+assert samples[1]['base'][5] > samples[0]['base'][5]
+record = dict(status='passed_digital_local_loopback_route', utc=datetime.now(timezone.utc).isoformat(),
+    samples=samples, elf_sha256=hashlib.sha256((ROOT/'output/enzh/text_response_microphone/cloud_app.elf').read_bytes()).hexdigest(),
+    scope='existing configured PL; read-only public registers; not acoustic listening or end-to-end sound latency')
+(out/'loopback_hardware.json').write_text(json.dumps(record, indent=2)+'\n')
+print(json.dumps(record))

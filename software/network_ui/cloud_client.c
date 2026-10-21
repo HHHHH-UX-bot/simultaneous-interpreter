@@ -118,7 +118,11 @@ static uint32_t selftest_next,selftest_ms;
 #define CLOUD_TARGET_LANGUAGE "zh"
 #endif
 #ifdef Z7_TRANSLATE_AUDIO
+#ifdef Z7_TEXT_ONLY_RESPONSE
+#define CLOUD_OUTPUT_MODALITIES "\"text\""
+#else
 #define CLOUD_OUTPUT_MODALITIES "\"text\",\"audio\""
+#endif
 #define CLOUD_AUDIO_SKIP "false"
 #define CLOUD_OUTPUT_VOICE "\"voice\":\"Tina\","
 #define CLOUD_TURN_OPTIONS ",\"create_response\":true,\"interrupt_response\":false"
