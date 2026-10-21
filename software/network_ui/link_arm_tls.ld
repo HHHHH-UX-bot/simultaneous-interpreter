@@ -8,7 +8,7 @@ MEMORY {
     APP_DDR (rwx) : ORIGIN = 0x02200000, LENGTH = 0x00200000
     STACK_DDR (rw) : ORIGIN = 0x01CE0000, LENGTH = 0x00020000
     FONT_DDR (r) : ORIGIN = 0x01800000, LENGTH = 0x200000
-    SNAPSHOT_DDR (rw) : ORIGIN = 0x01B00000, LENGTH = 0x10000
+    SNAPSHOT_DDR (rw) : ORIGIN = 0x01B00000, LENGTH = 0x80000
     CLOUD_DDR (rw) : ORIGIN = 0x01A00000, LENGTH = 0x100000
     TLS_DDR (rw) : ORIGIN = 0x02600000, LENGTH = 0x00200000
     PLAYBACK_DDR (rw) : ORIGIN = 0x02000000, LENGTH = 0x100000
@@ -53,7 +53,7 @@ SECTIONS {
     .cloud_masks 0x01A40000 (NOLOAD) : { KEEP(*(.cloud_masks)) } > CLOUD_DDR
     .ui_runtime (NOLOAD) : { __ui_runtime_start = .; KEEP(*(.ui_runtime)) __ui_runtime_end = .; } > SNAPSHOT_DDR
     ASSERT(SIZEOF(.ui_assets) <= 0x200000, "Font subset exceeds asset reserve")
-    ASSERT(SIZEOF(.ui_runtime) <= 0x10000, "Snapshots exceed dedicated DDR reserve")
+    ASSERT(SIZEOF(.ui_runtime) <= 0x80000, "Snapshots exceed dedicated DDR reserve")
     __stack_top = 0x01CFFFF0;
     /DISCARD/ : { *(.comment*) *(.note*) *(.ARM.exidx*) *(.ARM.extab*) }
 }

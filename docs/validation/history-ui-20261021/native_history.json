@@ -1,0 +1,27 @@
+{
+  "status": "passed",
+  "scope": "offline synthetic finals, actual C model/render/touch; no microphone/cloud/hardware acceptance",
+  "result": "PASS_HISTORY_UI checks=377 capacity=64 model_bytes=135768 feedback_bytes=64",
+  "previews": [
+    "confirm.png",
+    "empty.png",
+    "latest.png",
+    "main.png",
+    "middle.png",
+    "oldest.png",
+    "single.png"
+  ],
+  "input_sha256": {
+    "tests/history_ui_test.c": "fa10f12e3dca5f711115a7fa88773c85cb20b30bb69ec26c2eba48ca3350eccf",
+    "software/subtitle_ui/ui_model.c": "d1ed05e060364ea71e8be96314f3bfdac97ad4ff8a7249aae6f173ec71cd9850",
+    "software/subtitle_ui/ui_touch.c": "e89ddfc60fdbdee19a6087ad5c5d07f46f29cfaa869d5d85751c6c94ff401e57",
+    "software/subtitle_ui/ui_render.c": "4d1c480265994b7a6ae402f37725c994cdd27cac0574bb978b30c14026bae2ac",
+    "output/subtitle_ui/ui_assets.c": "768a1bd71958d8a0218308e7030d42103c503ab3a4648e923b452b44c8124c7a",
+    "software/subtitle_ui/ui_model.h": "bf1ea5f599f2c3e0fe2abedafe4fc4a80a824ea5421dede7ab956ca23a2e2ef5",
+    "software/subtitle_ui/ui_layout.h": "31bed9fe4052b57abaa6b9a41c6696907707b8d9bc068aa419dae454c4a475f5",
+    "software/subtitle_ui/ui_render.h": "0d6cd45e1fbbeeb2d990815beae122f21413c7c1ac0bb16b58efbeff33f97d8f",
+    "software/subtitle_ui/ui_assets.h": "e2e295e6f96f96fa10420f068644568340663b0aab8bef02891ef49f3a90a93f",
+    "software/subtitle_ui/ui_touch.h": "798e8d211cc64a3940f117552f67671f279375de8c223161ee38f0b330948708",
+    "software/z7_nano_usb/touch_link.h": "4cfb13c8a328606bb3caf83b630ab8bb25be73792b1718eb300a3e6f7ad17aa5"
+  }
+}

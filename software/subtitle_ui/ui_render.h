@@ -11,6 +11,10 @@ struct ui_render_stats {
 };
 void ui_format_elapsed(uint32_t elapsed_ms,uint32_t text[16]);
 void ui_render_set_service(void (*service)(void));
+#ifdef Z7_HISTORY_UI
+/* Measure immutable entries once, clamp the viewport, then publish its snapshot. */
+void ui_history_prepare(struct ui_state *state);
+#endif
 /* Two 16-bit readings: valid[15], above-range[14], value[13:0]. Snapshot v2
    stores this word in its reserved header field for reproducible rendering. */
 uint32_t ui_latency_pack(uint32_t loop_us,int loop_valid,uint32_t text_ms,int text_valid);

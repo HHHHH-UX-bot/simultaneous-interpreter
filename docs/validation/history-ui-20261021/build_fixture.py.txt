@@ -1,0 +1,20 @@
+import hashlib,json,re,subprocess
+from pathlib import Path
+R=Path(__file__).resolve().parents[2];P=R/'output/enzh/history_ui';O=R/'output/history_ui_20261021/fixture_app';O.mkdir(exist_ok=True)
+link=R/'tmp/history_ui_20261021/fixture.ld'
+text=(R/'software/network_ui/link_arm_tls.ld').read_text()
+text='\n'.join(line for line in text.splitlines() if not ('ASSERT(' in line and any(t in line for t in ['TLS seed ABI','Wi-Fi status ABI','Network public ABI','Network private mailbox ABI','Cloud caption ABI'])))+'\n'
+link.write_text(text)
+b=json.loads((P/'build.json').read_text());flags=[f if not f.startswith('-Wl,-Map=') else '-Wl,-Map='+str(O/'fixture.map') for f in b['Flags']]
+# The fixture shares the actual model, renderer, touch and boot path; it has no transport task.
+sources=['tmp/history_ui_20261021/history_fixture.c','software/ps_bringup/start.S','software/ps_bringup/cache.c','software/subtitle_ui/ui_model.c','software/subtitle_ui/ui_render.c','software/subtitle_ui/ui_touch.c','software/subtitle_ui/runtime.c','output/subtitle_ui/ui_assets.c']
+flags=[str(link) if f==str(R/'software/network_ui/link_arm_tls.ld') else f for f in flags]
+elf=O/'cloud_app.elf';cmd=[b['Compiler'],*flags,*[str(R/n) for n in sources],'-lgcc','-o',str(elf)]
+rsp=O/'link.rsp';rsp.write_text('\n'.join('"'+a.replace('\\','\\\\').replace('"','\\"')+'"' for a in cmd[1:])+'\n')
+r=subprocess.run([cmd[0],'@'+str(rsp)],cwd=R,capture_output=True);(O/'build.log').write_bytes(r.stdout+r.stderr)
+if r.returncode:print((r.stdout+r.stderr).decode(errors='replace'));r.check_returncode()
+nm=str(Path(b['Compiler']).with_name('arm-none-eabi-nm.exe'));r=subprocess.run([nm,'-n',str(elf)],capture_output=True,check=True);(O/'symbols.log').write_bytes(r.stdout)
+sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+inputs=sources+['tmp/history_ui_20261021/fixture.ld']+['software/subtitle_ui/main.c','software/subtitle_ui/ui_model.h','software/subtitle_ui/ui_render.h','software/subtitle_ui/ui_layout.h','software/subtitle_ui/ui_touch.h','software/z7_nano_usb/touch_link.h','software/network_ui/language_profile.h','software/network_ui/link_arm_tls.ld']
+record=dict(Status='passed',Mode='enzh',Touch=True,Selftest=True,LocalUIFixture=True,scope='20 public paired synthetic UI finals; no network or microphone capture; not cloud acceptance',ELFSHA256=sha(elf),ELF=elf.relative_to(R).as_posix(),InputSHA256={n:sha(R/n) for n in inputs})
+(O/'build.json').write_text(json.dumps(record,indent=2)+'\n');print('PASS_HISTORY_FIXTURE_ARM_BUILD',record['ELFSHA256'])

@@ -49,7 +49,22 @@
     "network": "翻译服务：未接入",
     "draft": "本段原文草稿",
     "new_session": "新会话",
-    "demo_only": "示例内容，不是真实翻译结果"
+    "demo_only": "示例内容，不是真实翻译结果",
+    "history_open": "历史记录",
+    "history_title": "历史记录",
+    "history_clear": "清空历史",
+    "history_back": "返回字幕",
+    "history_english": "English",
+    "history_chinese": "中文",
+    "history_empty": "暂无历史记录",
+    "history_hint": "完成的翻译会显示在这里",
+    "history_limit": "仅本次上电，保留最近64条",
+    "history_older": "上一页",
+    "history_newer": "下一页",
+    "history_confirm": "清空全部历史？",
+    "history_keep": "保留当前字幕和翻译状态",
+    "history_cancel": "取消",
+    "history_delete": "确认清空"
   },
   "additional_texts": [
     "将提者在我们开始之前，请确保每个人都能听清演讲者的声音。我们会留一点时间在演讲结束后回答问题。"

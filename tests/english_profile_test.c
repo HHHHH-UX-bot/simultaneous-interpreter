@@ -216,9 +216,9 @@ int main(void){
         CHECK(ui_control(&model,select));cloud_live_control(select);
         CHECK(model.language==next && !model.language_menu && model.epoch==epoch+1u);
         CHECK(model.session==UI_RUNNING && model.stage==UI_CONNECTING && client.phase==CLOUD_IDLE);
-        CHECK(!model.final_count && !model.translated[0] && model.font_index==font_choice);
+        CHECK(model.final_count==turn && model.history_count==turn && !model.translated[0] && model.font_index==font_choice);
         event("{\"type\":\"conversation.item.input_audio_transcription.completed\",\"item_id\":\"late_direction\",\"transcript\":\"old direction\"}");
-        CHECK(!model.translated[0] && !model.final_count);
+        CHECK(!model.translated[0] && model.final_count==turn);
         cloud_live_begin(4300u+turn*100u);
         client.phase=CLOUD_WAITING_SESSION;cloud_client_session_created();
         const char *input=next==UI_EN_ZH?"\"language\":\"en\"":"\"language\":\"zh\"";
@@ -230,8 +230,17 @@ int main(void){
         event("{\"type\":\"conversation.item.created\",\"item\":{\"id\":\"fresh_translation\"},\"previous_item_id\":\"fresh_direction\"}");
         event("{\"type\":\"" TRANSLATION_FINAL "\",\"item_id\":\"fresh_translation\",\"response_id\":\"fresh_response\",\"" TRANSLATION_FIELD "\":\"translated\"}");
         event("{\"type\":\"response.done\",\"response\":{\"id\":\"fresh_response\",\"status\":\"completed\"}}");
-        CHECK(model.final_count==1u && model.translated[0]=='t');
+        CHECK(model.final_count==turn+1u && model.translated[0]=='t');
     }
+    uint32_t history_epoch=model.epoch;
+    CHECK(ui_control(&model,UI_OPEN_HISTORY));cloud_live_control(UI_OPEN_HISTORY);
+    CHECK(client.phase==CLOUD_STREAMING && cloud_live_capture_enabled() && model.epoch==history_epoch);
+    CHECK(ui_control(&model,UI_HISTORY_CLEAR));cloud_live_control(UI_HISTORY_CLEAR);
+    CHECK(ui_control(&model,UI_HISTORY_CONFIRM_CLEAR));cloud_live_control(UI_HISTORY_CONFIRM_CLEAR);
+    CHECK(!model.history_count && model.final_count==4u && model.translated[0]=='t');
+    CHECK(client.phase==CLOUD_STREAMING && cloud_live_capture_enabled() && model.epoch==history_epoch);
+    CHECK(ui_control(&model,UI_CLOSE_HISTORY));cloud_live_control(UI_CLOSE_HISTORY);
+    CHECK(client.phase==CLOUD_STREAMING && cloud_live_capture_enabled());
     CHECK(ui_control(&model,UI_PAUSE));cloud_live_control(UI_PAUSE);
     CHECK(ui_control(&model,UI_SELECT_ZH_EN));cloud_live_control(UI_SELECT_ZH_EN);
     CHECK(model.session==UI_PAUSED && !cloud_live_capture_enabled() && client.phase==CLOUD_IDLE);

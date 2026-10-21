@@ -1,4 +1,5 @@
 #include "ui_model.h"
+#include "ui_layout.h"
 #include "../network_ui/language_profile.h"
 
 #define UI_U32_MAX 0xffffffffu
@@ -54,6 +55,10 @@ static int same_text(const uint32_t *a, const uint32_t *b)
 static void copy_history(struct ui_history_entry *destination,
                          const struct ui_history_entry *source)
 {
+#ifdef Z7_HISTORY_UI
+    destination->language=source->language;
+    destination->pixel_height=source->pixel_height;
+#endif
     destination->epoch = source->epoch;
     destination->segment_id = source->segment_id;
     destination->revision = source->revision;
@@ -87,11 +92,26 @@ void ui_init(struct ui_state *state)
     state->stage = UI_LISTENING;
     state->font_index = 1;
     state->show_source = 1;
+#ifdef Z7_HISTORY_UI
+    state->history_follow=1;
+#endif
 #ifdef Z7_TRANSLATE_EN
     state->language = UI_ZH_EN;
 #endif
 }
 
+#ifdef Z7_HISTORY_UI
+int ui_history_scroll(struct ui_state *state,int delta) {
+    if(!state->history_page || state->history_confirm) return 0;
+    int next=(int)state->history_scroll+delta;
+    if(next<0) next=0;
+    if((uint32_t)next>state->history_limit) next=(int)state->history_limit;
+    if((uint32_t)next==state->history_scroll) return 0;
+    state->history_scroll=(uint32_t)next;
+    state->history_follow=state->history_scroll==state->history_limit;
+    increment(&state->change_sequence);return 1;
+}
+#endif
 int ui_control(struct ui_state *state, enum ui_command command)
 {
     uint32_t next_epoch;
@@ -157,14 +177,51 @@ int ui_control(struct ui_state *state, enum ui_command command)
         language = command == UI_SELECT_EN_ZH ? UI_EN_ZH : UI_ZH_EN;
         if (state->language == language || state->epoch == UI_U32_MAX) return 0;
         enum ui_session session = state->session;
-        /* CLEAR preserves preferences and invalidates all old-direction events. */
+#ifdef Z7_HISTORY_UI
+        /* Start a fresh direction while keeping actual completed history. */
+        ++state->epoch;state->language_menu=0;
+        zero_bytes(state->source,sizeof(state->source));
+        zero_bytes(state->translated,sizeof(state->translated));
+        zero_bytes(state->last_final_source,sizeof(state->last_final_source));
+        state->processing_segment=state->source_revision=state->source_final=0;
+        state->translation_revision=state->last_final_segment=0;
+        increment(&state->change_sequence);
+#else
         if (!ui_control(state, UI_CLEAR)) return 0;
+#endif
         state->language = language;
         state->session = session == UI_RUNNING ? UI_RUNNING :
             (session == UI_PAUSED ? UI_PAUSED : UI_IDLE);
         state->stage = state->session == UI_RUNNING ? UI_CONNECTING : UI_LISTENING;
         return 1;
     }
+#endif
+#ifdef Z7_HISTORY_UI
+    case UI_OPEN_HISTORY:
+        state->history_page=1;state->history_confirm=0;state->history_follow=1;state->language_menu=0;
+        break;
+    case UI_CLOSE_HISTORY:
+        if(!state->history_page) return 0;
+        state->history_page=state->history_confirm=0;
+        break;
+    case UI_HISTORY_CLEAR:
+        if(!state->history_page || !state->history_count || state->history_confirm) return 0;
+        state->history_confirm=1;
+        break;
+    case UI_HISTORY_CANCEL_CLEAR:
+        if(!state->history_confirm) return 0;
+        state->history_confirm=0;
+        break;
+    case UI_HISTORY_CONFIRM_CLEAR:
+        if(!state->history_confirm) return 0;
+        zero_bytes(state->history,sizeof(state->history));
+        state->history_count=state->history_scroll=state->history_limit=0;
+        state->history_confirm=state->history_discarded=0;state->history_follow=1;
+        break;
+    case UI_HISTORY_OLDER:
+        return ui_history_scroll(state,-(UI_HISTORY_BODY_HEIGHT-60));
+    case UI_HISTORY_NEWER:
+        return ui_history_scroll(state,UI_HISTORY_BODY_HEIGHT-60);
 #endif
     default:
         return 0;
@@ -178,12 +235,20 @@ static void append_final(struct ui_state *state, const struct ui_event *event)
     struct ui_history_entry *entry;
     uint32_t i;
     if (state->history_count == UI_HISTORY_MAX) {
+#ifdef Z7_HISTORY_UI
+        uint32_t removed=state->history[0].pixel_height;
+        if(!state->history_follow) state->history_scroll=state->history_scroll>removed?state->history_scroll-removed:0;
+        increment(&state->history_discarded);
+#endif
         for (i = 1; i < UI_HISTORY_MAX; ++i)
             copy_history(&state->history[i - 1], &state->history[i]);
     } else {
         ++state->history_count;
     }
     entry = &state->history[state->history_count - 1];
+#ifdef Z7_HISTORY_UI
+    entry->language=state->language;entry->pixel_height=0;
+#endif
     entry->epoch = state->epoch;
     entry->segment_id = event->segment_id;
     entry->revision = event->revision;

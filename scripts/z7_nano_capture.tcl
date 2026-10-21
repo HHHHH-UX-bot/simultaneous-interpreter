@@ -1,6 +1,9 @@
 # Freeze the CPU producer only; the VDMA continues displaying its complete buffer.
 set serial [lindex $argv 0]
 set folder [lindex $argv 1]
+set model_bytes [expr {[llength $argv]>2?[lindex $argv 2]:11392}]
+if {$model_bytes ni {11392 135768}} {error "Unsupported expected model ABI"}
+set stride [expr {$model_bytes+64}]
 connect -url TCP:127.0.0.1:3121
 after 1000
 set cpu [targets -target-properties -filter {name =~ "*Cortex-A9*#0"}]
@@ -17,7 +20,7 @@ while {1} {
     after 10
 }
 if {[lindex $info 0]!=0x55493131 || [lindex $info 2]!=0x1b00000 ||
-    [lindex $info 3]!=11456 || [lindex $info 4]!=11392 || [lindex $info 15]!=3} {error "Wrong UI ABI"}
+    [lindex $info 3]!=$stride || [lindex $info 4]!=$model_bytes || [lindex $info 15]!=3} {error "Wrong UI ABI"}
 stop
 if {![string match "Stopped:*" [state]]} {error "UI CPU did not stop"}
 set capture_failed [catch {
@@ -31,12 +34,12 @@ set capture_failed [catch {
         after 10
     }
     if {$current>1} {error "Invalid framebuffer index"}
-    set snapshot [expr {0x1b00000+$current*11456}]
+    set snapshot [expr {0x1b00000+$current*$stride}]
     set header [mrd -force -value $snapshot 8]
     if {[lindex $header 0]!=0x55495331 || [lindex $header 1] ni {1 2} ||
-        [lrange $header 2 3] ne {11456 11392}} {error "Wrong active snapshot"}
+        [lrange $header 2 3] ne [list $stride $model_bytes]} {error "Wrong active snapshot"}
     set base [expr {$current?0x01400000:0x01000000}]
-    mrd -force -bin -file [file join $folder snapshot.bin] $snapshot 2864
+    mrd -force -bin -file [file join $folder snapshot.bin] $snapshot [expr {$stride/4}]
     mrd -force -bin -file [file join $folder framebuffer.bin] $base 614400
 } capture_message capture_options]
 set resume_failed [catch {

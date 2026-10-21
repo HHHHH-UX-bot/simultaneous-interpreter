@@ -4,7 +4,12 @@
 #include <stdint.h>
 
 #define UI_MAX_TEXT 256u
+#if defined(Z7_ARM_TLS) && (defined(Z7_TRANSLATE_EN) || defined(Z7_TRANSLATE_ZH))
+#define Z7_HISTORY_UI
+#define UI_HISTORY_MAX 64u
+#else
 #define UI_HISTORY_MAX 4u
+#endif
 
 enum ui_session { UI_IDLE, UI_RUNNING, UI_PAUSED, UI_BLOCKED };
 enum ui_stage { UI_LISTENING, UI_RECOGNIZING, UI_TRANSLATING, UI_FINAL,
@@ -13,6 +18,8 @@ enum ui_command {
     UI_START, UI_PAUSE, UI_RESUME, UI_CLEAR,
     UI_FONT_MINUS, UI_FONT_PLUS, UI_TOGGLE_SOURCE,
     UI_LANGUAGE_MENU, UI_SELECT_EN_ZH, UI_SELECT_ZH_EN, UI_DISMISS_LANGUAGE,
+    UI_OPEN_HISTORY, UI_CLOSE_HISTORY, UI_HISTORY_CLEAR,
+    UI_HISTORY_CONFIRM_CLEAR, UI_HISTORY_CANCEL_CLEAR, UI_HISTORY_OLDER, UI_HISTORY_NEWER,
     UI_COMMAND_COUNT
 };
 enum ui_language { UI_EN_ZH, UI_ZH_EN };
@@ -30,6 +37,9 @@ struct ui_event {
 };
 
 struct ui_history_entry {
+#ifdef Z7_HISTORY_UI
+    uint32_t language, pixel_height;
+#endif
     uint32_t epoch;
     uint32_t segment_id;
     uint32_t revision;
@@ -61,11 +71,18 @@ struct ui_state {
     uint32_t last_final_source[UI_MAX_TEXT];
     enum ui_language language;
     uint32_t language_menu;
+#ifdef Z7_HISTORY_UI
+    uint32_t history_page,history_scroll,history_limit,history_follow,history_confirm,history_discarded;
+#endif
 };
 
 void ui_init(struct ui_state *state);
 int ui_control(struct ui_state *state, enum ui_command command);
 int ui_apply_event(struct ui_state *state, const struct ui_event *event);
+#ifdef Z7_HISTORY_UI
+/* Pixel scroll of the measured, fixed-size history view; never changes a session. */
+int ui_history_scroll(struct ui_state *state,int delta);
+#endif
 
 /*
  * Text is UTF-32, at most 255 Unicode scalars plus a terminator. ASR revision

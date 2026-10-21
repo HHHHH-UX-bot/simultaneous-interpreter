@@ -33,7 +33,7 @@ int main(void) {
     uint32_t font=state.font_index,epoch=state.epoch;
     CHECK(click(300,UI_LANGUAGE_MENU_Y+UI_LANGUAGE_ROW_HEIGHT+10)==UI_SELECT_ZH_EN+1);
     CHECK(state.language==UI_ZH_EN && state.epoch==epoch+1 && !state.language_menu);
-    CHECK(!state.source[0] && !state.translated[0] && !state.history_count && !state.final_count);
+    CHECK(!state.source[0] && !state.translated[0] && state.history_count==1 && state.final_count==1);
     CHECK(state.font_index==font && state.session==UI_RUNNING && state.stage==UI_CONNECTING);
     CHECK(click(300,30)==UI_LANGUAGE_MENU+1);
     CHECK(click(715,555)==UI_DISMISS_LANGUAGE+1 && !state.language_menu && state.font_index==font);
@@ -47,7 +47,7 @@ int main(void) {
     CHECK(click(300,UI_LANGUAGE_MENU_Y+10)==UI_SELECT_EN_ZH+1);
     CHECK(state.session==UI_PAUSED && state.language==UI_EN_ZH);
     CHECK(feedback.accepted[UI_FONT_PLUS]==1 && feedback.reserved==10 && feedback.ignored==1);
-    CHECK(sizeof(state)==11392 && sizeof(feedback)==64);
+    CHECK(sizeof(state)==135768 && sizeof(feedback)==64);
     puts("PASS_LANGUAGE_PICKER touch, dismiss, drag, same selection, epoch and paused change");
     return 0;
 #endif

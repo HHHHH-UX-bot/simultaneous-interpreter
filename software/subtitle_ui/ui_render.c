@@ -11,7 +11,7 @@
 #define LINE 0xd7e1e5u
 #define TINT 0xe0f0ecu
 
-struct paint {uint32_t *pixels;struct ui_render_stats *stats;};
+struct paint {uint32_t *pixels;struct ui_render_stats *stats;uint32_t viewport_clip;};
 struct text_lines {uint16_t begin[UI_MAX_TEXT],end[UI_MAX_TEXT];uint32_t count;};
 struct clip {int x,y,w,h;};
 static void (*render_service)(void);
@@ -88,7 +88,8 @@ static void ink(struct paint *p,int x,int y,uint32_t color,uint32_t coverage,str
     if(!coverage) return;
     if(x<c.x || y<c.y || x>=c.x+c.w || y>=c.y+c.h ||
        x<0 || y<0 || x>=(int)UI_WIDTH || y>=(int)UI_HEIGHT) {
-        ++p->stats->clipped_glyph_pixels;return;
+        if(!p->viewport_clip) ++p->stats->clipped_glyph_pixels;
+        return;
     }
     uint32_t *pixel=&p->pixels[y*UI_WIDTH+x];
     *pixel=coverage==15u?color:blend(*pixel,color,coverage);
@@ -236,11 +237,14 @@ static void english_text(uint32_t out[64],const char *text) {
     uint32_t n=0;while(text[n] && n<63u) {out[n]=(uint8_t)text[n];++n;}out[n]=0;
 }
 #endif
-static void button(struct paint *p,int x,int w,const uint32_t *text,int selected) {
-    round_rect(p,x,530,w,56,8,selected?ACTION:LINE);
-    if(!selected) round_rect(p,x+1,531,w-2,54,7,PAPER);
+static void button_at(struct paint *p,int x,int y,int w,const uint32_t *text,int selected) {
+    round_rect(p,x,y,w,56,8,selected?ACTION:LINE);
+    if(!selected) round_rect(p,x+1,y+1,w-2,54,7,PAPER);
     int tx=x+(w-(int)text_width(font(18),text))/2;
-    one_line(p,text,18,tx,546,w-12,selected?PAPER:INK);
+    one_line(p,text,18,tx,y+16,w-12,selected?PAPER:INK);
+}
+static void button(struct paint *p,int x,int w,const uint32_t *text,int selected) {
+    button_at(p,x,530,w,text,selected);
 }
 #ifdef Z7_BILINGUAL
 static const uint32_t language_directions[2][19]={
@@ -267,7 +271,7 @@ uint32_t ui_latency_pack(uint32_t loop_us,int loop_valid,uint32_t text_ms,int te
     return (loop_valid?(0x8000u|l):0u) | ((text_valid?(0x8000u|t):0u)<<16);
 }
 void ui_render_latency(uint32_t *pixels,uint32_t readings,struct ui_render_stats *stats) {
-    struct paint p={pixels,stats};
+    struct paint p={pixels,stats,0};
     static const uint32_t labels[2][8]={{'L','1',' ','L','O','O','P',0},{'T','1',' ','T','E','X','T',0}};
     static const uint32_t units[2][3]={{'u','s',0},{'m','s',0}};
     for(uint32_t i=0;i<2u;++i) {
@@ -283,11 +287,110 @@ void ui_render_latency(uint32_t *pixels,uint32_t readings,struct ui_render_stats
         one_line(&p,units[i],14,x+78,33,20,MUTED);
     }
 }
+#ifdef Z7_HISTORY_UI
+static const uint32_t *history_text(const struct ui_history_entry *entry,int english) {
+    int source_is_english=entry->language==UI_EN_ZH;
+    return english==source_is_english?entry->source:entry->translated;
+}
+static uint32_t history_height(const struct ui_history_entry *entry) {
+    struct text_lines lines;uint32_t count=0;
+    for(int english=0;english<2;++english) {
+        wrap(history_text(entry,english),font(28),UI_HISTORY_TEXT_WIDTH,&lines);
+        if(lines.count>count) count=lines.count;
+    }
+    uint32_t height=count*41u+40u;return height<92u?92u:height;
+}
+void ui_history_prepare(struct ui_state *state) {
+    uint32_t total=0;
+    for(uint32_t i=0;i<state->history_count;++i) {
+        struct ui_history_entry *entry=state->history+i;
+        if(!entry->pixel_height) entry->pixel_height=history_height(entry);
+        total+=entry->pixel_height;
+    }
+    state->history_limit=total>UI_HISTORY_BODY_HEIGHT?total-UI_HISTORY_BODY_HEIGHT:0;
+    if(state->history_follow || state->history_scroll>state->history_limit)
+        state->history_scroll=state->history_limit;
+}
+static void history_paragraph(struct paint *p,const uint32_t *text,int x,int y) {
+    struct text_lines lines;wrap(text,font(28),UI_HISTORY_TEXT_WIDTH,&lines);
+    struct clip c={x-4,UI_HISTORY_BODY_Y,UI_HISTORY_TEXT_WIDTH+12,UI_HISTORY_BODY_HEIGHT};
+    for(uint32_t row=0;row<lines.count;++row) {
+        int at=y+(int)row*41;
+        if(at+44<UI_HISTORY_BODY_Y || at>=UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT) continue;
+        draw_line(p,font(28),text,lines.begin[row],lines.end[row],x,at,INK,c);
+    }
+    p->stats->history_lines+=lines.count;
+}
+static void history_view(struct paint *p,const struct ui_state *s) {
+    round_rect(p,24,13,36,36,8,ACTION);
+    rect(p,32,22,20,3,PAPER);rect(p,32,29,16,3,PAPER);rect(p,32,36,10,3,PAPER);
+    one_line(p,label("brand"),24,72,17,64,INK);
+    one_line(p,label("history_title"),18,166,21,290,INK);
+    one_line(p,label("touch"),14,720,24,116,MUTED);
+    uint32_t number[24];decimal(s->history_count,number);
+    uint32_t n=0;while(number[n])++n;number[n++]=' ';number[n++]='/';number[n++]=' ';
+    decimal(UI_HISTORY_MAX,number+n);
+    round_rect(p,850,17,150,30,15,TINT);one_line(p,number,18,889,20,100,ACTION);
+    round_rect(p,24,84,976,404,12,PAPER);
+    one_line(p,label("history_english"),18,76,99,380,INK);
+    one_line(p,label("history_chinese"),18,548,99,380,INK);
+    rect(p,40,130,932,1,LINE);
+    if(!s->history_count) {
+        round_rect(p,478,212,68,48,8,LINE);round_rect(p,480,214,64,44,6,PAPER);
+        rect(p,492,225,40,2,MUTED);rect(p,492,235,32,2,MUTED);rect(p,492,245,22,2,MUTED);
+        const uint32_t *text=label("history_empty");
+        one_line(p,text,28,(1024-(int)text_width(font(28),text))/2,284,380,INK);
+        text=label("history_hint");one_line(p,text,18,(1024-(int)text_width(font(18),text))/2,334,420,MUTED);
+    } else {
+        int y=UI_HISTORY_BODY_Y-(int)s->history_scroll;p->viewport_clip=1;
+        for(uint32_t i=0;i<s->history_count;++i) {
+            const struct ui_history_entry *entry=s->history+i;
+            int h=(int)(entry->pixel_height?entry->pixel_height:history_height(entry));
+            if(y+h>UI_HISTORY_BODY_Y && y<UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT) {
+                int top=y<UI_HISTORY_BODY_Y?UI_HISTORY_BODY_Y:y;
+                int bottom=y+h>UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT?UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT:y+h;
+                if(i&1u) rect(p,40,top,932,bottom-top,0xf6f9fau);
+                decimal(s->final_count-s->history_count+i+1u,number);uint32_t len=0;while(number[len])++len;
+                draw_line(p,font(14),number,0,len,44,y+16,MUTED,
+                          (struct clip){40,UI_HISTORY_BODY_Y,32,UI_HISTORY_BODY_HEIGHT});
+                history_paragraph(p,history_text(entry,1),UI_HISTORY_LEFT_X,y+18);
+                history_paragraph(p,history_text(entry,0),UI_HISTORY_RIGHT_X,y+18);
+                if(y+h-1>=UI_HISTORY_BODY_Y && y+h-1<UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT)
+                    rect(p,40,y+h-1,932,1,LINE);
+            }
+            y+=h;
+        }
+        p->viewport_clip=0;rect(p,511,140,1,348,LINE);
+        int track=UI_HISTORY_BODY_HEIGHT,thumb=(int)((uint32_t)track*track/(s->history_limit+track));
+        if(thumb<28) thumb=28;
+        int at=UI_HISTORY_BODY_Y+(s->history_limit?(int)(s->history_scroll*(uint32_t)(track-thumb)/s->history_limit):0);
+        round_rect(p,982,UI_HISTORY_BODY_Y,5,track,2,LINE);round_rect(p,982,at,5,thumb,2,ACTION);
+    }
+    rect(p,0,508,UI_WIDTH,92,PAPER);rect(p,0,508,UI_WIDTH,1,LINE);
+    button(p,UI_HISTORY_BACK_X,UI_HISTORY_BACK_WIDTH,label("history_back"),1);
+    one_line(p,label("history_limit"),14,196,550,332,MUTED);
+    button(p,UI_HISTORY_OLDER_X,UI_HISTORY_PAGE_WIDTH,label("history_older"),0);
+    button(p,UI_HISTORY_NEWER_X,UI_HISTORY_PAGE_WIDTH,label("history_newer"),0);
+    button(p,UI_HISTORY_CLEAR_X,UI_HISTORY_CLEAR_WIDTH,label("history_clear"),0);
+    if(s->history_confirm) {
+        /* Opaque, quiet confirmation; all background hit regions are blocked. */
+        round_rect(p,272,192,480,222,14,LINE);round_rect(p,274,194,476,218,12,PAPER);
+        one_line(p,label("history_confirm"),28,332,225,360,INK);
+        one_line(p,label("history_keep"),18,332,279,380,MUTED);
+        button_at(p,UI_HISTORY_CANCEL_X,UI_HISTORY_CONFIRM_Y,UI_HISTORY_CONFIRM_WIDTH,label("history_cancel"),0);
+        button_at(p,UI_HISTORY_CONFIRM_X,UI_HISTORY_CONFIRM_Y,UI_HISTORY_CONFIRM_WIDTH,label("history_delete"),1);
+    }
+}
+#endif
+
 void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
                uint32_t requested_page,struct ui_render_stats *stats) {
     uint32_t *words=(uint32_t *)stats;for(uint32_t i=0;i<sizeof(*stats)/4u;++i) words[i]=0;
-    struct paint p={pixels,stats};
+    struct paint p={pixels,stats,0};
     rect(&p,0,0,UI_WIDTH,UI_HEIGHT,CANVAS);rect(&p,0,0,UI_WIDTH,64,PAPER);rect(&p,0,63,UI_WIDTH,1,LINE);
+#ifdef Z7_HISTORY_UI
+    if(s->history_page) {history_view(&p,s);return;}
+#endif
     round_rect(&p,24,13,36,36,8,ACTION);
     rect(&p,32,22,20,3,PAPER);rect(&p,32,29,16,3,PAPER);rect(&p,32,36,10,3,PAPER);
     one_line(&p,label("brand"),24,72,17,64,INK);
@@ -406,7 +509,12 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     }
     rect(&p,0,508,UI_WIDTH,92,PAPER);rect(&p,0,508,UI_WIDTH,1,LINE);
     button(&p,24,176,label(s->session==UI_RUNNING?"pause":(s->session==UI_PAUSED?"resume":"start")),1);
-    button(&p,212,144,label("clear"),0);button(&p,368,120,label("original"),0);
+#ifdef Z7_HISTORY_UI
+    button(&p,212,144,label("history_open"),0);
+#else
+    button(&p,212,144,label("clear"),0);
+#endif
+    button(&p,368,120,label("original"),0);
     if(s->show_source) rect(&p,388,575,80,3,ACTION);
     one_line(&p,label("font"),14,510,551,40,MUTED);
     static const uint32_t minus[]={'A','-',0},plus[]={'A','+',0};

@@ -1,0 +1,49 @@
+{
+  "Status": "passed",
+  "Mode": "enzh",
+  "SourceHashes": {
+    "software/network_ui/language_profile.h": "4ef328e93359869e68441ad2c314547f2c3bf1776ed4fd3d6d4bb45ed1abd077",
+    "software/subtitle_ui/ui_model.h": "bf1ea5f599f2c3e0fe2abedafe4fc4a80a824ea5421dede7ab956ca23a2e2ef5",
+    "software/subtitle_ui/ui_layout.h": "31bed9fe4052b57abaa6b9a41c6696907707b8d9bc068aa419dae454c4a475f5",
+    "software/subtitle_ui/ui_model.c": "d1ed05e060364ea71e8be96314f3bfdac97ad4ff8a7249aae6f173ec71cd9850",
+    "software/subtitle_ui/ui_assets.h": "e2e295e6f96f96fa10420f068644568340663b0aab8bef02891ef49f3a90a93f",
+    "output/subtitle_ui/ui_assets.c": "768a1bd71958d8a0218308e7030d42103c503ab3a4648e923b452b44c8124c7a",
+    "software/subtitle_ui/ui_render.h": "0d6cd45e1fbbeeb2d990815beae122f21413c7c1ac0bb16b58efbeff33f97d8f",
+    "software/subtitle_ui/ui_render.c": "4d1c480265994b7a6ae402f37725c994cdd27cac0574bb978b30c14026bae2ac",
+    "software/subtitle_ui/ui_demo.h": "03391fde23c84d56e0a140ff628c797e796ad9ddf65076616988bf60829791a8",
+    "software/subtitle_ui/ui_demo.c": "a7e41d3ea231b8ab92da4044c1d6de526d9503107ae2ea7c18b374993fd6b614",
+    "software/subtitle_ui/ui_host.c": "056facf296291e429153fbb047f28b7eafde54c811f8a2f70a7bf086b8cce7bd",
+    "scripts/validate_subtitle_ui.py": "7467fc8eabfc0a0397f492c20660b33cdfeb405b5aaa94edfadaddd1e3c493ba"
+  },
+  "VerifiedAtUTC": "2026-10-21T09:27:27.118214+00:00",
+  "ModelBytes": 135768,
+  "FrameSize": [
+    1024,
+    600
+  ],
+  "Cases": [
+    "idle",
+    "final/history",
+    "long text/all pages",
+    "ASR draft retaining Chinese",
+    "paused",
+    "cleared",
+    "source hidden",
+    "negative glyph bearings",
+    "255-scalar bearing text",
+    "connecting with retained caption",
+    "offline with retained caption",
+    "ready to speak"
+  ],
+  "FontSizes": [
+    28,
+    36,
+    44
+  ],
+  "BufferCanariesVerified": true,
+  "MissingGlyphs": 0,
+  "ClippedGlyphPixels": 0,
+  "NativeLibrary": "tmp/subtitle_ui/host_9feb0d04/ui_host.dll",
+  "NativeLibrarySHA256": "1b5e1489623fb15d30dcdeefbed37014abee02520a032c13063dc85086d0d75c",
+  "Scope": "Native C renderer and simulated model states only; no board or touch/translation test"
+}

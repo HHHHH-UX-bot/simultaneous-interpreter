@@ -1,0 +1,25 @@
+#include <stdint.h>
+static uint32_t fixture_latency(void);
+#define UI_LATENCY_READING() fixture_latency()
+#define ui_demo_init history_fixture_init
+#define ui_demo_tick history_fixture_tick
+#include "../../software/subtitle_ui/main.c"
+#undef ui_demo_init
+#undef ui_demo_tick
+/* Hardware UI validation only: public fixture pairs, no network or microphone. */
+void history_fixture_init(struct ui_demo_clock *clock,struct ui_state *s,uint32_t now) {
+    (void)clock;(void)now;ui_init(s);(void)ui_control(s,UI_START);
+    for(uint32_t id=1;id<=20u;++id) {
+        if(id%6u==0) (void)ui_control(s,s->language==UI_EN_ZH?UI_SELECT_ZH_EN:UI_SELECT_EN_ZH);
+        const struct ui_demo_text *sample=ui_demo_samples+(id-1u)%ui_demo_sample_count;
+        struct ui_event e={UI_ASR_FINAL,s->epoch,id,1,1,s->language==UI_EN_ZH?sample->source:sample->translated};
+        (void)ui_apply_event(s,&e);e.type=UI_TRANSLATING_EVENT;(void)ui_apply_event(s,&e);
+        e.type=UI_TRANSLATION_FINAL;e.text=s->language==UI_EN_ZH?sample->translated:sample->source;(void)ui_apply_event(s,&e);
+    }
+    (void)ui_control(s,UI_PAUSE);(void)ui_control(s,UI_OPEN_HISTORY);
+}
+void history_fixture_tick(struct ui_demo_clock *clock,struct ui_state *s,uint32_t now) {(void)clock;(void)s;(void)now;}
+static uint32_t fixture_latency(void) {
+    volatile uint32_t *audio=(volatile uint32_t *)0x43c20000u;
+    return ui_latency_pack(audio[2],audio[1]&1u,0,0);
+}

@@ -31,8 +31,13 @@ struct ui_snapshot {
 };
 _Static_assert(sizeof(struct display_result)==64,"Display ABI");
 _Static_assert(sizeof(struct ui_information)==64,"UI ABI");
+#ifdef Z7_HISTORY_UI
+_Static_assert(sizeof(struct ui_state)==135768u,"History model ABI");
+_Static_assert(sizeof(struct ui_snapshot)==135832u,"History snapshot ABI");
+#else
 _Static_assert(sizeof(struct ui_state)==11392u,"ARM/native model ABI requires 32-bit enums");
 _Static_assert(sizeof(struct ui_snapshot)==11456u,"ARM/native snapshot ABI");
+#endif
 __attribute__((section(".mailbox"),used)) volatile struct display_result report;
 __attribute__((section(".ui_mailbox"),used)) volatile struct ui_information ui_info;
 __attribute__((section(".ui_command"),used)) volatile struct ui_command_mailbox ui_command;
@@ -131,6 +136,9 @@ static void process_controls(void) {
 #endif
 }
 static void draw(uint32_t index,uint32_t elapsed,uint32_t page) {
+#ifdef Z7_HISTORY_UI
+    ui_history_prepare(&state);
+#endif
     struct ui_snapshot *snapshot=&snapshots[index];
     snapshot->magic=0x55495331u;snapshot->version=1;snapshot->bytes=sizeof(*snapshot);
     snapshot->model_bytes=sizeof(state);snapshot->elapsed_ms=elapsed;snapshot->requested_page=page;

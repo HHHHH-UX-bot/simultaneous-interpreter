@@ -1,0 +1,22 @@
+{
+  "status": "resolved_findings",
+  "scope": "independent review of actual working tree, no hardware acceptance",
+  "findings": [
+    {
+      "priority": 1,
+      "issue": "ARM TLS linker still reserved only64KiB",
+      "resolution": "expand selected link_arm_tls.ld reserve/assert to512KiB; ARM build passed"
+    },
+    {
+      "priority": 2,
+      "issue": "queued old release was interpreted using next live press coordinates",
+      "resolution": "finish queued contact first; exact delayed release + Back press regression passed"
+    },
+    {
+      "priority": 2,
+      "issue": "swipe completed entirely during render was ignored",
+      "resolution": "use queued press/release endpoints when no active sampled gesture; exact150px regression passed"
+    }
+  ],
+  "final_review": "no further substantive findings; native rerun passed; physical acceptance separate"
+}

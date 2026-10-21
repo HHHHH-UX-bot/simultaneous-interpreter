@@ -1,0 +1,23 @@
+import json,sys
+from datetime import datetime,timezone
+from pathlib import Path
+R=Path(__file__).resolve().parents[2];sys.path.insert(0,str(R/'scripts'))
+import run_z7_nano as b
+app=R/sys.argv[1];parent=R/sys.argv[2];build=json.loads((app/'build.json').read_text())
+assert build['Touch'] and (build.get('ArmTLSPackets') or build.get('LocalUIFixture'))
+assert all(b.sha(R/n)==v for n,v in build['InputSHA256'].items())
+elf=R/build['ELF'];assert b.sha(elf)==build['ELFSHA256']
+old_build=json.loads((parent/'build.json').read_text());old_load=json.loads((parent/'load.json').read_text())
+assert old_load['elf_sha256']==b.sha(parent/'cloud_app.elf')==old_build['ELFSHA256']
+loader=R/'tmp/tls_packets_20261021/normal_reload.tcl'
+if old_build.get('LocalUIFixture'):
+ text=loader.read_text();assert text.count('0x43c30008]!=50')==1
+ text=text.replace('0x43c30008]!=50','0x43c30008]!=434')
+ loader=R/'tmp/history_ui_20261021/restore_product.tcl';loader.write_text(text)
+folder=app/'warm_load_20261021'/datetime.now(timezone.utc).strftime('%H%M%S%f');folder.mkdir(parents=True)
+with b.hardware_lock(): b.run([b.XSDB,loader,elf,folder/'result.json',R/'scripts/z7_nano_usb_stop.tcl'],folder/'run','PASS_PACKET_NORMAL_WARM_LOAD',40)
+record=dict(old_load);record.update(elf_sha256=b.sha(elf),selftest=build['Selftest'],local_ui_fixture=bool(build.get('LocalUIFixture')),
+ result=(folder/'result.json').relative_to(R).as_posix(),result_sha256=b.sha(folder/'result.json'),
+ method='Owned UI transition: network idle, normal AT/no TCP confirmed, CPU1+USB halted, warm CPU0 load; same PL',
+ parent_load_sha256=b.sha(parent/'load.json'),loader_sha256=b.sha(loader))
+(app/'load.json').write_text(json.dumps(record,indent=2)+'\n');print('PASS_HISTORY_UI_OWNED_LOAD',record['elf_sha256'])

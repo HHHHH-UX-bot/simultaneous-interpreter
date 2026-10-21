@@ -1,0 +1,29 @@
+{
+  "Status": "passed",
+  "Mode": "enzh",
+  "Touch": true,
+  "Selftest": true,
+  "LocalUIFixture": true,
+  "scope": "20 public paired synthetic UI finals; no network or microphone capture; not cloud acceptance",
+  "ELFSHA256": "cf20e3cc37f0967a65b38a74fe31b26b6a6ca9b72076982a326c1e043ed7cfda",
+  "ELF": "output/history_ui_20261021/fixture_app/cloud_app.elf",
+  "InputSHA256": {
+    "tmp/history_ui_20261021/history_fixture.c": "bb2f7b4109313af5bed22bc72896287d4cbf293b90f31c3bd4e9bbdec1c3967d",
+    "software/ps_bringup/start.S": "40445495bee0f2292d0222b453207d8ae83628ee78fa3d647d96d1afc5df7e29",
+    "software/ps_bringup/cache.c": "4954083f77aa9f5fe83a126d0e92ed645b5f574d3e92488a8145fc1b390917d4",
+    "software/subtitle_ui/ui_model.c": "d1ed05e060364ea71e8be96314f3bfdac97ad4ff8a7249aae6f173ec71cd9850",
+    "software/subtitle_ui/ui_render.c": "4d1c480265994b7a6ae402f37725c994cdd27cac0574bb978b30c14026bae2ac",
+    "software/subtitle_ui/ui_touch.c": "e89ddfc60fdbdee19a6087ad5c5d07f46f29cfaa869d5d85751c6c94ff401e57",
+    "software/subtitle_ui/runtime.c": "71658f271ba7eb8da00cda1533742f5a7bf889b1083161fb681a363a97e2272a",
+    "output/subtitle_ui/ui_assets.c": "768a1bd71958d8a0218308e7030d42103c503ab3a4648e923b452b44c8124c7a",
+    "tmp/history_ui_20261021/fixture.ld": "86e4be1745b560def4c0b4964f19902be6af7f150b100e4da383ad1fe822027a",
+    "software/subtitle_ui/main.c": "6bccd9a97e5d41552cd120efd8307355f97e35c425c14bd56e7a2c7de1623bdb",
+    "software/subtitle_ui/ui_model.h": "bf1ea5f599f2c3e0fe2abedafe4fc4a80a824ea5421dede7ab956ca23a2e2ef5",
+    "software/subtitle_ui/ui_render.h": "0d6cd45e1fbbeeb2d990815beae122f21413c7c1ac0bb16b58efbeff33f97d8f",
+    "software/subtitle_ui/ui_layout.h": "31bed9fe4052b57abaa6b9a41c6696907707b8d9bc068aa419dae454c4a475f5",
+    "software/subtitle_ui/ui_touch.h": "798e8d211cc64a3940f117552f67671f279375de8c223161ee38f0b330948708",
+    "software/z7_nano_usb/touch_link.h": "4cfb13c8a328606bb3caf83b630ab8bb25be73792b1718eb300a3e6f7ad17aa5",
+    "software/network_ui/language_profile.h": "4ef328e93359869e68441ad2c314547f2c3bf1776ed4fd3d6d4bb45ed1abd077",
+    "software/network_ui/link_arm_tls.ld": "073672a6c6997d0457822bdada99f8119c3e229e99c25c43648e914bb436f64b"
+  }
+}

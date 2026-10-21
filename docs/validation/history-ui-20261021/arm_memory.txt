@@ -1,0 +1,17 @@
+Memory region         Used Size  Region Size  %age Used
+
+             OCM:         57 KB        64 KB     89.06%
+
+         APP_DDR:      410476 B         2 MB     19.57%
+
+       STACK_DDR:           0 B       128 KB      0.00%
+
+        FONT_DDR:     2040772 B         2 MB     97.31%
+
+    SNAPSHOT_DDR:      271664 B       512 KB     51.82%
+
+       CLOUD_DDR:      262272 B         1 MB     25.01%
+
+         TLS_DDR:        640 KB         2 MB     31.25%
+
+    PLAYBACK_DDR:      480000 B         1 MB     45.78%

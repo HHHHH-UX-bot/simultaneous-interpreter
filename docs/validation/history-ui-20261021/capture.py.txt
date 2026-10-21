@@ -1,0 +1,12 @@
+import json,sys
+from pathlib import Path
+R=Path(__file__).resolve().parents[2];sys.path.insert(0,str(R/'scripts'))
+import run_z7_nano as b
+from compare_z7_nano_capture import compare
+app=R/sys.argv[1];folder=R/'output/history_ui_20261021'/sys.argv[2];folder.mkdir(parents=True,exist_ok=True)
+load=json.loads((app/'load.json').read_text());build=json.loads((app/'build.json').read_text())
+assert load['elf_sha256']==build['ELFSHA256']==b.sha(app/'cloud_app.elf')
+assert all(b.sha(R/n)==v for n,v in build['InputSHA256'].items())
+with b.hardware_lock(): b.run([b.XSDB,R/'scripts/z7_nano_capture.tcl','210241277120',folder,'135768'],folder/'run','PASS_Z7_NANO_CAPTURE',45)
+record=compare(folder,load,Path('D:/cenvironment/mingw64/bin'),R/'output/subtitle_ui/host_validation_enzh.json')
+(folder/'validation.json').write_text(json.dumps(record,indent=2)+'\n');print('PASS_HISTORY_FRAME',record['pixel_mismatches'])

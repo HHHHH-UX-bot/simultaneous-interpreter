@@ -19,7 +19,8 @@ def compare(folder, app, compiler_directory, host_record=None):
     snapshot = (folder/"snapshot.bin").read_bytes()
     raw = (folder/"framebuffer.bin").read_bytes()
     header = struct.unpack_from("<8I", snapshot)
-    if len(raw) != 614400*4 or len(snapshot) != 11456 or header[0] != 0x55495331 or header[1] not in (1,2) or header[2:4] != (11456,11392):
+    model_bytes = host["ModelBytes"]
+    if len(raw) != 614400*4 or len(snapshot) != model_bytes+64 or header[0] != 0x55495331 or header[1] not in (1,2) or header[2:4] != (model_bytes+64,model_bytes):
         raise RuntimeError("Captured frame/snapshot size or identity changed")
     # DLL dependencies use the same compiler directory as the original native checks.
     with os.add_dll_directory(str(compiler_directory)):
@@ -27,17 +28,17 @@ def compare(folder, app, compiler_directory, host_record=None):
         library.ui_host_from_state.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32,
             ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32), ctypes.POINTER(Stats)]
         library.ui_host_from_state.restype = ctypes.c_int
-        state = (ctypes.c_uint32*(11392//4)).from_buffer_copy(snapshot[32:32+11392])
+        state = (ctypes.c_uint32*(model_bytes//4)).from_buffer_copy(snapshot[32:32+model_bytes])
         pixels = (ctypes.c_uint32*614400)()
         stats = Stats()
-        if not library.ui_host_from_state(state, 11392, header[4], header[5], pixels, ctypes.byref(stats)):
+        if not library.ui_host_from_state(state, model_bytes, header[4], header[5], pixels, ctypes.byref(stats)):
             raise RuntimeError("Native renderer rejected captured state")
         if header[1]==2:
             library.ui_host_latency.argtypes=[ctypes.POINTER(ctypes.c_uint32),ctypes.c_uint32,ctypes.POINTER(Stats)]
             library.ui_host_latency(pixels,header[7],ctypes.byref(stats))
         expected = bytes(pixels)
     native_stats = [getattr(stats, key) for key, _ in stats._fields_]
-    board_stats = list(struct.unpack_from("<8I", snapshot, 32+11392))
+    board_stats = list(struct.unpack_from("<8I", snapshot, 32+model_bytes))
     mismatches = sum(a != b for a, b in zip(struct.unpack("<614400I", raw), struct.unpack("<614400I", expected)))
     Image.frombytes("RGB", (1024, 600), raw, "raw", "BGRX").save(folder/"screen.png")
     result = {"status": "passed" if not mismatches and board_stats == native_stats else "failed",

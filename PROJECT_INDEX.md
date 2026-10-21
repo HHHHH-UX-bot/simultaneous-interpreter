@@ -6,7 +6,7 @@
 
 | 任务或问题 | 权威入口 | 职责 |
 |---|---|---|
-| 开发或验收独立历史记录页、英中对照与滑动 | [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)、[NOW](docs/context/NOW.md) | 已确认需求、记录来源、清空语义、容量及本轮实现范围 |
+| 开发或验收独立历史记录页、英中对照与滑动 | [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)、[验证](docs/validation/history-ui-20261021/README.md)、[NOW](docs/context/NOW.md) | 64条英中对照、真实C滚动/手势、清空语义、内存及分项板测范围 |
 | 核对真实麦克风异常及本轮暂缓事项 | [复测](docs/validation/mic-retest-20261021/README.md)、[RISKS](docs/context/RISKS.md) | 预览成功、定稿阻塞与 ASR 错误分开记录，不当作已修复 |
 | 使用顶部英中双向翻译菜单或修改其生命周期 | [UI_SPEC](docs/design/UI_SPEC.md#板端翻译方向切换2026-10-21)、[验证](docs/validation/language-picker-20261021/README.md) | 两项菜单、实际语言切换、旧会话隔离及验收边界 |
 | 接续英译中、英译英，核对桌面候选和当前板测 | [ENGLISH](docs/context/ENGLISH.md) | 共享模式、修正、真实验证与未放行项 |
