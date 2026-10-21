@@ -1,0 +1,20 @@
+import hashlib,json,sys
+from datetime import datetime,timezone
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT/'scripts'))
+import run_z7_nano as b
+out=ROOT/'output/history_mic_20261021/preflight';out.mkdir(parents=True,exist_ok=True)
+app=ROOT/'output/enzh/history_ui'
+build=json.loads((app/'build.json').read_text());load=json.loads((app/'load.json').read_text())
+assert build['ELFSHA256']==b.sha(app/'cloud_app.elf')==load['elf_sha256']
+assert not build['Selftest'] and build['TextOnlyResponse']
+with b.hardware_lock():
+ b.run([b.VIVADO,'-mode','batch','-nojournal','-nolog','-source',ROOT/'scripts/hardware_z7_nano.tcl',
+  '-tclargs','probe',out/'hardware.json'],out/'preflight','PASS_Z7_NANO_HARDWARE',90)
+probe=json.loads((out/'hardware.json').read_text())
+assert probe['done']==1 and probe['eos']==1 and probe['crc_error']==0 and probe['usr_access']==0x5a375458
+record=dict(utc=datetime.now(timezone.utc).isoformat(),scope='Real microphone retest after history UI; probe known product, no reprogramming',
+ elf_sha256=build['ELFSHA256'],load_sha256=b.sha(app/'load.json'),selftest=False,hardware=probe)
+(out/'session.json').write_text(json.dumps(record,indent=2)+'\n')
+print('PASS_REAL_MIC_PREFLIGHT')

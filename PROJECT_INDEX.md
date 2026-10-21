@@ -6,8 +6,9 @@
 
 | 任务或问题 | 权威入口 | 职责 |
 |---|---|---|
+| 接续下一阶段设置页、真实输出音量 | [NOW](docs/context/NOW.md)、[设置页规范](docs/design/UI_SPEC.md#板端设置页下一阶段2026-10-21)、[D19](docs/context/DECISIONS.md#d19-下一阶段真实设置页与队友交接) | 新页面、真实参数、音量路径核实与分步验收；当前尚未实现 |
 | 开发或验收独立历史记录页、英中对照与滑动 | [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)、[验证](docs/validation/history-ui-20261021/README.md)、[NOW](docs/context/NOW.md) | 64条英中对照、真实C滚动/手势、清空语义、内存及分项板测范围 |
-| 核对真实麦克风异常及本轮暂缓事项 | [复测](docs/validation/mic-retest-20261021/README.md)、[RISKS](docs/context/RISKS.md) | 预览成功、定稿阻塞与 ASR 错误分开记录，不当作已修复 |
+| 核对真实麦克风异常及本轮暂缓事项 | [历史版最新复测](docs/validation/history-mic-20261021/README.md)、[旧版复现](docs/validation/mic-retest-20261021/README.md)、[RISKS](docs/context/RISKS.md) | 预览成功、真实漏记、手动重开后恢复与ASR错误分开记录，不当作已修复 |
 | 使用顶部英中双向翻译菜单或修改其生命周期 | [UI_SPEC](docs/design/UI_SPEC.md#板端翻译方向切换2026-10-21)、[验证](docs/validation/language-picker-20261021/README.md) | 两项菜单、实际语言切换、旧会话隔离及验收边界 |
 | 接续英译中、英译英，核对桌面候选和当前板测 | [ENGLISH](docs/context/ENGLISH.md) | 共享模式、修正、真实验证与未放行项 |
 | 使用或修改中文译英字幕、译音、Zynq TLS | [ZHEN](docs/context/ZHEN.md) | 当前能力、故障修复、板测证据、代码和操作入口 |
@@ -27,7 +28,7 @@
 | 理解系统分工、选型、资源和时延预算 | [SYSTEM_PLAN](docs/design/SYSTEM_PLAN.md) | 产品与系统方案 |
 | 接入云端语音翻译、脱离电脑运行 | [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md) | 已选百炼方案、官方接口来源、凭据准备、音频带宽与分阶段接入 |
 | 低带宽实时音频（Opus、qwen3.5、Cache/MMU） | [AUDIO_COMPRESSION](docs/design/AUDIO_COMPRESSION.md) | 上行 13–14 kB/s 瓶颈、libopus v1.4 供应商化与主机/ARM 可行性验证、MMU/Cache 前置与实施步骤 |
-| 复盘产品瓶颈、选择后续验证顺序 | [NOW](docs/context/NOW.md)、[当前系统主线](docs/design/SYSTEM_PLAN.md#当前产品主线与实施取舍) | 本轮先 UI 历史页，定稿故障保留；2026-10-15 的预存音频顺序仅为历史计划 |
+| 复盘产品瓶颈、选择后续验证顺序 | [NOW](docs/context/NOW.md)、[当前系统主线](docs/design/SYSTEM_PLAN.md#当前产品主线与实施取舍) | 下一阶段设置页，定稿故障保留；2026-10-15 的预存音频顺序仅为历史计划 |
 | 追溯 921600 阶段或核对当前 1 Mbaud | [BOARD_MIGRATION](docs/design/BOARD_MIGRATION.md)、[MAP](docs/context/MAP.md) | 921600 为旧阶段；当前字幕候选为 1,000,000 baud/分频 50，不能混用旧参数 |
 | 查询当前 ESP 固件的加密配置 | [C1-0](docs/design/CLOUD_SPEECH.md#c1-0-固定加密配置查询)、[操作](docs/context/RUNBOOK.md#c-云端语音接入) | 固定查询、实际应答与后续 TLS/带宽边界 |
 | 检查 CYEA、板端 TLS 与客户端 CA | [C1-2](docs/design/CLOUD_SPEECH.md#c1-2-cyea-与板端-tls-预检)、[操作](docs/context/RUNBOOK.md#c-云端语音接入) | 无 Key 预检、证书来源、备份/更新及安全握手边界 |

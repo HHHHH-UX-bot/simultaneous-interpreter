@@ -1,0 +1,1183 @@
+{
+  "scope": "Real microphone; observed counters only, physical result separately confirmed",
+  "utc": "2026-10-21T10:45:01.013017+00:00",
+  "samples": [
+    {
+      "seconds": 3.0,
+      "utc": "2026-10-21T10:41:58.530591+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 15,
+      "finals": 12,
+      "pages": 4598,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 315700,
+      "speech_started": 32,
+      "speech_stops": 33,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 34,
+      "max_render_ms": 40,
+      "dump_header": [
+        826561857,
+        31634560,
+        786432,
+        16000,
+        31250560,
+        31634560,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_000.json"
+    },
+    {
+      "seconds": 11.0,
+      "utc": "2026-10-21T10:42:06.454756+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 15,
+      "finals": 12,
+      "pages": 4648,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 323540,
+      "speech_started": 32,
+      "speech_stops": 33,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 27,
+      "max_render_ms": 40,
+      "dump_header": [
+        826561857,
+        31634560,
+        786432,
+        16000,
+        31250560,
+        31634560,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_001.json"
+    },
+    {
+      "seconds": 18.9,
+      "utc": "2026-10-21T10:42:14.378380+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 15,
+      "finals": 12,
+      "pages": 4697,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 331540,
+      "speech_started": 32,
+      "speech_stops": 33,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 22,
+      "max_render_ms": 40,
+      "dump_header": [
+        826561857,
+        31634560,
+        786432,
+        16000,
+        31250560,
+        31634560,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_002.json"
+    },
+    {
+      "seconds": 26.8,
+      "utc": "2026-10-21T10:42:22.290977+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 15,
+      "finals": 12,
+      "pages": 4747,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 339380,
+      "speech_started": 32,
+      "speech_stops": 33,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 21,
+      "max_render_ms": 40,
+      "dump_header": [
+        826561857,
+        31634560,
+        786432,
+        16000,
+        31250560,
+        31634560,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_003.json"
+    },
+    {
+      "seconds": 34.7,
+      "utc": "2026-10-21T10:42:30.193304+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 16,
+      "finals": 12,
+      "pages": 4796,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 347380,
+      "speech_started": 33,
+      "speech_stops": 34,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 26,
+      "max_render_ms": 40,
+      "dump_header": [
+        826561857,
+        31731840,
+        786432,
+        16000,
+        31538560,
+        31634560,
+        0
+      ],
+      "last_error": "",
+      "evidence": "sample_004.json"
+    },
+    {
+      "seconds": 42.6,
+      "utc": "2026-10-21T10:42:38.112887+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 17,
+      "finals": 12,
+      "pages": 4845,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 355220,
+      "speech_started": 34,
+      "speech_stops": 35,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 21,
+      "max_render_ms": 40,
+      "dump_header": [
+        826561857,
+        31984640,
+        786432,
+        16000,
+        31692160,
+        31634560,
+        0
+      ],
+      "last_error": "",
+      "evidence": "sample_005.json"
+    },
+    {
+      "seconds": 50.6,
+      "utc": "2026-10-21T10:42:46.071836+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 18,
+      "finals": 12,
+      "pages": 4895,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 363260,
+      "speech_started": 35,
+      "speech_stops": 36,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 26,
+      "max_render_ms": 40,
+      "dump_header": [
+        826561857,
+        32239360,
+        786432,
+        16000,
+        31927680,
+        31634560,
+        0
+      ],
+      "last_error": "",
+      "evidence": "sample_006.json"
+    },
+    {
+      "seconds": 58.6,
+      "utc": "2026-10-21T10:42:54.055321+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 18,
+      "finals": 12,
+      "pages": 4945,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 371260,
+      "speech_started": 35,
+      "speech_stops": 36,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 41,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32311040,
+        786432,
+        16000,
+        31927680,
+        32311040,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_007.json"
+    },
+    {
+      "seconds": 66.5,
+      "utc": "2026-10-21T10:43:01.972753+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 18,
+      "finals": 12,
+      "pages": 4994,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 379100,
+      "speech_started": 35,
+      "speech_stops": 36,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 27,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32311040,
+        786432,
+        16000,
+        31927680,
+        32311040,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_008.json"
+    },
+    {
+      "seconds": 74.4,
+      "utc": "2026-10-21T10:43:09.910579+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 18,
+      "finals": 12,
+      "pages": 5044,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 387120,
+      "speech_started": 35,
+      "speech_stops": 36,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 32,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32311040,
+        786432,
+        16000,
+        31927680,
+        32311040,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_009.json"
+    },
+    {
+      "seconds": 82.3,
+      "utc": "2026-10-21T10:43:17.815752+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 18,
+      "finals": 12,
+      "pages": 5093,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 394980,
+      "speech_started": 35,
+      "speech_stops": 36,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 21,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32311040,
+        786432,
+        16000,
+        31927680,
+        32311040,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_010.json"
+    },
+    {
+      "seconds": 90.2,
+      "utc": "2026-10-21T10:43:25.739625+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 18,
+      "finals": 12,
+      "pages": 5143,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 402980,
+      "speech_started": 35,
+      "speech_stops": 36,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 1,
+      "font": 0,
+      "render_ms": 30,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32311040,
+        786432,
+        16000,
+        31927680,
+        32311040,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_011.json"
+    },
+    {
+      "seconds": 98.2,
+      "utc": "2026-10-21T10:43:33.652857+00:00",
+      "epoch": 3,
+      "ui_session": 1,
+      "ui_stage": 2,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 12,
+      "translations": 18,
+      "finals": 12,
+      "pages": 5192,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 410820,
+      "speech_started": 35,
+      "speech_stops": 36,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 1,
+      "font": 0,
+      "render_ms": 22,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32311040,
+        786432,
+        16000,
+        31927680,
+        32311040,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_012.json"
+    },
+    {
+      "seconds": 106.0,
+      "utc": "2026-10-21T10:43:41.558026+00:00",
+      "epoch": 4,
+      "ui_session": 1,
+      "ui_stage": 4,
+      "language": 0,
+      "network": [
+        0,
+        0
+      ],
+      "cloud": [
+        0,
+        0
+      ],
+      "client": 0,
+      "asr": 12,
+      "translations": 18,
+      "finals": 12,
+      "pages": 5234,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 417540,
+      "speech_started": 35,
+      "speech_stops": 36,
+      "history": 12,
+      "ui_final_count": 12,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 18,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32311040,
+        786432,
+        16000,
+        31927680,
+        32311040,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_013.json"
+    },
+    {
+      "seconds": 114.0,
+      "utc": "2026-10-21T10:43:49.499866+00:00",
+      "epoch": 5,
+      "ui_session": 1,
+      "ui_stage": 3,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 1,
+      "translations": 1,
+      "finals": 1,
+      "pages": 5270,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 5800,
+      "speech_started": 36,
+      "speech_stops": 37,
+      "history": 13,
+      "ui_final_count": 13,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 23,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32329600,
+        786432,
+        16000,
+        32215040,
+        32329600,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_014.json"
+    },
+    {
+      "seconds": 121.9,
+      "utc": "2026-10-21T10:43:57.413644+00:00",
+      "epoch": 5,
+      "ui_session": 1,
+      "ui_stage": 3,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 2,
+      "translations": 2,
+      "finals": 2,
+      "pages": 5320,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 13800,
+      "speech_started": 37,
+      "speech_stops": 38,
+      "history": 14,
+      "ui_final_count": 14,
+      "history_page": 0,
+      "font": 0,
+      "render_ms": 20,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32410240,
+        786432,
+        16000,
+        32233600,
+        32410240,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_015.json"
+    },
+    {
+      "seconds": 129.8,
+      "utc": "2026-10-21T10:44:05.309537+00:00",
+      "epoch": 5,
+      "ui_session": 1,
+      "ui_stage": 3,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 2,
+      "translations": 2,
+      "finals": 2,
+      "pages": 5369,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 21660,
+      "speech_started": 37,
+      "speech_stops": 38,
+      "history": 14,
+      "ui_final_count": 14,
+      "history_page": 1,
+      "font": 0,
+      "render_ms": 22,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32410240,
+        786432,
+        16000,
+        32233600,
+        32410240,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_016.json"
+    },
+    {
+      "seconds": 137.7,
+      "utc": "2026-10-21T10:44:13.229786+00:00",
+      "epoch": 5,
+      "ui_session": 1,
+      "ui_stage": 3,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 2,
+      "translations": 2,
+      "finals": 2,
+      "pages": 5418,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 29520,
+      "speech_started": 37,
+      "speech_stops": 38,
+      "history": 14,
+      "ui_final_count": 14,
+      "history_page": 1,
+      "font": 0,
+      "render_ms": 37,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32410240,
+        786432,
+        16000,
+        32233600,
+        32410240,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_017.json"
+    },
+    {
+      "seconds": 145.7,
+      "utc": "2026-10-21T10:44:21.158999+00:00",
+      "epoch": 5,
+      "ui_session": 1,
+      "ui_stage": 3,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 2,
+      "translations": 2,
+      "finals": 2,
+      "pages": 5468,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 37520,
+      "speech_started": 37,
+      "speech_stops": 38,
+      "history": 14,
+      "ui_final_count": 14,
+      "history_page": 1,
+      "font": 0,
+      "render_ms": 20,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32410240,
+        786432,
+        16000,
+        32233600,
+        32410240,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_018.json"
+    },
+    {
+      "seconds": 153.6,
+      "utc": "2026-10-21T10:44:29.093454+00:00",
+      "epoch": 5,
+      "ui_session": 1,
+      "ui_stage": 3,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 2,
+      "translations": 2,
+      "finals": 2,
+      "pages": 5518,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 45360,
+      "speech_started": 37,
+      "speech_stops": 38,
+      "history": 14,
+      "ui_final_count": 14,
+      "history_page": 1,
+      "font": 0,
+      "render_ms": 20,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32410240,
+        786432,
+        16000,
+        32233600,
+        32410240,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_019.json"
+    },
+    {
+      "seconds": 161.6,
+      "utc": "2026-10-21T10:44:37.055471+00:00",
+      "epoch": 5,
+      "ui_session": 1,
+      "ui_stage": 3,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 2,
+      "translations": 2,
+      "finals": 2,
+      "pages": 5567,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 53380,
+      "speech_started": 37,
+      "speech_stops": 38,
+      "history": 14,
+      "ui_final_count": 14,
+      "history_page": 1,
+      "font": 0,
+      "render_ms": 21,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32410240,
+        786432,
+        16000,
+        32233600,
+        32410240,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_020.json"
+    },
+    {
+      "seconds": 169.5,
+      "utc": "2026-10-21T10:44:45.052087+00:00",
+      "epoch": 5,
+      "ui_session": 1,
+      "ui_stage": 3,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 2,
+      "translations": 2,
+      "finals": 2,
+      "pages": 5617,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 61380,
+      "speech_started": 37,
+      "speech_stops": 38,
+      "history": 14,
+      "ui_final_count": 14,
+      "history_page": 1,
+      "font": 0,
+      "render_ms": 15,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32410240,
+        786432,
+        16000,
+        32233600,
+        32410240,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_021.json"
+    },
+    {
+      "seconds": 177.5,
+      "utc": "2026-10-21T10:44:53.011122+00:00",
+      "epoch": 5,
+      "ui_session": 1,
+      "ui_stage": 3,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 2,
+      "translations": 2,
+      "finals": 2,
+      "pages": 5667,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 69380,
+      "speech_started": 37,
+      "speech_stops": 38,
+      "history": 14,
+      "ui_final_count": 14,
+      "history_page": 1,
+      "font": 0,
+      "render_ms": 27,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32410240,
+        786432,
+        16000,
+        32233600,
+        32410240,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_022.json"
+    },
+    {
+      "seconds": 185.5,
+      "utc": "2026-10-21T10:45:00.985518+00:00",
+      "epoch": 5,
+      "ui_session": 1,
+      "ui_stage": 3,
+      "language": 0,
+      "network": [
+        4,
+        0
+      ],
+      "cloud": [
+        1,
+        0
+      ],
+      "client": 4,
+      "asr": 2,
+      "translations": 2,
+      "finals": 2,
+      "pages": 5717,
+      "drops": 0,
+      "cloud_failures": 1,
+      "tls_failures": 0,
+      "uart_errors": [
+        0,
+        0
+      ],
+      "capture_overflows": 0,
+      "audio_ms": 77380,
+      "speech_started": 37,
+      "speech_stops": 38,
+      "history": 14,
+      "ui_final_count": 14,
+      "history_page": 1,
+      "font": 0,
+      "render_ms": 33,
+      "max_render_ms": 41,
+      "dump_header": [
+        826561857,
+        32410240,
+        786432,
+        16000,
+        32233600,
+        32410240,
+        1
+      ],
+      "last_error": "",
+      "evidence": "sample_023.json"
+    }
+  ],
+  "status": "observation_time_limit"
+}

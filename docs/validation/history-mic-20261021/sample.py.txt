@@ -1,0 +1,42 @@
+import hashlib,json,struct,sys
+from datetime import datetime,timezone
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'scripts'))
+import run_z7_nano as b
+out=ROOT/'output/history_mic_20261021';label=sys.argv[1]
+app=ROOT/'output/enzh/history_ui'
+symbols={p[2]:int(p[0],16) for line in (app/'symbols.log').read_text().splitlines() if len(p:=line.split())==3}
+counts={'network_report':16,'cloud_report':16,'client':24,'arm_tls_diag':24,'upload_diag':7,'cloud_health':16,'final_diag':13,'session_diag':6,'caption_queue_diag':36}
+lines=['connect -url TCP:127.0.0.1:3121','after 300',
+ 'set b [targets -target-properties -filter {name =~ "*Cortex-A9*#0"}]',
+ 'if {[llength $b]!=1 || [dict get [lindex $b 0] jtag_cable_serial] ne "210241277120"} {error "Wrong board"}',
+ 'targets -set -filter {name =~ "*Cortex-A9*#0"}',
+ 'if {[state] ne "Running"} {error "CPU0 not running"}']
+for name,n in counts.items():lines.append(f'puts "PUBLIC {name} [mrd -force -value 0x{symbols[name]:x} {n}]"')
+for name,address,n in [('uart',0x43c30018,6),('audio',0x43c20000,8),('audio_clock',0x43c20050,2),
+ ('capture',0x43c20090,2),('dump_header',0x01d3f000,7),('cloud_error_code',symbols['cloud_error_code'],20)]:
+ lines.append(f'puts "PUBLIC {name} [mrd -force -value 0x{address:x} {n}]"')
+lines+=['set info [mrd -force -value 0x1e080 16]',
+ 'if {[lindex $info 0]!=0x55493131 || [lindex $info 3]!=135832 || [lindex $info 4]!=135768} {error "Wrong UI ABI"}',
+ 'set at [expr {[lindex $info 2]+[lindex $info 5]*135832+32}]',
+ 'puts "PUBLIC ui [mrd -force -value $at 5]"',
+ 'puts "PUBLIC language [mrd -force -value [expr {$at+135736}] 2]"',
+ 'puts \"PUBLIC history [mrd -force -value [expr {$at+134676}] 2]\"',
+ 'puts \"PUBLIC history_view [mrd -force -value [expr {$at+135744}] 6]\"',
+ 'puts \"PUBLIC ui_info $info\"',
+ 'puts PASS_MIC_PUBLIC_SAMPLE','disconnect']
+script=ROOT/'tmp/history_mic_20261021/sample.tcl';script.write_text('\n'.join(lines)+'\n',encoding='ascii')
+with b.hardware_lock():b.run([b.XSDB,script],out/(label+'_read'),'PASS_MIC_PUBLIC_SAMPLE',30)
+values={}
+for line in (out/(label+'_read/console.log')).read_text().splitlines():
+ if line.startswith('PUBLIC '):
+  _,name,*raw=line.split();values[name]=[int(n,0) for n in raw]
+error=struct.pack('<20I',*values.pop('cloud_error_code')).split(b'\0')[0].decode('ascii')
+record=dict(utc=datetime.now(timezone.utc).isoformat(),elf_sha256=b.sha(app/'cloud_app.elf'),counters=values,
+ public_error_code=error,scope='read-only named counters and microphone ring header; no audio payload')
+(out/(label+'.json')).write_text(json.dumps(record,indent=2)+'\n')
+c=values
+print('MIC_STATE',json.dumps(dict(network=c['network_report'][2:4],cloud=c['cloud_report'][4:6],client=c['client'][0],
+ ui=c['ui'],language=c['language'],asr=c['cloud_report'][7],translated=c['cloud_report'][8],finals=c['cloud_report'][9],
+ pages=c['upload_diag'][2],drops=c['upload_diag'][1],tls_failures=c['arm_tls_diag'][10],cloud_failures=c['cloud_health'][6],
+ uart_errors=c['uart'][2:4],capture_overflows=c['capture'][1],last_error=error)))

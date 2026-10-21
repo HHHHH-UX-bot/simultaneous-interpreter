@@ -1,0 +1,18 @@
+{
+  "utc": "2026-10-21T10:41:06.180535+00:00",
+  "scope": "Real microphone retest after history UI; probe known product, no reprogramming",
+  "elf_sha256": "e02b03dc993023c0e5aad9decb2055b1f4c58aeecf1fedcff9292c51ad5d4705",
+  "load_sha256": "0f2bb81beee0232cece8413fa6a1fb239dff8b438cf933f34b71945245b99f4f",
+  "selftest": false,
+  "hardware": {
+    "status": "passed",
+    "part": "xc7z010",
+    "cable_serial": "210241277120",
+    "usr_access": 1513575512,
+    "done": 1,
+    "eos": 1,
+    "crc_error": 0,
+    "action": "probe",
+    "screen_acceptance": "pending"
+  }
+}

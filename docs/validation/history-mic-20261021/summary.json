@@ -1,0 +1,110 @@
+{
+  "status": "partial_pass_history_finalization_fault_reproduced",
+  "scope": "real microphone and physical UI on the history build; no code change/reload/automatic recovery",
+  "elapsed_between_samples_s": 182.5,
+  "samples": 24,
+  "first_epoch_window": {
+    "epoch": 3,
+    "seconds": 95.2,
+    "asr_final": [
+      12,
+      12
+    ],
+    "translation_events": [
+      15,
+      18
+    ],
+    "committed": [
+      12,
+      12
+    ],
+    "history_count": [
+      12,
+      12
+    ],
+    "pending": [
+      {
+        "order": 18,
+        "flags": 30,
+        "source_final_ready": false,
+        "translated_ready": true,
+        "translation_complete": true,
+        "source_text_present": true,
+        "translated_text_present": true
+      },
+      {
+        "order": 17,
+        "flags": 30,
+        "source_final_ready": false,
+        "translated_ready": true,
+        "translation_complete": true,
+        "source_text_present": true,
+        "translated_text_present": true
+      },
+      {
+        "order": 16,
+        "flags": 30,
+        "source_final_ready": false,
+        "translated_ready": true,
+        "translation_complete": true,
+        "source_text_present": true,
+        "translated_text_present": true
+      },
+      {
+        "order": 15,
+        "flags": 22,
+        "source_final_ready": false,
+        "translated_ready": true,
+        "translation_complete": true,
+        "source_text_present": false,
+        "translated_text_present": true
+      },
+      {
+        "order": 14,
+        "flags": 22,
+        "source_final_ready": false,
+        "translated_ready": true,
+        "translation_complete": true,
+        "source_text_present": false,
+        "translated_text_present": true
+      },
+      {
+        "order": 13,
+        "flags": 22,
+        "source_final_ready": false,
+        "translated_ready": true,
+        "translation_complete": true,
+        "source_text_present": false,
+        "translated_text_present": true
+      }
+    ]
+  },
+  "user_pause_resume": true,
+  "latest_epoch": 5,
+  "latest_session_asr_final": 2,
+  "latest_session_committed": 2,
+  "history_count": [
+    12,
+    14
+  ],
+  "upload_pages_delta": 1119,
+  "upload_drops": [
+    0,
+    0
+  ],
+  "cloud_failure_lifetime": [
+    1,
+    1
+  ],
+  "tls_failure_lifetime": [
+    0,
+    0
+  ],
+  "uart_errors_end": [
+    0,
+    0
+  ],
+  "capture_overflows_end": 0,
+  "max_render_ms": 41,
+  "interpretation": "Preview and history rendering work, but not all spoken phrases finalize. New history after a user restart is not proof of root-cause repair. Counters that reset per epoch are not subtracted across sessions. No long-term or overall speech-accuracy acceptance."
+}

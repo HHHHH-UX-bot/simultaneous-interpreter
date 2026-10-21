@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "scope": "handoff docs and directly related links/evidence only",
+  "markdown_files": 9,
+  "existing_local_links_checked": 270,
+  "new_missing_targets": [],
+  "missing_anchors": [],
+  "previous_optional_artifacts_absent": [],
+  "source_hashes_checked": 7,
+  "evidence_hashes_checked": 37,
+  "business_code_changed": false,
+  "settings_implemented": false,
+  "new_hardware_actions_after_handoff_request": false,
+  "tests_not_repeated": "documentation-only handoff; real microphone results are recorded separately"
+}

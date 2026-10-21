@@ -1,0 +1,25 @@
+import json,subprocess,sys,time
+from datetime import datetime,timezone
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2];out=ROOT/'output/history_mic_20261021'
+start=time.monotonic();points=[]
+while True:
+ label='sample_%03d'%len(points)
+ subprocess.run([sys.executable,'-B','-X','utf8',str(ROOT/'tmp/history_mic_20261021/sample.py'),label],
+  cwd=ROOT,stdout=subprocess.DEVNULL,check=True,timeout=40)
+ record=json.loads((out/(label+'.json')).read_text());c=record['counters']
+ p=dict(seconds=round(time.monotonic()-start,1),utc=record['utc'],epoch=c['ui'][0],ui_session=c['ui'][1],ui_stage=c['ui'][2],
+  language=c['language'][0],network=c['network_report'][2:4],cloud=c['cloud_report'][4:6],client=c['client'][0],
+  asr=c['cloud_report'][7],translations=c['cloud_report'][8],finals=c['cloud_report'][9],pages=c['upload_diag'][2],
+  drops=c['upload_diag'][1],cloud_failures=c['cloud_health'][6],tls_failures=c['arm_tls_diag'][10],
+  uart_errors=c['uart'][2:4],capture_overflows=c['capture'][1],audio_ms=c['client'][21]//48,
+  speech_started=c['upload_diag'][6],speech_stops=c['final_diag'][1],history=c['history'][0],ui_final_count=c['history'][1],history_page=c['history_view'][0],font=c['ui'][3],render_ms=c['ui_info'][8],max_render_ms=c['ui_info'][9],dump_header=c['dump_header'],last_error=record['public_error_code'],evidence=label+'.json')
+ points.append(p)
+ result=dict(scope='Real microphone; observed counters only, physical result separately confirmed',
+  utc=datetime.now(timezone.utc).isoformat(),samples=points,status='observing')
+ if (out/'finish.request').exists():result['status']='finished_after_user_report'
+ elif p['seconds']>=180:result['status']='observation_time_limit'
+ (out/'observation.json').write_text(json.dumps(result,indent=2)+'\n')
+ print(json.dumps({k:v for k,v in p.items() if k not in ['dump_header','utc','evidence']}),flush=True)
+ if result['status']!='observing':break
+ time.sleep(5)
