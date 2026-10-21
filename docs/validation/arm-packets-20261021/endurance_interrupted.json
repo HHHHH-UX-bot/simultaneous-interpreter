@@ -1,0 +1,848 @@
+{
+  "status": "interrupted_after_useful_output_stall_not_endurance_pass",
+  "requested_seconds": 1800,
+  "observed_snapshot_span_seconds": 544.1,
+  "samples": [
+    {
+      "seconds": 0.0,
+      "finals": 8,
+      "cipher_rx": 829441,
+      "cipher_tx": 119585,
+      "plain_rx": 819213,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 365
+    },
+    {
+      "seconds": 12.9,
+      "finals": 8,
+      "cipher_rx": 829441,
+      "cipher_tx": 134963,
+      "plain_rx": 819213,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 445
+    },
+    {
+      "seconds": 25.8,
+      "finals": 8,
+      "cipher_rx": 829467,
+      "cipher_tx": 150497,
+      "plain_rx": 819213,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 526
+    },
+    {
+      "seconds": 38.7,
+      "finals": 12,
+      "cipher_rx": 1160143,
+      "cipher_tx": 189835,
+      "plain_rx": 1131148,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 607
+    },
+    {
+      "seconds": 51.7,
+      "finals": 12,
+      "cipher_rx": 1239870,
+      "cipher_tx": 205217,
+      "plain_rx": 1226075,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 688
+    },
+    {
+      "seconds": 64.6,
+      "finals": 12,
+      "cipher_rx": 1239870,
+      "cipher_tx": 220435,
+      "plain_rx": 1226075,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 768
+    },
+    {
+      "seconds": 77.6,
+      "finals": 13,
+      "cipher_rx": 1404986,
+      "cipher_tx": 256305,
+      "plain_rx": 1389944,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 849
+    },
+    {
+      "seconds": 90.8,
+      "finals": 16,
+      "cipher_rx": 1650697,
+      "cipher_tx": 275631,
+      "plain_rx": 1634379,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 931
+    },
+    {
+      "seconds": 103.9,
+      "finals": 16,
+      "cipher_rx": 1650697,
+      "cipher_tx": 291295,
+      "plain_rx": 1634379,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1013
+    },
+    {
+      "seconds": 116.8,
+      "finals": 18,
+      "cipher_rx": 1789951,
+      "cipher_tx": 320923,
+      "plain_rx": 1767350,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1094
+    },
+    {
+      "seconds": 129.7,
+      "finals": 20,
+      "cipher_rx": 2056131,
+      "cipher_tx": 346474,
+      "plain_rx": 2036188,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1174
+    },
+    {
+      "seconds": 142.6,
+      "finals": 20,
+      "cipher_rx": 2056131,
+      "cipher_tx": 362033,
+      "plain_rx": 2036188,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1255
+    },
+    {
+      "seconds": 155.6,
+      "finals": 21,
+      "cipher_rx": 2106421,
+      "cipher_tx": 384197,
+      "plain_rx": 2081047,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1335
+    },
+    {
+      "seconds": 168.5,
+      "finals": 24,
+      "cipher_rx": 2461541,
+      "cipher_tx": 417132,
+      "plain_rx": 2438002,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1416
+    },
+    {
+      "seconds": 181.6,
+      "finals": 24,
+      "cipher_rx": 2461541,
+      "cipher_tx": 432930,
+      "plain_rx": 2438002,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1497
+    },
+    {
+      "seconds": 194.9,
+      "finals": 24,
+      "cipher_rx": 2461722,
+      "cipher_tx": 450471,
+      "plain_rx": 2438154,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1581
+    },
+    {
+      "seconds": 208.0,
+      "finals": 28,
+      "cipher_rx": 2814079,
+      "cipher_tx": 488682,
+      "plain_rx": 2772911,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1662
+    },
+    {
+      "seconds": 220.9,
+      "finals": 28,
+      "cipher_rx": 2876375,
+      "cipher_tx": 504241,
+      "plain_rx": 2849356,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1743
+    },
+    {
+      "seconds": 233.8,
+      "finals": 28,
+      "cipher_rx": 2876375,
+      "cipher_tx": 519800,
+      "plain_rx": 2849356,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1824
+    },
+    {
+      "seconds": 246.8,
+      "finals": 29,
+      "cipher_rx": 2904203,
+      "cipher_tx": 556748,
+      "plain_rx": 2873531,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1904
+    },
+    {
+      "seconds": 259.7,
+      "finals": 29,
+      "cipher_rx": 2913303,
+      "cipher_tx": 574979,
+      "plain_rx": 2873531,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 1985
+    },
+    {
+      "seconds": 272.7,
+      "finals": 29,
+      "cipher_rx": 2922403,
+      "cipher_tx": 590701,
+      "plain_rx": 2894215,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2066
+    },
+    {
+      "seconds": 285.6,
+      "finals": 34,
+      "cipher_rx": 3389623,
+      "cipher_tx": 620957,
+      "plain_rx": 3356659,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2147
+    },
+    {
+      "seconds": 298.6,
+      "finals": 36,
+      "cipher_rx": 3713558,
+      "cipher_tx": 645717,
+      "plain_rx": 3683117,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2227
+    },
+    {
+      "seconds": 311.8,
+      "finals": 36,
+      "cipher_rx": 3713558,
+      "cipher_tx": 661602,
+      "plain_rx": 3683117,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2310
+    },
+    {
+      "seconds": 324.7,
+      "finals": 37,
+      "cipher_rx": 3733506,
+      "cipher_tx": 685178,
+      "plain_rx": 3690988,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2390
+    },
+    {
+      "seconds": 337.6,
+      "finals": 38,
+      "cipher_rx": 3923306,
+      "cipher_tx": 716777,
+      "plain_rx": 3887950,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2471
+    },
+    {
+      "seconds": 350.5,
+      "finals": 40,
+      "cipher_rx": 4122377,
+      "cipher_tx": 732173,
+      "plain_rx": 4090051,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2551
+    },
+    {
+      "seconds": 363.4,
+      "finals": 40,
+      "cipher_rx": 4122558,
+      "cipher_tx": 748520,
+      "plain_rx": 4090203,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2632
+    },
+    {
+      "seconds": 376.3,
+      "finals": 41,
+      "cipher_rx": 4148345,
+      "cipher_tx": 787507,
+      "plain_rx": 4114226,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2712
+    },
+    {
+      "seconds": 389.2,
+      "finals": 41,
+      "cipher_rx": 4153545,
+      "cipher_tx": 802903,
+      "plain_rx": 4115686,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2793
+    },
+    {
+      "seconds": 402.2,
+      "finals": 41,
+      "cipher_rx": 4160045,
+      "cipher_tx": 818462,
+      "plain_rx": 4121526,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2874
+    },
+    {
+      "seconds": 415.1,
+      "finals": 41,
+      "cipher_rx": 4160045,
+      "cipher_tx": 854309,
+      "plain_rx": 4121526,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 2955
+    },
+    {
+      "seconds": 428.0,
+      "finals": 41,
+      "cipher_rx": 4160045,
+      "cipher_tx": 873561,
+      "plain_rx": 4121526,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 3035
+    },
+    {
+      "seconds": 440.9,
+      "finals": 41,
+      "cipher_rx": 4165245,
+      "cipher_tx": 889120,
+      "plain_rx": 4121526,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 3116
+    },
+    {
+      "seconds": 453.8,
+      "finals": 41,
+      "cipher_rx": 4165245,
+      "cipher_tx": 916708,
+      "plain_rx": 4121526,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 3196
+    },
+    {
+      "seconds": 466.7,
+      "finals": 41,
+      "cipher_rx": 4165245,
+      "cipher_tx": 944295,
+      "plain_rx": 4121526,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 3277
+    },
+    {
+      "seconds": 479.6,
+      "finals": 41,
+      "cipher_rx": 4165245,
+      "cipher_tx": 959854,
+      "plain_rx": 4121526,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 3357
+    },
+    {
+      "seconds": 492.5,
+      "finals": 41,
+      "cipher_rx": 4165245,
+      "cipher_tx": 979890,
+      "plain_rx": 4121526,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 3438
+    },
+    {
+      "seconds": 505.4,
+      "finals": 41,
+      "cipher_rx": 4169145,
+      "cipher_tx": 1015029,
+      "plain_rx": 4134910,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 3518
+    },
+    {
+      "seconds": 518.3,
+      "finals": 41,
+      "cipher_rx": 4169145,
+      "cipher_tx": 1030425,
+      "plain_rx": 4134910,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 3599
+    },
+    {
+      "seconds": 531.2,
+      "finals": 41,
+      "cipher_rx": 4169145,
+      "cipher_tx": 1045908,
+      "plain_rx": 4134910,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 3680
+    },
+    {
+      "seconds": 544.1,
+      "finals": 41,
+      "cipher_rx": 4169145,
+      "cipher_tx": 1085592,
+      "plain_rx": 4134910,
+      "handshakes": 1,
+      "tls_error": 0,
+      "tls_failures": 0,
+      "network": [
+        4,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "pages": 3760
+    }
+  ],
+  "elf_sha256": "3f4a2bdc2bfef524ebcb145116f9ee3668c8360e53e5b9788ef7e2f6b8275050",
+  "source_commit": "54667429d5dd641542817d66e038e94751f2faf4",
+  "observation": "Finals stayed at 41 while uploads advanced. TLS and UART reported no errors. Observer was stopped; firmware remained running and recovered to 84 finals without reconnect before controlled pause.",
+  "live": {
+    "utc": "2026-10-21T06:08:12.015105+00:00",
+    "finals": 41,
+    "plain_rx": 4134910,
+    "handshakes": 1
+  },
+  "paused": {
+    "utc": "2026-10-21T06:12:03.642639+00:00",
+    "finals": 84,
+    "plain_rx": 8596490,
+    "handshakes": 1,
+    "network": [
+      0,
+      0
+    ]
+  },
+  "limits": [
+    "Observer lacked useful-output liveness gate; no pass is claimed.",
+    "cloud_health[3]=13 is last event kind AUDIO_DELTA, not an error counter.",
+    "Passive receive notification loss is a hypothesis, not a proven cause."
+  ]
+}

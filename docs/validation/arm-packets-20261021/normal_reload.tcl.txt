@@ -1,0 +1,63 @@
+connect -url TCP:127.0.0.1:3121
+after 1000
+foreach core {0 1} {
+ set match [targets -target-properties -filter "name =~ \"*Cortex-A9*#$core\""]
+ if {[llength $match]!=1 || [dict get [lindex $match 0] jtag_cable_serial] ne "210241277120"} {error "Wrong core"}
+}
+targets -set -filter {name =~ "*Cortex-A9*#1"}
+if {![string match "Stopped:*" [state]]} {error "CPU1 must be stopped before reload"}
+targets -set -filter {name =~ "*Cortex-A9*#0"}
+if {[state] ne "Running" || [mrd -force -value 0x1e140]!=0x3154454e ||
+    [mrd -force -value 0x1e148]!=0 || [mrd -force -value 0x1e14c]!=0 ||
+    [mrd -force -value 0x43c30000]!=0x57494631 || [mrd -force -value 0x43c30008]!=50} {error "Idle packet UART required"}
+stop
+proc send {text} {
+ foreach c [split $text ""] {
+  if {!([mrd -force -value 0x43c30004]&2)} {error "UART TX full"}
+  scan $c %c v;mwr -force 0x43c30010 $v
+ }
+}
+proc reply {} {
+ set data "";set deadline [expr {[clock milliseconds]+2000}]
+ while {[clock milliseconds]<$deadline} {
+  while {[mrd -force -value 0x43c30004]&1} {
+   set v [mrd -force -value 0x43c30014]
+   if {!($v&0x80000000)} {error "UART ownership changed"}
+   append data [format %c [expr {$v&255}]]
+  }
+  if {[string first "\r\nOK\r\n" $data]>=0 || [string first "\r\nERROR\r\n" $data]>=0} {return $data}
+  after 10
+ }
+ error "AT reply timeout"
+}
+send "AT+CIPMODE?\r\n"
+if {[string first "+CIPMODE:0" [reply]]<0} {error "Ordinary AT mode not confirmed"}
+send "AT+CIPSTATUS\r\n"
+set status [reply]
+if {[string first "\r\nOK\r\n" $status]<0 || [string first "STATUS:3" $status]>=0} {error "TCP closure not confirmed"}
+send "AT+UART_CUR=115200,8,1,0,0\r\n"
+after 300
+mwr -force 0x43c30008 434
+mwr -force 0x43c3000c 15
+send "AT\r\n"
+if {[string first "\r\nOK\r\n" [reply]]<0} {error "Volatile 115200 not confirmed"}
+puts PACKET_AT_IDLE_AND_VOLATILE_SLOW_CONFIRMED
+source [lindex $argv 2]
+usb0_stop
+rst -processor
+dow [lindex $argv 0]
+mwr -force 0x1e000 0 16
+con
+for {set i 0} {$i<200} {incr i} {
+ after 100
+ set health [mrd -force -value 0x1e004]
+ if {$health==0x600d600d} {break}
+ if {$health==0xbad0bad0} {error "Display startup failed"}
+}
+if {$health!=0x600d600d} {error "Display startup timeout"}
+set words [mrd -force -value 0x1e000 16]
+set f [open [lindex $argv 1] w]
+puts $f "{\"status\":\"passed\",\"cable_serial\":\"210241277120\",\"display_ok\":1,\"normal_at_closed_before_reload\":true,\"display_report\":\[[join $words ,]\]}"
+close $f
+disconnect
+puts PASS_PACKET_NORMAL_WARM_LOAD

@@ -203,6 +203,14 @@ python -B scripts/run_z7_nano_network.py build-app
 
 C1-7a 已执行 `python -B scripts/validate_z7_nano_tls_boot.py`、相关网络回归及 ARM 构建。首次板测在 JOIN 通知处停止，本机复现修正后，重新配置/运行、AT 验证、整帧比对与常驻触摸均通过；用户随后要求暂停。接续入口 `python -B scripts/probe_z7_nano_tls_boot.py --credentials-stdin` **修正版尚未重跑**：匹配程序运行，网络/音频/云 consumer 空闲，显示/触摸验收后，隐藏输入运行期 Wi-Fi 配置。工具仅写邮箱，由 ARM 执行正确/错误/正确身份与关闭对照，不输入 API Key、不操作证书或固件。遇不确定标记先核对失败尝试及实际所有权，取得恢复证据再归档，不能直接删除重试。地址、恢复范围与下一步见 [C1-7a](../design/CLOUD_SPEECH.md#c1-7a-arm-自主可信-tls)。
 
+2026-10-21 的分块 ARM TLS 方法由[本轮证据](../validation/arm-packets-20261021/README.md)维护，不能误用上面的旧 ESP SSL 探测入口。构建选项为 `--mode enzh --touch --arm-tls --arm-tls-packets --uart-baud 1000000`，固定样本另加 `--selftest`，分别使用独立输出目录。冷启动先检查 DONE/USR_ACCESS，未配置时不读 PL MMIO，核对 bit/PS/ELF 来源后再配置、运行、比对整帧并启动匹配的 CPU1 Host。
+
+分块版暖加载的前置为已经暂停、network idle/error0、匹配 CPU1 已停止且 USB DMA 已 Halt；还须实际查询普通 `CIPMODE:0` 和无活动 TCP，再用 `UART_CUR` 回到已知 115200、验证 AT，应答确认后才能重载 CPU0。该路径不使用 `+++`，不照搬旧透传恢复脚本。运行期配置继续从隐藏输入进入 RAM。整帧捕获会短暂停 CPU0，须先暂停并关闭当前云链路，不能在持续音频上传中插入捕获来冒充无干扰观察。步骤描述不构成执行授权。
+
+接收停顿诊断另加 `--arm-tls-recv-probe`，必须同时指定 `--arm-tls-packets`，使用独立输出目录。该诊断在 60 秒无真实 TCP 字节、且 AT/二进制发送/接收均空闲时只发一次 `CIPRECVLEN?`；正常麦克风构建不启用。通过匹配符号的 [board_snapshot](../../scripts/repair/board_snapshot.py)只读公开 16 word 元数据；字段定义在 [network.c](../../software/network_ui/network.c) 的 `network_receive_probe_diag` 注释。返回非零且期间无新通知才支持“未通知缓冲”假设，仍不单独证明厂商根因；零只代表查询时 ESP 缓冲为空。失败结果不得由重连后的普通查询补填。
+
+固定样本长测除 TLS、UART 和丢页外，还应检查定稿持续更新；当前样本循环约 42.2 秒，超过 150 秒无新定稿应标为停顿并保存现场，不能仍记“连接正常即通过”。该阈值只适用于固定样本，不用于安静的真实麦克风；观察完先受控暂停、核对网络 idle，再恢复默认麦克风版本及匹配触摸所有权。
+
 C1-0 入口为 [固定查询工具](../../scripts/probe_z7_nano_capabilities.py)。在项目根目录选择 machine 环境；前置是匹配的 Z7N3 平台、当前源码验证和 ARM 构建。重新下载依次 stop Host → program → run；之后执行下列已实测命令：
 
 ```powershell

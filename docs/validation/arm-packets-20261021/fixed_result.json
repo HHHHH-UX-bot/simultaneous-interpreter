@@ -1,0 +1,18 @@
+{
+  "status": "no_fault_in_controlled_interval",
+  "network": "CYEA",
+  "scope": "fixed English audio on actual board with returned translated audio; not microphone or long-run acceptance",
+  "elf_sha256": "3f4a2bdc2bfef524ebcb145116f9ee3668c8360e53e5b9788ef7e2f6b8275050",
+  "observed_seconds": 298.7,
+  "finals_before": 4,
+  "finals_after": 32,
+  "new_finals": 28,
+  "cipher_tx_delta": 526158,
+  "plain_rx_delta": 2901703,
+  "tls_failures": 0,
+  "uart_errors": [
+    0,
+    0
+  ],
+  "upload_drops": 0
+}

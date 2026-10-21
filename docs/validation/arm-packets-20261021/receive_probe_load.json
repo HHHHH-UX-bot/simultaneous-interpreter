@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "cable_serial": "210241277120",
+  "elf_sha256": "9e1ee383d68de25692d88acbeb854812029d9528f7a4d8b976a2c7a6fa0af10a",
+  "bitstream_sha256": "a40a08f0a5e854f579f4cdaa05beab2db6280a47be470dc21c6c34b5816fab2e",
+  "ps7_init_sha256": "90683f6490f64fe68da6518e4b0ef54e7e9dc7232945b62c4e8f61da856b0d5d",
+  "selftest": true,
+  "result": "output/enzh/tls_packets_recv_probe/warm_load_20261021/062723018797/result.json",
+  "result_sha256": "45df4d2137c7afd7f0571d8a973ceb41fe4d057ccd51d79cc016c1ef1435ecae",
+  "method": "normal AT mode0 and no TCP verified; volatile baud115200; CPU1/USB stopped; CPU0 warm reload",
+  "loader_sha256": "aec6718903cff76096f90862cb5ed7ae099ac44c821f9d894807842e5ab527c9",
+  "probe_sha256": "abbe0a0c6dfe04edf98a1b6ccacb02faed2cc405910fb720d1adfed8f17de00e",
+  "parent_load_sha256": "34a5f89ecafd5a4de087877edc6d568ffd2711d920c679ad1a1029ffcdf81136"
+}

@@ -89,6 +89,21 @@ static uint32_t uart_sync_needed,uart_recovery,uart_recovery_pos,uart_recovery_d
 static uint32_t passive_enabled,passive_pending,passive_read,passive_header;
 static uint32_t passive_retry_at;
 static uint32_t passive_unread,upload_yield_started,upload_yielding;
+#ifdef Z7_PASSIVE_RECV_PROBE
+static uint32_t last_tcp_payload_ms,receive_probe_active;
+/* One diagnostic query per boot; metadata only, never AT or TLS payloads.
+   magic, queries, request_ms, last_payload_ms, pending, unread, read,
+   command, ack, ipd, line, uart_rx, returned_bytes, reply_ms, result, new_notices.
+   result: 0 pending, 1 success, 2 failed. */
+__attribute__((section(".cloud_runtime"),used)) volatile uint32_t network_receive_probe_diag[16];
+static void receive_probe_done(uint32_t result,uint32_t count) {
+    if(!receive_probe_active) return;
+    receive_probe_active=0;
+    network_receive_probe_diag[12]=count;network_receive_probe_diag[13]=current_time;
+    network_receive_probe_diag[14]=result;
+    cache_clean_range((const void *)network_receive_probe_diag,sizeof(network_receive_probe_diag));
+}
+#endif
 #ifdef Z7_SSL_NO_LENGTH_QUERY
 static uint32_t passive_empty_attempts,passive_poll_at;
 #endif
@@ -211,6 +226,9 @@ static int starts(const char *s,const char *prefix) {
 #endif
 static void wipe(char *p,uint32_t n) {volatile char *v=p;while(n--) *v++=0;fence();}
 static void fault(uint32_t error) {
+#ifdef Z7_PASSIVE_RECV_PROBE
+    receive_probe_done(2,0);
+#endif
 #ifdef Z7_LINK_DIAGNOSTICS
     network_heap[6]=network_heap[2];network_heap[7]=network_heap[3];heap_query=0;heap_clean();
 #endif
@@ -331,6 +349,9 @@ int network_stream_attach(void (*receive)(uint8_t)) {
        network_config.request_sequence!=network_info.config_ack ||
        command_phase || ack_pending || (raw_state && !(raw_state==1 && network_info.phase==8)) || stream_receive) return 0;
     stream_receive=receive;network_info.phase=4;network_info.client=0;resync=0;send_failures=0;
+#ifdef Z7_PASSIVE_RECV_PROBE
+    last_tcp_payload_ms=current_time;
+#endif
     return 1;
 }
 int network_stream_busy(void) {return command_phase || ack_pending;}
@@ -662,6 +683,9 @@ static void line_event(void) {
         uint32_t n=7,count=0;
         while(line[n]>='0' && line[n]<='9') {count=count*10u+(uint32_t)(line[n++]-'0');if(count>65535u) {fault(24);return;}}
         if(n==7 || line[n]) {fault(24);return;}
+#ifdef Z7_PASSIVE_RECV_PROBE
+        if(count && receive_probe_active) ++network_receive_probe_diag[15];
+#endif
         if(count) passive_pending=1;
 #ifdef Z7_SSL_NO_LENGTH_QUERY
         if(count) passive_empty_attempts=0;
@@ -718,6 +742,9 @@ static void receive(uint8_t byte) {
     if(ipd_left) {
         --ipd_left;
         if(network_info.phase==4 && ipd_client==network_info.client) {
+#ifdef Z7_PASSIVE_RECV_PROBE
+            last_tcp_payload_ms=current_time;
+#endif
             if(stream_receive) stream_receive(byte);else frame_byte(byte);
         }
         return;
@@ -899,6 +926,9 @@ static void command_tick(void) {
                 while(*p>='0' && *p<='9') {count=count*10u+(uint32_t)(*p++-'0');++n;if(count>65535u) {fault(24);return;}}
                 if(!n || (*p!=',' && *p!='\r')) {fault(24);return;}
                 passive_unread=count;
+#ifdef Z7_PASSIVE_RECV_PROBE
+                receive_probe_done(1,count);
+#endif
                 if(count>receive_priority_diag[2]) receive_priority_diag[2]=count;
                 if(count) passive_pending=1;
                 passive_retry_at=current_time+(count?0u:20u);
@@ -1047,6 +1077,12 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
     uart_sync_needed=uart_recovery=uart_recovery_pos=uart_recovery_deadline=0;
     passive_enabled=passive_pending=passive_read=passive_header=passive_retry_at=passive_unread=0;
+#ifdef Z7_PASSIVE_RECV_PROBE
+    last_tcp_payload_ms=receive_probe_active=0;
+    for(uint32_t i=0;i<16u;++i) network_receive_probe_diag[i]=0;
+    network_receive_probe_diag[0]=0x3150524eu;
+    cache_clean_range((const void *)network_receive_probe_diag,sizeof(network_receive_probe_diag));
+#endif
 #ifdef Z7_SSL_NO_LENGTH_QUERY
     passive_empty_attempts=passive_poll_at=0;
 #endif
@@ -1264,6 +1300,23 @@ void network_tick(struct ui_state *state,uint32_t now) {
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
             /* Return ownership once after each read, so the microphone can
                queue a due upload before the next receive transaction. */
+#ifdef Z7_PASSIVE_RECV_PROBE
+            /* Diagnose a missing passive notification at an owned AT boundary.
+               Opt-in only: no periodic polling or automatic reconnect. */
+            if(passive_enabled && stream_receive && !network_receive_probe_diag[1] &&
+               !passive_pending && !passive_unread && !passive_read && !was_reading &&
+               !command_phase && !ack_pending && !ipd_left && !line_used &&
+               !packet_close_pending && !(read_reg(4)&1u) &&
+               (uint32_t)(current_time-last_tcp_payload_ms)>=60000u) {
+                uint32_t snapshot[]={0x3150524eu,1,current_time,last_tcp_payload_ms,
+                    passive_pending,passive_unread,passive_read,command_phase,
+                    ack_pending,ipd_left,line_used,read_reg(24),0,0,0,0};
+                for(uint32_t i=0;i<16u;++i) network_receive_probe_diag[i]=snapshot[i];
+                cache_clean_range((const void *)network_receive_probe_diag,sizeof(network_receive_probe_diag));
+                receive_probe_active=1;
+                passive_pending=2;
+            }
+#endif
 #ifdef Z7_SSL_NO_LENGTH_QUERY
             if(passive_enabled && stream_receive && !passive_pending && !passive_read &&
                (int32_t)(current_time-passive_poll_at)>=0) passive_pending=1;

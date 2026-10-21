@@ -1,0 +1,42 @@
+connect -url TCP:127.0.0.1:3121
+after 1000
+set t [targets -target-properties -filter {name =~ "*Cortex-A9*#0"}]
+if {[llength $t]!=1 || [dict get [lindex $t 0] jtag_cable_serial] ne "210241277120"} {error "Wrong board"}
+targets -set -filter {name =~ "*Cortex-A9*#0"}
+if {[state] ne "Running" || [mrd -force -value 0x1e148]!=4} {error "Live packet session required"}
+set tlsaddr [lindex $argv 0]
+set prior [mrd -force -value $tlsaddr 24]
+proc ui_command {command} {
+ set seq [expr {1+[mrd -force -value 0x1e0c4]}]
+ mwr -force 0x1e0c8 [mrd -force -value 0x1e0a8]
+ mwr -force 0x1e0cc $command
+ mwr -force 0x1e0c4 $seq
+ for {set i 0} {$i<2000} {incr i} {
+  if {[mrd -force -value 0x1e0d0]==$seq} {break}
+  after 1
+ }
+ if {[mrd -force -value 0x1e0d0]!=$seq || [mrd -force -value 0x1e0d4]!=1} {error "UI command rejected"}
+ return $seq
+}
+set pause [ui_command 2]
+set resume [ui_command 3]
+set observed {}
+set passed 0
+for {set i 0} {$i<300} {incr i} {
+ set n [mrd -force -value 0x1e140 16]
+ set p [lindex $n 2]
+ if {[lsearch -exact $observed $p]<0} {lappend observed $p}
+ set tls [mrd -force -value $tlsaddr 24]
+ set client [mrd -force -value [lindex $argv 1]]
+ if {[lindex $tls 9]>[lindex $prior 9] && $p==4 && $client==4} {set passed 1;break}
+ if {$p==6} {break}
+ after 100
+}
+puts "QUICK_RESUME_BEFORE $prior"
+puts "QUICK_RESUME_AFTER $tls"
+puts "QUICK_RESUME_NETWORK $n"
+puts "QUICK_RESUME_PHASES $observed"
+puts "QUICK_RESUME_COMMANDS $pause $resume"
+disconnect
+if {!$passed || [lindex $n 3] || [lindex $tls 10]} {error "Quick resume not ready or error"}
+puts PASS_PACKET_QUICK_RESUME

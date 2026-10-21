@@ -123,6 +123,7 @@ def main():
     parser.add_argument("--tls-passthrough", action="store_true", help="single verified TLS connection with raw duplex UART")
     parser.add_argument("--arm-tls", action="store_true", help="verified TLS on Zynq; ESP carries raw TCP")
     parser.add_argument("--arm-tls-packets", action="store_true", help="ARM TLS over acknowledged CIPSEND blocks, without UART passthrough")
+    parser.add_argument("--arm-tls-recv-probe", action="store_true", help="diagnostic: query passive TCP length once after 60 seconds without payload")
     parser.add_argument("--tls-relay", help="diagnostic IPv4:port TCP relay; ARM still verifies the real cloud certificate")
     parser.add_argument("--tls-wire-trace",action="store_true",help="requires the matching TX_TRACE diagnostic PL")
     parser.add_argument("--drain-before-upload", action="store_true", help="experimental SSL receive-first scheduling")
@@ -136,6 +137,8 @@ def main():
 
     if args.arm_tls_packets and (not args.arm_tls or args.tls_passthrough):
         parser.error("--arm-tls-packets requires --arm-tls without --tls-passthrough")
+    if args.arm_tls_recv_probe and not args.arm_tls_packets:
+        parser.error("--arm-tls-recv-probe requires --arm-tls-packets")
     if args.arm_tls:
         if args.mode == "zhen" and not args.speech:
             parser.error("--mode zhen --arm-tls requires --speech")
@@ -175,6 +178,8 @@ def main():
         flags = [str(ROOT / "software/network_ui/link_arm_tls.ld") if f==str(ROOT / "software/network_ui/link.ld") else f for f in flags]
     if args.link_diagnostics:
         flags.append("-DZ7_LINK_DIAGNOSTICS")
+    if args.arm_tls_recv_probe:
+        flags.append("-DZ7_PASSIVE_RECV_PROBE")
     if args.tls_passthrough:
         if not args.speech and not args.arm_tls:
             parser.error("--tls-passthrough requires --speech or --arm-tls")
@@ -286,6 +291,7 @@ def main():
         "Speech": bool(args.speech),
         "ArmTLS": bool(args.arm_tls),
         "ArmTLSPackets": bool(args.arm_tls_packets),
+        "ArmTLSReceiveProbe": bool(args.arm_tls_recv_probe),
         "TLSWireTrace": bool(args.tls_wire_trace),
         "UARTBaud": args.uart_baud,
         "ELFSHA256": hashlib.sha256(elf_path.read_bytes()).hexdigest(),

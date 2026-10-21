@@ -33,6 +33,7 @@ def main():
         ('arm_tcp', stream + ['-DZ7_TLS_PASSTHROUGH', '-DZ7_ARM_TLS'], 'network_tls_raw_test.c'),
         ('arm_tcp_trace', stream + ['-DZ7_TLS_PASSTHROUGH', '-DZ7_ARM_TLS', '-DZ7_TLS_TRACE'], 'network_tls_raw_test.c'),
         ('arm_tcp_packets', stream + ['-DZ7_ARM_TLS'], 'network_arm_packet_test.c'),
+        ('arm_tcp_receive_probe', stream + ['-DZ7_ARM_TLS', '-DZ7_PASSIVE_RECV_PROBE'], 'network_arm_packet_test.c'),
         ('framing_recovery_1m', stream, 'network_framing_recovery_test.c'),
         ('framing_recovery_921600', [d for d in stream if d != '-DZ7_UART_1M_STREAM'] + ['-DZ7_UART_LEGACY_STREAM'], 'network_framing_recovery_test.c'),
     ]

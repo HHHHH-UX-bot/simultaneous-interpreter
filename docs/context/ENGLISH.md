@@ -78,9 +78,19 @@ L1/T1 改为由原有抗锯齿字体绘制的圆角数值卡片，用户已确�
 
 本阶段来源、真实加载、状态/像素证据和实屏结果见 [验证入口](../validation/connection-ui-20261020/README.md)。下一阶段先定位 TLS 告警与连接恢复行为，再做单独的持续运行；USB 重复启动、耳机听感和独立启动各自验收，不并作一次全产品测试。
 
+## 分块 TLS 实机验证（2026-10-21）
+
+用户恢复供电/JTAG 后，硬件检查 DONE/EOS 均为 0；没有访问未配置 PL 的 MMIO。按同一诊断 PL/PS 来源重新装载 `--arm-tls-packets` 麦克风候选，614400 像素完整比对零差异，用户确认画面、主按钮与 A+ 正常。随后 ARM 在真实 ESP TCP 链路完成证书验证（verify flags=0、约 450 ms 握手）并正常关闭；没有使用有效 API Key 或上传音频。
+
+固定英文样本版在 CYEA 直连百炼，300 秒观察无 TLS 告警、UART 溢出/帧错误或上传丢页；定稿由 4 增至 32。立即暂停/继续后 TLS 握手计数 1→2、云会话重新就绪；稍后暂停确认 network/client idle、错误为 0，实际字幕完整帧比对仍零差异。已恢复真实麦克风短测并获用户确认“识别、字号和画面都正常”。准确 ELF、来源、计数、装载与用户验收由 [本轮验证](../validation/arm-packets-20261021/README.md)维护。
+
+30 分钟观察因字幕定稿停更而中止：上传继续，TLS/UART 无报错，随后无重连自行恢复；不能判长时通过。已加入仅显式开启的单次接收长度诊断，并补齐失败归属和期间新通知的离线用例，17 项传输回归通过。诊断重现停更，ESP 缓冲查询为 0、期间新通知 0；只排除了这次查询时的 ESP 缓冲积压，未证明服务端根因。默认麦克风版已恢复，全部 PT_LOAD 地址、大小、标志和内容与用户刚验收版本相同，诊断不编入该版。详细现场及指纹由[本轮验证](../validation/arm-packets-20261021/README.md)维护。
+
+接续顺序：先判别停顿层次，再修正有证据的原因并重做包含定稿活性检查的长测；随后独立验收暂停/重连、真实麦克风、译音听感和时延。独立启动仍缺少已确认的启动介质、上电可信时间/熵及安全凭据配置方案，不能把 JTAG 注入种子和时间的当前原型写成完全脱离电脑的产品。本轮未写入启动介质，CYEA 结果不外推到 OnePlus12；原透传确切厂商根因仍未确认。
+
 ## TLS 传输诊断进行中（2026-10-20）
 
-当前完成单端 UART 采样、纯 TCP 透传/分块对照和产品候选离线实现；确切厂商根因未确认。用户要求即将断电收尾，已停止板上工作。最后板上是完成态的专用诊断 ELF `231b51e5f7f505967e0e1d852d81d8b8fb29a75cf6a4ca70955a4f6f3ad76b6c`，ESP 已确认普通 AT/模式 0、TCP 关闭，CPU1 停止，没有重新启动产品显示或触摸。PL 为 `output/z7_nano/audio_tx_trace/z7_nano_audio_top.bit`，SHA-256 `a40a08f0a5e854f579f4cdaa05beab2db6280a47be470dc21c6c34b5816fab2e`；断电后必须重新核验状态。没有写 Flash/SD 或 ESP 固件。当前证据入口为 [单端实测](../validation/uart-wire-20261020/README.md)和 [ESP TCP 对照](../validation/esp-tcp-20261020/README.md)。
+2026-10-20 断电收尾时已完成单端 UART 采样、纯 TCP 透传/分块对照和产品候选离线实现；确切厂商根因未确认。当时板上是完成态的专用诊断 ELF `231b51e5f7f505967e0e1d852d81d8b8fb29a75cf6a4ca70955a4f6f3ad76b6c`，ESP 已确认普通 AT/模式 0、TCP 关闭，CPU1 停止，未重新启动产品显示或触摸。PL 为 `output/z7_nano/audio_tx_trace/z7_nano_audio_top.bit`，SHA-256 `a40a08f0a5e854f579f4cdaa05beab2db6280a47be470dc21c6c34b5816fab2e`。这不是今日运行状态。历史证据入口为 [单端实测](../validation/uart-wire-20261020/README.md)和 [ESP TCP 对照](../validation/esp-tcp-20261020/README.md)。
 
 以下较早诊断过程保留原范围：正常麦克风基线为 `output/enzh/tls_guard_final/cloud_app.elf`，SHA-256 `86e4035d4f73a1c739ac647386a5df9176468dd87b54a7cbb95db8a67548a727`，曾恢复暂停 idle/零错误、CPU1 触摸常驻。这是改线和断电前的已核实现场，不代表现在仍有 UI。早期 TLS 证据见 [上一阶段](../validation/tls-transport-20261020/README.md)。
 

@@ -1,0 +1,88 @@
+{
+  "status": "identical_load_image",
+  "old_sha256": "fbd06dcb8cae9f353df8cce1ad72de25f451dee1f9cba31f7da603fd3d5dbd25",
+  "new_sha256": "f85d0df10714eb4d6bab4fba7e09193bfe554ee2c06e3b905c36cb6ca0637f97",
+  "segments": [
+    {
+      "address": 65536,
+      "physical": 65536,
+      "file_bytes": 496,
+      "memory_bytes": 496,
+      "flags": 5,
+      "sha256": "120538678df03adddbc3fc797cf28253c2cb0cf1573c63f9bcdb19925a666e23"
+    },
+    {
+      "address": 122880,
+      "physical": 122880,
+      "file_bytes": 0,
+      "memory_bytes": 1096,
+      "flags": 6,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "address": 25165824,
+      "physical": 25165824,
+      "file_bytes": 2019839,
+      "memory_bytes": 2019839,
+      "flags": 4,
+      "sha256": "da7538bab1d4473d4c9991ba70cb0c72bfc0cd37985134294ea93916863d1f73"
+    },
+    {
+      "address": 27525120,
+      "physical": 27525120,
+      "file_bytes": 0,
+      "memory_bytes": 128,
+      "flags": 6,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "address": 27656192,
+      "physical": 27656192,
+      "file_bytes": 0,
+      "memory_bytes": 2052,
+      "flags": 6,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "address": 27787264,
+      "physical": 27787264,
+      "file_bytes": 0,
+      "memory_bytes": 289912,
+      "flags": 6,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "address": 28311552,
+      "physical": 28311552,
+      "file_bytes": 0,
+      "memory_bytes": 22896,
+      "flags": 6,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "address": 33554432,
+      "physical": 33554432,
+      "file_bytes": 0,
+      "memory_bytes": 480000,
+      "flags": 6,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "address": 35651584,
+      "physical": 35651584,
+      "file_bytes": 401948,
+      "memory_bytes": 401948,
+      "flags": 7,
+      "sha256": "78fbf0250d263f8db6f05eb8a31a29d1b7b6e2fe63b29745d8ccf8d6c7ca1452"
+    },
+    {
+      "address": 39845888,
+      "physical": 39845888,
+      "file_bytes": 0,
+      "memory_bytes": 655360,
+      "flags": 6,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "scope": "PT_LOAD addresses, sizes, flags and loaded contents; ELF debug sections may differ"
+}

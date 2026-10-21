@@ -1,0 +1,969 @@
+{
+  "status": "no_fault_in_controlled_interval",
+  "utc": "2026-10-21T05:48:52.276375+00:00",
+  "scope": "fixed English audio on actual board with returned translated audio; not microphone or long-run acceptance",
+  "elf_sha256": "3f4a2bdc2bfef524ebcb145116f9ee3668c8360e53e5b9788ef7e2f6b8275050",
+  "seconds_requested": 300,
+  "samples": [
+    {
+      "seconds": 3.0,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 67567,
+      "tls_plain_rx": 413016,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 219,
+      "finals": [
+        4,
+        4
+      ],
+      "speech_samples": 142080,
+      "evidence": "sample_000.json"
+    },
+    {
+      "seconds": 15.9,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 93981,
+      "tls_plain_rx": 506058,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 299,
+      "finals": [
+        6,
+        6
+      ],
+      "speech_samples": 170880,
+      "evidence": "sample_001.json"
+    },
+    {
+      "seconds": 29.3,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 122763,
+      "tls_plain_rx": 835266,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 382,
+      "finals": [
+        8,
+        8
+      ],
+      "speech_samples": 288000,
+      "evidence": "sample_002.json"
+    },
+    {
+      "seconds": 42.2,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 138141,
+      "tls_plain_rx": 835266,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 463,
+      "finals": [
+        8,
+        8
+      ],
+      "speech_samples": 288000,
+      "evidence": "sample_003.json"
+    },
+    {
+      "seconds": 55.1,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 159033,
+      "tls_plain_rx": 857735,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 544,
+      "finals": [
+        9,
+        9
+      ],
+      "speech_samples": 288000,
+      "evidence": "sample_004.json"
+    },
+    {
+      "seconds": 68.2,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 193245,
+      "tls_plain_rx": 1212327,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 625,
+      "finals": [
+        12,
+        12
+      ],
+      "speech_samples": 414720,
+      "evidence": "sample_005.json"
+    },
+    {
+      "seconds": 81.2,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 208627,
+      "tls_plain_rx": 1266802,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 706,
+      "finals": [
+        12,
+        12
+      ],
+      "speech_samples": 437760,
+      "evidence": "sample_006.json"
+    },
+    {
+      "seconds": 94.1,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 223927,
+      "tls_plain_rx": 1266802,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 787,
+      "finals": [
+        12,
+        12
+      ],
+      "speech_samples": 437760,
+      "evidence": "sample_007.json"
+    },
+    {
+      "seconds": 107.3,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 263815,
+      "tls_plain_rx": 1580232,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 869,
+      "finals": [
+        16,
+        16
+      ],
+      "speech_samples": 535680,
+      "evidence": "sample_008.json"
+    },
+    {
+      "seconds": 120.3,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 279193,
+      "tls_plain_rx": 1673700,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 950,
+      "finals": [
+        16,
+        16
+      ],
+      "speech_samples": 577920,
+      "evidence": "sample_009.json"
+    },
+    {
+      "seconds": 133.3,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 294661,
+      "tls_plain_rx": 1673700,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1031,
+      "finals": [
+        16,
+        16
+      ],
+      "speech_samples": 577920,
+      "evidence": "sample_010.json"
+    },
+    {
+      "seconds": 146.2,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 330036,
+      "tls_plain_rx": 1876297,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1112,
+      "finals": [
+        19,
+        19
+      ],
+      "speech_samples": 645120,
+      "evidence": "sample_011.json"
+    },
+    {
+      "seconds": 159.1,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 349844,
+      "tls_plain_rx": 2080109,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1192,
+      "finals": [
+        20,
+        20
+      ],
+      "speech_samples": 718080,
+      "evidence": "sample_012.json"
+    },
+    {
+      "seconds": 172.0,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 365240,
+      "tls_plain_rx": 2080109,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1272,
+      "finals": [
+        20,
+        20
+      ],
+      "speech_samples": 718080,
+      "evidence": "sample_013.json"
+    },
+    {
+      "seconds": 184.9,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 392511,
+      "tls_plain_rx": 2223372,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1353,
+      "finals": [
+        22,
+        22
+      ],
+      "speech_samples": 754560,
+      "evidence": "sample_014.json"
+    },
+    {
+      "seconds": 197.9,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 420733,
+      "tls_plain_rx": 2491636,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1435,
+      "finals": [
+        24,
+        24
+      ],
+      "speech_samples": 860160,
+      "evidence": "sample_015.json"
+    },
+    {
+      "seconds": 210.9,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 436129,
+      "tls_plain_rx": 2491636,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1515,
+      "finals": [
+        24,
+        24
+      ],
+      "speech_samples": 860160,
+      "evidence": "sample_016.json"
+    },
+    {
+      "seconds": 223.8,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 456488,
+      "tls_plain_rx": 2506804,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1596,
+      "finals": [
+        25,
+        25
+      ],
+      "speech_samples": 860160,
+      "evidence": "sample_017.json"
+    },
+    {
+      "seconds": 236.9,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 491706,
+      "tls_plain_rx": 2886999,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1678,
+      "finals": [
+        28,
+        28
+      ],
+      "speech_samples": 996480,
+      "evidence": "sample_018.json"
+    },
+    {
+      "seconds": 249.9,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 507189,
+      "tls_plain_rx": 2903668,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1759,
+      "finals": [
+        28,
+        28
+      ],
+      "speech_samples": 1002240,
+      "evidence": "sample_019.json"
+    },
+    {
+      "seconds": 262.8,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 522748,
+      "tls_plain_rx": 2903668,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1840,
+      "finals": [
+        28,
+        28
+      ],
+      "speech_samples": 1002240,
+      "evidence": "sample_020.json"
+    },
+    {
+      "seconds": 275.7,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 562368,
+      "tls_plain_rx": 3199106,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 1920,
+      "finals": [
+        32,
+        31
+      ],
+      "speech_samples": 1094400,
+      "evidence": "sample_021.json"
+    },
+    {
+      "seconds": 288.6,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 577927,
+      "tls_plain_rx": 3314719,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 2001,
+      "finals": [
+        32,
+        32
+      ],
+      "speech_samples": 1144320,
+      "evidence": "sample_022.json"
+    },
+    {
+      "seconds": 301.7,
+      "network": [
+        4,
+        0
+      ],
+      "client": 4,
+      "tls_failures": 0,
+      "tls_error": 0,
+      "tls_alert": 0,
+      "tls_handshakes": 1,
+      "tls_cipher_tx": 593725,
+      "tls_plain_rx": 3314719,
+      "first_tls_fault": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "uart_errors": [
+        0,
+        0
+      ],
+      "upload_drops": 0,
+      "upload_pages": 2082,
+      "finals": [
+        32,
+        32
+      ],
+      "speech_samples": 1144320,
+      "evidence": "sample_023.json"
+    }
+  ]
+}

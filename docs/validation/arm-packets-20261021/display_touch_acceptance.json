@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-21T05:44:44.953629+00:00",
+  "status": "accepted_by_user",
+  "elf_sha256": "fbd06dcb8cae9f353df8cce1ad72de25f451dee1f9cba31f7da603fd3d5dbd25",
+  "scope": "new packet microphone candidate; clear stable HDMI and main/A+ touch buttons",
+  "user_confirmation": "画面正常，按钮响应正确",
+  "frame_validation": "frame/validation.json",
+  "cloud_audio_acceptance": false
+}

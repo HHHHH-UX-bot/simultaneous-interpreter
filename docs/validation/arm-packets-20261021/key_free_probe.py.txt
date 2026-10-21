@@ -1,0 +1,62 @@
+import json,os,re,subprocess,sys
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'scripts'))
+import run_z7_nano as b
+from configure_cloud_runtime import tcl_script
+from network_connect import read_credentials_line
+private=json.loads(read_credentials_line())
+app=ROOT/'output/enzh/tls_packets';out=ROOT/'output/tls_packets_20261021/key_free';out.mkdir(exist_ok=True)
+symbols={p[2]:int(p[0],16) for line in (app/'symbols.log').read_text().splitlines() if len(p:=line.split())==3}
+script=tcl_script(private['ssid'].encode(),private['password'].encode(),b'/api-ws/v1/realtime?model=qwen3.5-livetranslate-flash-realtime',b'ws-zckg39zhbiii3yrv',b'probe-no-valid-api-key',None,symbols['arm_tls_seed'])
+private.clear();del private
+script=script[:script.index('set last ""')]+'''
+set success 0
+for {set i 0} {$i<800} {incr i} {
+ set tls [mrd -force -value TLS_ADDRESS 24]
+ if {[lindex $tls 9]>0 && [lindex $tls 11]>0} {
+  puts "TLS_PROBE_HANDSHAKE $tls";set success 1;break
+ }
+ set n [mrd -force -value 0x1e148 2]
+ if {[lindex $n 0]==6} {puts "TLS_PROBE_FAULT $n $tls";break}
+ after 50
+}
+# Stop capture and let normal-mode AT finish its accepted block before closing.
+set epoch [mrd -force -value 0x1e0a8]
+set seq [expr {1+[mrd -force -value 0x1e0c4]}]
+mwr -force 0x1e0c8 $epoch
+mwr -force 0x1e0cc 2
+mwr -force 0x1e0c4 $seq
+for {set i 0} {$i<200} {incr i} {
+ set n [mrd -force -value 0x1e148 2]
+ if {[lindex $n 0]==0 || [lindex $n 0]==6} {break}
+ after 50
+}
+puts "TLS_PROBE_FINAL [mrd -force -value 0x1e140 16]"
+puts "TLS_PROBE_DIAG [mrd -force -value TLS_ADDRESS 24]"
+puts "TLS_PROBE_UART [mrd -force -value 0x43c30018 6]"
+disconnect
+if {!$success} {error "TLS handshake not observed"}
+puts PASS_KEY_FREE_PACKET_TLS
+'''.replace('TLS_ADDRESS',hex(symbols['arm_tls_diag']))
+env=dict(os.environ);env['Z7_RUNTIME_TCL']=script;script=None
+launcher=ROOT/'tmp/tls_packets_20261021/private_launcher.tcl'
+launcher.write_text('if {[catch {eval $::env(Z7_RUNTIME_TCL)}]} {puts TLS_PROBE_SCRIPT_FAILED;exit 1}\n',encoding='ascii')
+with b.hardware_lock():
+    b.run([b.XSDB,ROOT/'tmp/touch_latency_20261020/ui_command.tcl','4'],out/'clear','PASS_UI_COMMAND',20)
+    b.run([b.XSDB,ROOT/'tmp/touch_latency_20261020/ui_command.tcl','1'],out/'start','PASS_UI_COMMAND',20)
+    process=subprocess.Popen([str(b.XSDB),str(launcher)],cwd=ROOT,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+    del env['Z7_RUNTIME_TCL']
+    try:output,_=process.communicate(timeout=75)
+    finally:
+        if process.poll() is None:
+            subprocess.run(['taskkill','/PID',str(process.pid),'/T','/F'],capture_output=True)
+            process.wait(timeout=10)
+fields={name:[int(w,0) for w in values.split()] for name,values in re.findall(r'^TLS_PROBE_(HANDSHAKE|FAULT|FINAL|DIAG|UART) ([0-9a-fA-FxX ]+)$',output,re.M)}
+record={'status':'failed','scope':'actual product packet transport, ARM certificate-verified handshake, no valid API key or audio upload',
+ 'elf_sha256':b.sha(app/'cloud_app.elf'),'fields':fields,'tool_exit_code':process.returncode}
+if 'HANDSHAKE' in fields and 'FINAL' in fields and 'UART' in fields:
+ t=fields['HANDSHAKE'];n=fields['FINAL'];u=fields['UART']
+ if process.returncode==0 and t[3]==0 and t[11]>0 and n[2:4]==[0,0] and not any(u[2:4]):record['status']='passed'
+(out/'validation.json').write_text(json.dumps(record,indent=2)+'\n')
+print(json.dumps(record),flush=True)
+raise SystemExit(0 if record['status']=='passed' else 1)

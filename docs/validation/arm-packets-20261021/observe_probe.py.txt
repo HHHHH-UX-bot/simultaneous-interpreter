@@ -1,0 +1,33 @@
+import json,subprocess,sys,time
+from datetime import datetime,timezone
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2]
+app=ROOT/sys.argv[1];out=ROOT/sys.argv[2];out.mkdir(parents=True,exist_ok=True)
+start=time.monotonic();last_final_change=start;last_final=None;probe_seen=None;points=[]
+limit=int(sys.argv[3]);status='running'
+while True:
+ path=out/('sample_%03d.json'%len(points))
+ subprocess.run([sys.executable,'-B',str(ROOT/'scripts/repair/board_snapshot.py'),
+  '--symbols',str(app/'symbols.log'),'--elf',str(app/'cloud_app.elf'),'--output',str(path),
+  '--xsdb','D:/AMDDesignTools/2026.1/Vitis/bin/xsdb.bat'],check=True,stdout=subprocess.DEVNULL,timeout=35)
+ record=json.loads(path.read_text());c=record['counters'];t=c['arm_tls_diag'];p=c['network_receive_probe_diag']
+ now=time.monotonic();final=c['final_diag'][2]
+ if final!=last_final:last_final_change=now;last_final=final
+ if p[14] and probe_seen is None:probe_seen=now
+ point=dict(seconds=round(now-start,1),finals=final,final_silence_seconds=round(now-last_final_change,1),
+  cipher_rx=t[4],plain_rx=t[13],cipher_tx=t[5],network=c['network_report'][2:4],
+  client=c['client'][0],tls_error=t[2],tls_failures=t[10],handshakes=t[9],
+  uart_errors=c['uart'][2:4],upload_drops=c['upload_diag'][1],pages=c['upload_diag'][2],
+  probe=p,evidence=path.name)
+ points.append(point);print(json.dumps(point),flush=True)
+ if t[10] or t[2] or point['network'][1] or any(point['uart_errors']):status='transport_failure';break
+ if point['network'][0]!=4 or point['client']!=4:status='session_not_streaming';break
+ if probe_seen is not None and now-probe_seen>=30:status='one_shot_probe_observed';break
+ if now-last_final_change>150 and not p[1]:status='useful_output_stall_without_tcp_silence_trigger';break
+ if now-start>=limit:status='bounded_observation_no_endurance_claim';break
+ time.sleep(12)
+result=dict(status=status,utc=datetime.now(timezone.utc).isoformat(),
+ scope='opt-in fixed-audio receive diagnostic, not default-product endurance acceptance',
+ elf_sha256=record['elf_sha256'],seconds_requested=limit,samples=points)
+(out/'summary.json').write_text(json.dumps(result,indent=2)+'\n')
+print('PROBE_RESULT',status,flush=True)
