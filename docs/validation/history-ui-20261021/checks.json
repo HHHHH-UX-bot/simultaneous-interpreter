@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "scope": "changed documentation and directly linked targets; history evidence hashes and restored owner",
+  "markdown_files": 5,
+  "local_links_checked": 86,
+  "missing_targets": [],
+  "missing_anchors": [],
+  "evidence_files_hashed": 35,
+  "product_load_and_touch_bound": true,
+  "cloud_sources_unchanged_since_docs_commit": true,
+  "source_build_tests_repeated": false,
+  "reason": "only evidence/documentation changed since tested feature commit"
+}

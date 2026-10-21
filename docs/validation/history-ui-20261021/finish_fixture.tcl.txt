@@ -1,0 +1,49 @@
+connect -url TCP:127.0.0.1:3121
+after 1000
+set cpu [targets -target-properties -filter {name =~ "*Cortex-A9*#0"}]
+if {[llength $cpu]!=1 || [dict get [lindex $cpu 0] jtag_cable_serial] ne "210241277120"} {error "Wrong CPU0 target"}
+targets -set -filter {name =~ "*Cortex-A9*#0"}
+if {[state] ne "Running"} {error "Fixture CPU0 not running"}
+proc shown {} {
+    set a [mrd -force -value 0x1e084]
+    set info [mrd -force -value 0x1e080 16]
+    if {[lindex $info 0]!=0x55493131 || [lindex $info 3]!=135832 || [lindex $info 4]!=135768} {error "Wrong history UI ABI"}
+    set base [expr {[lindex $info 2]+[lindex $info 5]*135832+32}]
+    set captions [mrd -force -value $base 517]
+    set counts [mrd -force -value [expr {$base+134676}] 2]
+    set page [mrd -force -value [expr {$base+135744}] 6]
+    if {$a!=[mrd -force -value 0x1e084] || ($a&1)} {error "UI changed during read; no coherent sample"}
+    return [list $captions $counts $page]
+}
+proc command {cmd} {
+    set epoch [mrd -force -value 0x1e0a8]
+    set seq [expr {1+[mrd -force -value 0x1e0c4]}]
+    mwr -force 0x1e0c8 $epoch
+    mwr -force 0x1e0cc $cmd
+    mwr -force 0x1e0c4 $seq
+    for {set i 0} {$i<100} {incr i} {
+        after 20
+        if {[mrd -force -value 0x1e0d0]==$seq} {break}
+    }
+    if {[mrd -force -value 0x1e0d0]!=$seq || [mrd -force -value 0x1e0d4]!=1} {error "History command rejected"}
+    after 500
+}
+command 12
+set before [shown]
+if {[lindex $before 1 0]!=20 || [lindex $before 2 0]!=1} {error "Expected accepted twenty-entry fixture"}
+set feedback [mrd -force -value 0x1e040 16]
+command 14
+set confirmation [shown]
+if {[lindex $confirmation 2 4]!=1} {error "Clear confirmation not shown"}
+command 16
+set cancelled [shown]
+if {[lrange $cancelled 0 1] ne [lrange $before 0 1] || [lindex $cancelled 2 4]!=0} {error "Cancel changed captions/history"}
+command 14
+command 15
+set cleared [shown]
+if {[lindex $cleared 0] ne [lindex $before 0] || [lindex $cleared 1 0]!=0 || [lindex $cleared 1 1]!=[lindex $before 1 1] || [lindex $cleared 2 4]!=0} {error "Clear did not preserve current captions/session/final count"}
+set f [open [lindex $argv 0] w]
+puts $f "{\"status\":\"passed\",\"input\":\"offline twenty public sample pairs\",\"method\":\"UI command mailbox; touch gestures separately confirmed by user\",\"history_before\":20,\"history_after\":0,\"final_count\":[lindex $cleared 1 1],\"confirmation_shown\":true,\"cancel_preserves_history_and_captions\":true,\"clear_preserves_captions_session_epoch_preferences\":true,\"touch_feedback\":\[[join $feedback ,]\]}"
+close $f
+disconnect
+puts PASS_HISTORY_CLEAR_BOARD

@@ -1,0 +1,10 @@
+import json,sys
+from datetime import datetime,timezone
+from pathlib import Path
+R=Path(__file__).resolve().parents[2];sys.path.insert(0,str(R/'scripts'))
+import run_z7_nano as b
+out=R/'output/history_ui_20261021/board_clear';out.mkdir(parents=True,exist_ok=True)
+acceptance={'utc':datetime.now(timezone.utc).isoformat(),'scope':'offline UI fixture, twenty public sample pairs, physical HDMI and USB touch','answer':'画面、对齐、滑动和返回都正常','passed':['paired English/Chinese columns','touch scrolling','previous/next page','back and reopen','stable physical display'],'not_tested':['real microphone/cloud history','physical touch clear confirmation']}
+(R/'output/history_ui_20261021/physical_fixture_acceptance.json').write_text(json.dumps(acceptance,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+with b.hardware_lock():b.run([b.XSDB,R/'tmp/history_ui_20261021/finish_fixture.tcl',out/'result.json'],out/'run','PASS_HISTORY_CLEAR_BOARD',30)
+print((out/'result.json').read_text())

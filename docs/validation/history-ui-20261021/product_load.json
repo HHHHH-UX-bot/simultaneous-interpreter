@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "cable_serial": "210241277120",
+  "elf_sha256": "e02b03dc993023c0e5aad9decb2055b1f4c58aeecf1fedcff9292c51ad5d4705",
+  "bitstream_sha256": "a40a08f0a5e854f579f4cdaa05beab2db6280a47be470dc21c6c34b5816fab2e",
+  "ps7_init_sha256": "90683f6490f64fe68da6518e4b0ef54e7e9dc7232945b62c4e8f61da856b0d5d",
+  "selftest": false,
+  "result": "output/enzh/history_ui/warm_load_20261021/102804752874/result.json",
+  "result_sha256": "de457b582a33bd5ef3f8e1a408b700991e303f502a6130f078906d172154dc23",
+  "method": "Owned UI transition: network idle, normal AT/no TCP confirmed, CPU1+USB halted, warm CPU0 load; same PL",
+  "loader_sha256": "8cedc829487ba478be2215424ec70c8649c5b661099b0899a6f3692f9490f871",
+  "probe_sha256": "abbe0a0c6dfe04edf98a1b6ccacb02faed2cc405910fb720d1adfed8f17de00e",
+  "parent_load_sha256": "e95d81628ac08991c01f75b6b76a71d025ad2193001e77fd7b6947536a6d0f58",
+  "local_ui_fixture": false
+}

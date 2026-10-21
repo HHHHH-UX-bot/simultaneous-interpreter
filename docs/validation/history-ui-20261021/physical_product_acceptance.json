@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-21T10:31:18.248958+00:00",
+  "scope": "normal real-microphone product after fixture removal",
+  "answer": "页面切换、字号状态和画面都正常",
+  "passed": [
+    "history and return touch buttons",
+    "font state control",
+    "stable physical HDMI display"
+  ],
+  "not_tested": [
+    "new speech recognition during this acceptance",
+    "long-running microphone finalization reliability"
+  ]
+}

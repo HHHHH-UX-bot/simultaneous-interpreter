@@ -1,0 +1,35 @@
+import json,sys
+from datetime import datetime,timezone
+from pathlib import Path
+R=Path(__file__).resolve().parents[2];sys.path.insert(0,str(R/'scripts'))
+import run_z7_nano as b
+app=R/'output/enzh/history_ui'
+load=json.loads((app/'load.json').read_text());build=json.loads((app/'build.json').read_text())
+assert not load['local_ui_fixture'] and not build['Selftest']
+assert load['elf_sha256']==build['ELFSHA256']==b.sha(app/'cloud_app.elf')
+assert all(b.sha(R/n)==v for n,v in build['InputSHA256'].items())
+symbols={p[2]:int(p[0],16) for line in (app/'symbols.log').read_text().splitlines() if len(p:=line.split())==3}
+counts={'network_report':16,'cloud_report':16,'client':24,'upload_diag':7,'arm_tls_diag':24}
+tcl=['connect -url TCP:127.0.0.1:3121','after 1000',
+'set cpu [targets -target-properties -filter {name =~ "*Cortex-A9*#0"}]',
+'if {[llength $cpu]!=1 || [dict get [lindex $cpu 0] jtag_cable_serial] ne "210241277120"} {error "Wrong CPU0"}',
+'targets -set -filter {name =~ "*Cortex-A9*#0"}',
+'if {[state] ne "Running" || [mrd -force -value 0x1e090]!=135768} {error "Wrong running UI ABI"}']
+for name,n in counts.items():tcl.append(f'puts "PUBLIC {name} [mrd -force -value 0x{symbols[name]:x} {n}]"')
+for name,addr,n in [('ui_info',0x1e080,16),('touch_feedback',0x1e040,16),('uart_errors',0x43c30018,6),('capture',0x43c20090,2)]:
+    tcl.append(f'puts "PUBLIC {name} [mrd -force -value 0x{addr:x} {n}]"')
+tcl+=['disconnect','puts PASS_HISTORY_PRODUCT_PUBLIC']
+p=R/'tmp/history_ui_20261021/sample_product.tcl';p.write_text('\n'.join(tcl)+'\n')
+out=R/'output/history_ui_20261021/product_runtime';out.mkdir(exist_ok=True)
+with b.hardware_lock():b.run([b.XSDB,p],out/'run','PASS_HISTORY_PRODUCT_PUBLIC',25)
+lines=(out/'run/console.log').read_text().splitlines()
+values={}
+for line in lines:
+    if line.startswith('PUBLIC '):
+        _,name,*words=line.split();values[name]=[int(v,0) for v in words]
+record={'utc':datetime.now(timezone.utc).isoformat(),'elf_sha256':load['elf_sha256'],'load_sha256':b.sha(app/'load.json'),'scope':'public counters only; no speech text, audio or credentials','counters':values}
+assert values['network_report'][0]==0x3154454e and values['cloud_report'][0]==0x31564c43
+(out/'public.json').write_text(json.dumps(record,indent=2)+'\n')
+print('NETWORK_PHASE_ERROR',values['network_report'][2:4],'CLOUD_CLIENT_PHASE',values['client'][0])
+acceptance={'utc':record['utc'],'scope':'normal real-microphone product after fixture removal','answer':'页面切换、字号状态和画面都正常','passed':['history and return touch buttons','font state control','stable physical HDMI display'],'not_tested':['new speech recognition during this acceptance','long-running microphone finalization reliability']}
+(R/'output/history_ui_20261021/physical_product_acceptance.json').write_text(json.dumps(acceptance,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

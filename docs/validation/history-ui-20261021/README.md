@@ -18,10 +18,18 @@
 
 [独立复核](review.json)发现并修正了选错linker预留、旧松手/新按下混用，以及未采到按下的快速滑动遗漏。最终复核未发现其他实质问题；不据此代替ARM或实屏结果。
 
-## 板级状态（待用户确认）
+## 板级验证与用户验收
 
-[产品ARM构建](product_build.json)通过；APP_DDR约410476字节/2MiB，字库2040772字节/2MiB、快照271664字节/512KiB。没有仅为UI更改重配PL。实体目标、旧会话关闭、普通AT/TCP关闭、CPU1/USB Halt后受控暖加载了[离线UI夹具](fixture_build.json)，[加载](fixture_load.json)绑定实际ELF。夹具只有20条公开示例、触摸与显示，不联网/不采音；其编译宏和UI共享实现不能被描述成真实云译正在运行。
+[产品ARM构建](product_build.json)通过；APP_DDR约410476字节/2MiB，字库2040772字节/2MiB、快照271664字节/512KiB。没有为UI更改重配PL。先确认旧会话关闭、普通AT/TCP关闭与CPU1/USB Halt，受控暖加载[离线UI夹具](fixture_build.json)，[加载](fixture_load.json)绑定其实际ELF。夹具只有20条公开示例，不联网/不采音。
 
-[历史页实际帧](frame_history_latest.json)已经614400像素零差异，常驻CPU1已恢复，实际USB滑动/返回的用户验收仍待回复。本轮不把既往触摸按钮验收直接换成新滑动通过。用户确认后再检查页内清空并恢复正常麦克风产品ELF，分别保存身份与结果；当前所有权由 [NOW](../../context/NOW.md)维护。
+- [示例历史实际帧](frame_history_latest.json)614400像素零差异；[用户确认](physical_fixture_acceptance.json)双列对齐、USB上下滑动、上一页/下一页、返回再进入及画面正常。不是仅从触摸计数推断。
+- [板端清空检查](board_clear.json)：显示确认、取消保留20条、再次确认清为0条；当前字幕、会话、epoch、偏好与累计final_count=20保持不变。方法为已接受的UI命令邮箱；原生触摸命中测试另见native_history，不声称用户已手指验证确认/取消。
+- [历史空态](frame_history_empty.json)和[正式版主界面](frame_product_main.json)分别614400像素零差异，截图见[空态](history-empty.png)、[正式主界面](product-main.png)。正式主界面截图在运行期配置前取得，Connecting不是连云失败。
 
-已知定稿缺源和UNEXPECTED_ASR_ERROR仍未解决。只有成功进入UI历史的定稿才会出现；真实链路没有提交时空态是如实显示，不能用这20条示例宣布数据链路已正常。
+## 当前正式运行与边界
+
+夹具退出后按其已知空闲115200状态，CPU1/USB安全停止、普通AT与无TCP再次确认，然后暖加载真实麦克风ELF；[正式加载](product_load.json)及[实际结果](product_load_result.json)绑定ELF/同PL/父加载SHA，所用[交接脚本](restore_product.tcl.txt)没有把夹具误当1 Mbaud拥有者。正式版本Selftest=false、LocalUIFixture=false；20条示例不带入。
+
+[CPU1触摸采样](product_touch.json)通过。运行期私有输入恢复既有Wi-Fi及百炼配置后，[公开计数](product_public_state.json)显示network phase/error=4/0、client phase=4（CLOUD_STREAMING），本次读数UART溢出/帧错为0。[用户确认](physical_product_acceptance.json)正式版本的历史入口、返回、A+状态及画面均正常。本次没有要求新的口述，不将连云/入口验收替代新真人识别、历史定稿或长期可靠性验证。当前所有权由 [NOW](../../context/NOW.md)维护。
+
+已知定稿缺源和UNEXPECTED_ASR_ERROR仍未解决。只有成功进入UI历史的定稿才会出现；真实链路未提交时空态是如实显示，不能用示例宣布数据链路已正常。本阶段不修改云端配对、采音或重试策略，不写持久介质。

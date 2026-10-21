@@ -1,0 +1,16 @@
+{
+  "utc": "2026-10-21T10:27:07.601534+00:00",
+  "scope": "offline UI fixture, twenty public sample pairs, physical HDMI and USB touch",
+  "answer": "画面、对齐、滑动和返回都正常",
+  "passed": [
+    "paired English/Chinese columns",
+    "touch scrolling",
+    "previous/next page",
+    "back and reopen",
+    "stable physical display"
+  ],
+  "not_tested": [
+    "real microphone/cloud history",
+    "physical touch clear confirmation"
+  ]
+}
