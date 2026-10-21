@@ -1,0 +1,5 @@
+{
+  "utc": "2026-10-21T08:29:47.992496+00:00",
+  "public_cloud_error_code": "UNEXPECTED_ASR_ERROR",
+  "scope": "Existing boot-lifetime error-code field only; no raw error payload or credentials"
+}

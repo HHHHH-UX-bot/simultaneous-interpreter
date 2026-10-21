@@ -1,0 +1,26 @@
+import json,sys,struct
+from datetime import datetime,timezone
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'scripts'))
+import run_z7_nano as b
+symbols={parts[2]:int(parts[0],16) for line in (ROOT/'output/enzh/language_picker/symbols.log').read_text().splitlines() if len(parts:=line.split())==3}
+address=symbols['cloud_error_code']
+p=ROOT/'tmp/language_switch_20261021/error.tcl'
+p.write_text('''connect -url TCP:127.0.0.1:3121
+after 300
+set b [targets -target-properties -filter {name == "xc7z010"}]
+if {[llength $b]!=1 || [dict get [lindex $b 0] jtag_cable_serial] ne "210241277120"} {error "Wrong board"}
+targets -set -filter {name =~ "*Cortex-A9*#0"}
+puts "PUBLIC_ERROR [mrd -force -value 0x%x 20]"
+puts PASS_PUBLIC_ERROR_CODE
+disconnect
+'''%address,encoding='ascii')
+out=ROOT/'output/language_switch_20261021/error_code'
+with b.hardware_lock():b.run([b.XSDB,p],out,'PASS_PUBLIC_ERROR_CODE',20)
+for line in (out/'console.log').read_text().splitlines():
+ if line.startswith('PUBLIC_ERROR '):
+  values=[int(s,0) for s in line.split()[1:]]
+  code=struct.pack('<20I',*values).split(b'\0')[0].decode('ascii')
+record=dict(utc=datetime.now(timezone.utc).isoformat(),public_cloud_error_code=code,scope='Existing boot-lifetime error-code field only; no raw error payload or credentials')
+(ROOT/'output/language_switch_20261021/public_error_code.json').write_text(json.dumps(record,indent=2)+'\n')
+print(json.dumps(record))

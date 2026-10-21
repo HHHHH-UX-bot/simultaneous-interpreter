@@ -7,7 +7,9 @@
     "previous_fault": "1e3103697f1fab788905390222fa1b18d692fb60c189856c8b46d3ef872854d3",
     "previous_idle": "dc965acca5f57e9a78e9e29052ea771681dfb2186099a5b70970f34f20ab159d",
     "zhen_user": "f10333f6955d03270c05a47e7a87fc15ad76e00ebe0b01e0d262215ca5515263",
-    "enzh_user": "ff877f70cdc5b5469ecabaf4a9964763ad607c7fcb3a7e8ef0625a46bcade506"
+    "enzh_user": "ff877f70cdc5b5469ecabaf4a9964763ad607c7fcb3a7e8ef0625a46bcade506",
+    "new_server_error": "052976ea66f363d458845de99b4e3c20dedc285c1398754896a8c2817acd5a6f",
+    "recovery_state": "b0adcd1352611dc37a67ecf5205aace5d2dd43f73bcf7549525c62eaf2caf724"
   },
   "source_sha256": {
     "software/subtitle_ui/ui_layout.h": "39a43c89e97ebcd4e7e95a2ab899ab6b59cd117d0984ad58af7c02838244dd6d",
@@ -91,9 +93,13 @@
     "native_text.json": "c4645b8e8ff96d7d3d9efc19931edca0b419a29a92471f352f9ff53441bc7173",
     "native_zhen.json": "0c62c69306a98bb0ba5f0bb78c4007d3433279a692b684892049683b7ab59889",
     "native_zhzh.json": "85c6a7950cd768d22741139a9c85c44715d43b6f7839c7683de1d71afd5278e1",
+    "new_server_error.json": "fa4fce7e302eb6925ae5f002665aac34d1bc68f05015d58b767d8e4a8a984c72",
     "previous_fault.json": "334a9dd9137fc3e56d86befd8a3f71590956397bbbe22ee4543be259373b1887",
     "previous_idle.json": "d1fc81ad805cad34fe9dd1a2674576d0149d2d4619a5cc72342955c106a64f9a",
-    "README.md": "128034c6ea5fb73a791553fd7f86ff5d8cf4b90f0ecd8708c2dc5bc6d641f86f",
+    "public_error_code.json": "623ee7456c8f40f2d657d68bbdad8ec58d0e030292cfeb73ff962f206babc7c4",
+    "README.md": "0abc5e90ea7ed9b202f1fefbc3a6ddd616dbd578cafae7604f4fd6c6b0a5965c",
+    "read_error.py.txt": "be92152355c3d6678d3414f74c13a421f233f202ec2785d1bd9de77df2082e57",
+    "recovery_state.json": "b69943431bafdfc8737c854a41990fe15fad9931cb2d7fee1464a75c89e41d8b",
     "review.json": "866018de23865750521852153b034c712c8e01a0d277f46200c95e1f1c23f28f",
     "snapshot.py.txt": "3355edf6a879b4d3f5801e6a6c2102c4fae933f56c6cee2dbc6703e4e297e3b1",
     "touch_live.json": "774c7b3dde6bc7a91ed31844599cde1de4cc0ef429d7625ae5574ee04dd3e957",
@@ -101,5 +107,6 @@
     "validate.py.txt": "97502ae0bb10e92e45bd09c39b1d02ac48f37e54fa821097c41849555e0619f2",
     "validation.json": "e4cf18fc768e1691640feb44b106a988f31e1b1f16a35db063cc582de61f78f4",
     "zhen_user.json": "3ff20b3047a3eff9f83ac16bd4e5e34bd66f0c0f8c3c33313b31f013499d13c0"
-  }
+  },
+  "followup": "New candidate also received UNEXPECTED_ASR_ERROR; connection later ready with sticky peer-close history. Trigger unresolved; short acceptance is not sustained stability."
 }

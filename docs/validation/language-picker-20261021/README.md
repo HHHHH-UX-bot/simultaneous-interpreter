@@ -29,6 +29,14 @@
 
 本轮实际用户还探索了其他控件；最终反馈包含 33 次点击、31 次被接受（20 次扩展控件、11 次旧控件）、2 次忽略、无丢弃点击，见 [touch_live](touch_live.json)。不把累计握手数解释为受控的一次点击只发生一次握手，也不将这些短测当作双向长期稳定性。
 
+## 新候选收尾故障与恢复
+
+两方向短验收后，收尾取样在相同新 ELF 再次取得 `cloud.live.error=3`，当时 UART/上传丢页和 TLS 错误为零，界面正确进入 Offline，见 [new_server_error](new_server_error.json)。读取已有、跨重连保留的 80 字节公共错误码字段，得到 **UNEXPECTED_ASR_ERROR**，见 [public_error_code](public_error_code.json)和[只读脚本](read_error.py.txt)。没有改业务代码或新增诊断缓冲。
+
+用户补充：曾两次说话无响应，来回切换方向后恢复；但无法把这两次与特定快照一一对应，也不能仅凭错误名判定是云服务根因、输入音频、静默时长或操作时机。官方[错误事件规范](https://www.alibabacloud.com/help/zh/model-studio/live-translator-server-events)定义了 code/message 字段，未在该页列出此码的具体触发条件。本轮不据此增加自动重试或宣称已修复。
+
+之后已重新取到 Ready：network/client 为 4、language=0、字幕和字号保留，见 [recovery_state](recovery_state.json)。手动继续命令这次未被接受，后续确已出现新握手；不将恢复归功于该命令，也不猜测是否有并发用户操作。此时 TLS 错误字段锁存过一次 peer-close（-0x7880）、failure=1；当前连接已就绪不代表本轮始终零错误。下一阶段需在“已就绪后说话”的条件下区分输入/ASR 任务错误及会话恢复。
+
 ## 未放行项和旧故障
 
 菜单开发等待期间，上一个 ELF `0661bb…` 的真实麦克风会话出现云端错误 3 与 TLS peer-close（-0x7880），当时 UART/上传丢页仍为零。保存 [previous_fault](previous_fault.json)后受控清空/关闭，确认 [previous_idle](previous_idle.json)才换程序。是否与静默时长有关仍待核实；未添加猜测性的重试，也未宣称菜单修复了它。
