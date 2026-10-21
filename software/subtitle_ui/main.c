@@ -31,8 +31,8 @@ struct ui_snapshot {
 };
 _Static_assert(sizeof(struct display_result)==64,"Display ABI");
 _Static_assert(sizeof(struct ui_information)==64,"UI ABI");
-_Static_assert(sizeof(struct ui_state)==11384u,"ARM/native model ABI requires 32-bit enums");
-_Static_assert(sizeof(struct ui_snapshot)==11448u,"ARM/native snapshot ABI");
+_Static_assert(sizeof(struct ui_state)==11392u,"ARM/native model ABI requires 32-bit enums");
+_Static_assert(sizeof(struct ui_snapshot)==11456u,"ARM/native snapshot ABI");
 __attribute__((section(".mailbox"),used)) volatile struct display_result report;
 __attribute__((section(".ui_mailbox"),used)) volatile struct ui_information ui_info;
 __attribute__((section(".ui_command"),used)) volatile struct ui_command_mailbox ui_command;
@@ -110,7 +110,7 @@ static void process_command(void) {
     if(request==ui_command.ack_sequence) return;
     barrier();uint32_t epoch=ui_command.expected_epoch,command=ui_command.command;
     int accepted=0;
-    if(epoch==state.epoch && command>=1u && command<=7u)
+    if(epoch==state.epoch && command>=1u && command<=UI_COMMAND_COUNT)
         accepted=ui_control(&state,(enum ui_command)(command-1u));
     if(accepted && state.session==UI_RUNNING && demo.phase==4u && command>=5u)
         demo.marked_ms=now_ms();

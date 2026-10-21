@@ -38,7 +38,7 @@ class Tests(unittest.TestCase):
         with self.assertRaises(RuntimeError):p.send(0)
         self.assertEqual(len(events),1);self.assertEqual(len(saved[0]),1)
     def test_retained_history_contents(self):
-        b=bytearray(32+11384+32);struct.pack_into('<I',b,32+10324,1)
+        b=bytearray(32+11392+32);struct.pack_into('<I',b,32+10324,1)
         struct.pack_into('<4I',b,32+2068,2,1,1,2)
         for offset,text in ((2068+16,SOURCE),(2068+1040,TRANSLATION)):
             struct.pack_into('<'+str(len(text))+'I',b,32+offset,*map(ord,text))
@@ -51,7 +51,7 @@ class Tests(unittest.TestCase):
         known={int(s[2:],16) for s in m['codepoints']}
         self.assertTrue(all(ord(c) in known for c in TRANSLATION+SECOND+LAST+SOURCE+'Network test reconnect 0123456789abcdef'))
     def test_snapshot_text_offset(self):
-        b=bytearray(32+11384+32)
+        b=bytearray(32+11392+32)
         for offset,text in ((20,SOURCE),(1044,TRANSLATION)):
             struct.pack_into('<'+str(len(text))+'I',b,32+offset,*map(ord,text))
             self.assertEqual(model_text(b,offset),text)

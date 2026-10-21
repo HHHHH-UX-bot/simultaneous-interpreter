@@ -1,0 +1,45 @@
+import json, subprocess, sys
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT/'scripts'))
+import run_z7_nano as board
+out=ROOT/'output/language_switch_20261021';name=sys.argv[1]
+script=ROOT/'tmp/language_switch_20261021/read_ui.tcl'
+script.write_text('''connect -url TCP:127.0.0.1:3121
+after 300
+set b [targets -target-properties -filter {name == "xc7z010"}]
+if {[llength $b]!=1 || [dict get [lindex $b 0] jtag_cable_serial] ne "210241277120"} {error "Wrong board"}
+targets -set -filter {name =~ "*Cortex-A9*#0"}
+for {set i 0} {$i<20} {incr i} {
+ set info [mrd -force -value 0x1e080 16]
+ if {[lindex $info 0]!=0x55493131 || [lindex $info 3]!=11456 || [lindex $info 4]!=11392} {error "Wrong language UI ABI"}
+ set base [expr {[lindex $info 2]+[lindex $info 5]*11456}]
+ set generation [mrd -force -value [expr {$base+24}]]
+ set state [mrd -force -value [expr {$base+32}] 5]
+ set language [mrd -force -value [expr {$base+32+11384}] 2]
+ set counts [mrd -force -value [expr {$base+32+10324}] 2]
+ if {[mrd -force -value [expr {$base+24}]]==$generation} {break}
+}
+if {$i==20} {error "No coherent published snapshot"}
+puts "PUBLIC_UI $state $language $counts"
+puts PASS_LANGUAGE_PUBLIC_SNAPSHOT
+disconnect
+''',encoding='ascii')
+with board.hardware_lock():
+ r=subprocess.run([sys.executable,'-B',str(ROOT/'scripts/repair/board_snapshot.py'),
+  '--symbols',str(ROOT/'output/enzh/language_picker/symbols.log'),
+  '--elf',str(ROOT/'output/enzh/language_picker/cloud_app.elf'),'--output',str(out/(name+'.json')),
+  '--xsdb',str(board.XSDB)],capture_output=True,text=True,check=True,timeout=40)
+ board.run([board.XSDB,script],out/(name+'_ui'),'PASS_LANGUAGE_PUBLIC_SNAPSHOT',20)
+record=json.loads((out/(name+'.json')).read_text())
+for line in (out/(name+'_ui/console.log')).read_text().splitlines():
+ if line.startswith('PUBLIC_UI '):
+  values=[int(n,0) for n in line.split()[1:]]
+  record['ui_public']=dict(zip(['epoch','session','stage','font_index','show_source','language','menu_open','history_count','final_count'],values))
+assert 'ui_public' in record
+(out/(name+'.json')).write_text(json.dumps(record,indent=2)+'\n')
+c=record['counters']
+assert c['network_report'][2:4]==[4,0] and c['client'][0]==4
+assert not any(c['uart'][2:4]) and not c['upload_diag'][1]
+print(json.dumps(dict(ui=record['ui_public'],network=c['network_report'][2:4],handshakes=c['arm_tls_diag'][9],
+ tls_error=c['arm_tls_diag'][2],tls_failures=c['arm_tls_diag'][10],asr=c['cloud_report'][7],translations=c['cloud_report'][8],finals=c['cloud_report'][9])))

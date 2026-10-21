@@ -138,7 +138,7 @@ def build_app(args):
         if not m or int(m[1],16)!=address: raise RuntimeError('Unexpected ARM symbol: '+name)
     if fb.hashes(APP_INPUTS)!=record['SourceHashes']: raise RuntimeError('AT/UI build inputs changed')
     record.update(Status='passed',ELFSHA256=fb.sha(OUT/'framebuffer_app.elf'),LoadSegments=ui.elf_layout(OUT/'framebuffer_app.elf'),
-        VerifiedAtUTC=fb.now(),ModelBytes=11384,Application='simulated_ui_ps_at_probe',
+        VerifiedAtUTC=fb.now(),ModelBytes=11392,Application='simulated_ui_ps_at_probe',
         Scope='PS-owned AT/echo/firmware query while simulated UI runs; no association, TCP, audio or USB touch')
     platform.save('build-app.json',record);print('PASS_PS_WIFI_ARM_BUILD',flush=True);return 0
 def main():

@@ -6,7 +6,7 @@ from PIL import Image
 
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'output/subtitle_ui'
-COMMON=('software/network_ui/language_profile.h','software/subtitle_ui/ui_model.h','software/subtitle_ui/ui_model.c',
+COMMON=('software/network_ui/language_profile.h','software/subtitle_ui/ui_model.h','software/subtitle_ui/ui_layout.h','software/subtitle_ui/ui_model.c',
     'software/subtitle_ui/ui_assets.h','output/subtitle_ui/ui_assets.c',
     'software/subtitle_ui/ui_render.h','software/subtitle_ui/ui_render.c',
     'software/subtitle_ui/ui_demo.h','software/subtitle_ui/ui_demo.c')
@@ -43,7 +43,7 @@ def main():
         memory=(ctypes.c_uint32*(count+padding*2))()
         pointer=ctypes.cast(ctypes.byref(memory,padding*4),ctypes.POINTER(ctypes.c_uint32))
         images=[];long_pages={}
-        for scenario in range(12):
+        for scenario in range(15):
             for font in range(3):
                 stats=Stats()
                 for i in range(padding): memory[i]=memory[count+padding+i]=0xa5c35a3c

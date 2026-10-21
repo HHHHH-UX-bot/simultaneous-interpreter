@@ -12,7 +12,7 @@ class State(ctypes.Structure):
         ('source',ctypes.c_uint32*256),('translated',ctypes.c_uint32*256),('history',History*4)]+[
         (n,ctypes.c_uint32) for n in ('history_count','final_count','rejected_events','change_sequence',
             'processing_segment','source_revision','source_final','translation_revision','last_final_segment')]+[
-        ('last_final_source',ctypes.c_uint32*256)]
+        ('last_final_source',ctypes.c_uint32*256),('language',ctypes.c_uint32),('language_menu',ctypes.c_uint32)]
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--xsdb',type=Path,required=True)

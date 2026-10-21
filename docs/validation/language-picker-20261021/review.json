@@ -1,0 +1,20 @@
+{
+  "status": "no_remaining_P1_P2",
+  "scope": "read-only diff, lifecycle, ABI consumers and native records",
+  "initial_finding": "Non-ARM bilingual builds cannot reconnect at runtime",
+  "resolution": "Gate actual menu/commands/alternate session to ARM_TLS bilingual builds",
+  "validation": "Legacy no-menu fixture plus current ARM runtime-session/touch tests",
+  "source_sha256": {
+    "software/network_ui/cloud_client.c": "5d4002403a0410e8083b275864385cb4ff6ebecdee154396fa1f83f30d5edb78",
+    "software/network_ui/cloud_live.c": "8c0e1d12a525a9842d09e25961d930cbf338357b656a1f8e5dd976b0caee899e",
+    "software/network_ui/language_profile.h": "4ef328e93359869e68441ad2c314547f2c3bf1776ed4fd3d6d4bb45ed1abd077",
+    "software/subtitle_ui/ui_model.c": "872229f578a7b44244c655023031fe84e372571b1f8fbfe886a2f0429b0a184d",
+    "software/subtitle_ui/ui_model.h": "6b51903d6b5082e32e4e7c18598cf971743d40491119a2344c7e6bf0b1dfa25a",
+    "software/subtitle_ui/ui_render.c": "a8f95bf923def02cd6d4d1aef0e11a0e5fa33b9bd7b3da4fc695f57ade2ace85",
+    "software/subtitle_ui/ui_touch.c": "7440559f937875041e4113905ef6118a12c5c34192868496b72471baa9e4ba02",
+    "software/subtitle_ui/ui_layout.h": "39a43c89e97ebcd4e7e95a2ab899ab6b59cd117d0984ad58af7c02838244dd6d",
+    "tests/language_picker_test.c": "eeda57326814b80220f42832f9fcdd6eae355a8189dd1aa331945248a5d2eee8",
+    "tests/english_profile_test.c": "dba3a4f57042b382b2ab9143b67f9f680118c5c1dbdf53f55fae197d24587736",
+    "software/subtitle_ui/ui_host.c": "056facf296291e429153fbb047f28b7eafde54c811f8a2f70a7bf086b8cce7bd"
+  }
+}

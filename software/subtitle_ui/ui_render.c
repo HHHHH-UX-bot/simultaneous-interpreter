@@ -1,4 +1,5 @@
 #include "../network_ui/language_profile.h"
+#include "ui_layout.h"
 #include "ui_render.h"
 #include "ui_assets.h"
 
@@ -241,6 +242,25 @@ static void button(struct paint *p,int x,int w,const uint32_t *text,int selected
     int tx=x+(w-(int)text_width(font(18),text))/2;
     one_line(p,text,18,tx,546,w-12,selected?PAPER:INK);
 }
+#ifdef Z7_BILINGUAL
+static const uint32_t language_directions[2][19]={
+    {'E','n','g','l','i','s','h',' ','-','>',' ','C','h','i','n','e','s','e',0},
+    {'C','h','i','n','e','s','e',' ','-','>',' ','E','n','g','l','i','s','h',0}};
+#endif
+#ifdef Z7_LANGUAGE_SWITCH
+static void language_menu(struct paint *p,const struct ui_state *s) {
+    if(!s->language_menu) return;
+    int x=UI_LANGUAGE_X,y=UI_LANGUAGE_MENU_Y,w=UI_LANGUAGE_WIDTH,h=2*UI_LANGUAGE_ROW_HEIGHT;
+    round_rect(p,x+3,y,w,h+7,10,LINE);
+    round_rect(p,x,y-4,w,h+8,10,PAPER);
+    for(uint32_t row=0;row<2u;++row) {
+        int selected=s->language==row,at=y+(int)row*UI_LANGUAGE_ROW_HEIGHT;
+        if(selected) round_rect(p,x+6,at+3,w-12,UI_LANGUAGE_ROW_HEIGHT-6,7,TINT);
+        one_line(p,language_directions[row],18,x+16,at+15,w-56,selected?ACTION:INK);
+        if(selected) round_rect(p,x+w-30,at+21,10,10,5,ACTION);
+    }
+}
+#endif
 uint32_t ui_latency_pack(uint32_t loop_us,int loop_valid,uint32_t text_ms,int text_valid) {
     uint32_t l=loop_us>9999u?0x4000u|9999u:loop_us;
     uint32_t t=text_ms>9999u?0x4000u|9999u:text_ms;
@@ -272,11 +292,21 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     rect(&p,32,22,20,3,PAPER);rect(&p,32,29,16,3,PAPER);rect(&p,32,36,10,3,PAPER);
     one_line(&p,label("brand"),24,72,17,64,INK);
 #ifdef Z7_UI_ENGLISH
-#if defined(Z7_TRANSLATE_ZH)
-    static const uint32_t direction[]={'E','n','g','l','i','s','h',' ','-','>',' ','C','h','i','n','e','s','e',0};
-    static const uint32_t mode_badge[]={'E','N',' ','-','>',' ','Z','H',0};
-    static const uint32_t english_caption[]={'C','h','i','n','e','s','e',0};
-#elif defined(Z7_RECOGNIZE_EN)
+#ifdef Z7_BILINGUAL
+    static const uint32_t badges[2][9]={{'E','N',' ','-','>',' ','Z','H',0},{'Z','H',' ','-','>',' ','E','N',0}};
+    static const uint32_t captions[2][8]={{'C','h','i','n','e','s','e',0},{'E','n','g','l','i','s','h',0}};
+    uint32_t selected=s->language==UI_ZH_EN;
+    const uint32_t *direction=language_directions[selected],*mode_badge=badges[selected],*english_caption=captions[selected];
+#ifdef Z7_LANGUAGE_SWITCH
+    round_rect(&p,UI_LANGUAGE_X,UI_LANGUAGE_Y,UI_LANGUAGE_WIDTH,UI_LANGUAGE_HEIGHT,8,s->language_menu?TINT:0xf1f6f6u);
+    for(int i=0;i<3;++i) rect(&p,UI_LANGUAGE_X+UI_LANGUAGE_WIDTH-28+i*3,30+i*2,3,3,MUTED);
+    for(int i=0;i<3;++i) rect(&p,UI_LANGUAGE_X+UI_LANGUAGE_WIDTH-19+i*3,34-i*2,3,3,MUTED);
+    one_line(&p,direction,18,UI_LANGUAGE_X+12,21,UI_LANGUAGE_WIDTH-52,INK);
+#else
+    one_line(&p,direction,18,156,21,320,MUTED);
+#endif
+#else
+#if defined(Z7_RECOGNIZE_EN)
     static const uint32_t direction[]={'E','n','g','l','i','s','h',' ','-','>',' ','E','n','g','l','i','s','h',0};
     static const uint32_t mode_badge[]={'E','N',' ','-','>',' ','E','N',0};
     static const uint32_t english_caption[]={'E','n','g','l','i','s','h',0};
@@ -286,6 +316,7 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     static const uint32_t english_caption[]={'E','n','g','l','i','s','h',0};
 #endif
     one_line(&p,direction,18,156,21,320,MUTED);
+#endif
 #else
     one_line(&p,label("language"),18,156,21,320,MUTED);
 #endif
@@ -382,4 +413,7 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     button(&p,558,56,minus,0);button(&p,690,56,plus,0);
     one_line(&p,label(s->font_index==0?"small":(s->font_index==2?"large":"normal")),18,625,547,56,INK);
     button(&p,844,156,label("settings"),0);
+#ifdef Z7_LANGUAGE_SWITCH
+    language_menu(&p,s); /* Last layer: menu rows cover the subtitle card. */
+#endif
 }

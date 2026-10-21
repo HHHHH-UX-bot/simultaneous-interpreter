@@ -1,4 +1,5 @@
 #include "ui_model.h"
+#include "../network_ui/language_profile.h"
 
 #define UI_U32_MAX 0xffffffffu
 
@@ -86,6 +87,9 @@ void ui_init(struct ui_state *state)
     state->stage = UI_LISTENING;
     state->font_index = 1;
     state->show_source = 1;
+#ifdef Z7_TRANSLATE_EN
+    state->language = UI_ZH_EN;
+#endif
 }
 
 int ui_control(struct ui_state *state, enum ui_command command)
@@ -94,6 +98,7 @@ int ui_control(struct ui_state *state, enum ui_command command)
     uint32_t font_index;
     uint32_t show_source;
     uint32_t next_sequence;
+    enum ui_language language;
     if (state == 0) return 0;
     switch (command) {
     case UI_START:
@@ -119,11 +124,13 @@ int ui_control(struct ui_state *state, enum ui_command command)
         next_epoch = state->epoch + 1;
         font_index = state->font_index;
         show_source = state->show_source;
+        language = state->language;
         next_sequence = state->change_sequence;
         ui_init(state);
         state->epoch = next_epoch;
         state->font_index = font_index;
         state->show_source = show_source;
+        state->language = language;
         state->change_sequence = next_sequence;
         break;
     case UI_FONT_MINUS:
@@ -137,6 +144,28 @@ int ui_control(struct ui_state *state, enum ui_command command)
     case UI_TOGGLE_SOURCE:
         state->show_source = state->show_source == 0 ? 1u : 0u;
         break;
+#ifdef Z7_LANGUAGE_SWITCH
+    case UI_LANGUAGE_MENU:
+        state->language_menu = !state->language_menu;
+        break;
+    case UI_DISMISS_LANGUAGE:
+        if (!state->language_menu) return 0;
+        state->language_menu = 0;
+        break;
+    case UI_SELECT_EN_ZH:
+    case UI_SELECT_ZH_EN: {
+        language = command == UI_SELECT_EN_ZH ? UI_EN_ZH : UI_ZH_EN;
+        if (state->language == language || state->epoch == UI_U32_MAX) return 0;
+        enum ui_session session = state->session;
+        /* CLEAR preserves preferences and invalidates all old-direction events. */
+        if (!ui_control(state, UI_CLEAR)) return 0;
+        state->language = language;
+        state->session = session == UI_RUNNING ? UI_RUNNING :
+            (session == UI_PAUSED ? UI_PAUSED : UI_IDLE);
+        state->stage = state->session == UI_RUNNING ? UI_CONNECTING : UI_LISTENING;
+        return 1;
+    }
+#endif
     default:
         return 0;
     }

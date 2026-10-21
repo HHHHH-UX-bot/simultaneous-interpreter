@@ -1,0 +1,31 @@
+{
+  "status": "passed",
+  "pixels_compared": 614400,
+  "pixel_mismatches": 0,
+  "board_pixel_sha256": "86d3174c2d3af51972aecdab734055709e6edeb5d7ba4468845fc536b82aaeac",
+  "native_pixel_sha256": "86d3174c2d3af51972aecdab734055709e6edeb5d7ba4468845fc536b82aaeac",
+  "snapshot_sha256": "219f52fade53a56b801b562eac98fea96338ed1382927de3c2dbdc1f6ae36d0f",
+  "elf_sha256": "46a2c7033f39e3f4c6f1f49b427db1b0c4919374f1b8290ddecd90b74263a124",
+  "board_glyph_stats": [
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1284265
+  ],
+  "native_glyph_stats": [
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1284265
+  ],
+  "native_library_sha256": "d2450eb3d96e5777139e3b059dd4bb6b68e4433674aa2698158c2dd7988582bc",
+  "scope": "Captured DDR pixels versus native rendering; physical HDMI acceptance is separate"
+}

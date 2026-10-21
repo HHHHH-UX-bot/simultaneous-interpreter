@@ -6,6 +6,7 @@
 
 | 任务或问题 | 权威入口 | 职责 |
 |---|---|---|
+| 使用顶部英中双向翻译菜单或修改其生命周期 | [UI_SPEC](docs/design/UI_SPEC.md#板端翻译方向切换2026-10-21)、[验证](docs/validation/language-picker-20261021/README.md) | 两项菜单、实际语言切换、旧会话隔离及验收边界 |
 | 接续英译中、英译英，核对桌面候选和当前板测 | [ENGLISH](docs/context/ENGLISH.md) | 共享模式、修正、真实验证与未放行项 |
 | 使用或修改中文译英字幕、译音、Zynq TLS | [ZHEN](docs/context/ZHEN.md) | 当前能力、故障修复、板测证据、代码和操作入口 |
 | 使用中译中独立识别、共享 TLS 或核对当前板端版本 | [ZHZH](docs/context/ZHZH.md) | 中文 ASR 行为、当前使用方式、两种证据来源及验收边界 |

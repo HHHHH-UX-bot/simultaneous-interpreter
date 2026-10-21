@@ -1,0 +1,14 @@
+import sys
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT/'scripts'))
+import run_z7_nano as board
+command=int(sys.argv[1]);label=sys.argv[2]
+assert 1<=command<=11
+source=(ROOT/'tmp/touch_latency_20261020/ui_command.tcl').read_text()
+source=source.replace('1 2 3 4 5 6 7','1 2 3 4 5 6 7 8 9 10 11').replace('command1..7','command1..11')
+source=source.replace('set epoch [mrd', 'if {[mrd -force -value 0x1e090]!=11392} {error "Wrong language UI ABI"}\nset epoch [mrd')
+script=ROOT/'tmp/language_switch_20261021/ui_command.tcl'
+script.write_text(source,encoding='utf-8')
+with board.hardware_lock():
+ board.run([board.XSDB,script,str(command)],ROOT/'output/language_switch_20261021'/label,'PASS_UI_COMMAND',20)

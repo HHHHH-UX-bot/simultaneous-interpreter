@@ -27,7 +27,7 @@ class DebugGates(unittest.TestCase):
                       patch.object(ui.fb,'PS_FAILURE_STATE',self.root/'ps_failure.json'),
                       patch.object(ui.app,'OUT',self.out),patch.object(ui.runner,'OUT',self.out),
                       patch.object(ui.runner,'TEMP',self.root/'tmp/subtitle_ui'),
-                      patch.object(ui.app,'checked_ui_build',return_value={'ELFSHA256':self.elf,'ModelBytes':11384}),
+                      patch.object(ui.app,'checked_ui_build',return_value={'ELFSHA256':self.elf,'ModelBytes':11392}),
                       patch.object(ui.fb,'checked_build',return_value={'BitstreamSHA256':self.bit}),
                       patch.object(ui.fb,'hashes',return_value={}),
                       patch.object(ui.fb,'probe_live',return_value={'DONE':1,'EOS':1,'CRCError':0,'USRAccess':0x46564231})]
@@ -70,7 +70,7 @@ class DebugGates(unittest.TestCase):
         ui.fb.hardware_gate()
         self.assertEqual(json.loads((self.fb/'failure_state.json').read_text())['CPUState'],'confirmed_stopped')
     def test_successful_sample_reopens_gate_only_with_checked_report(self):
-        text=('UI_RESULT 0x55493131 2 0x1b00000 11448 11384 0 5000 20 10 10 1 1 1 0 0 3\n'
+        text=('UI_RESULT 0x55493131 2 0x1b00000 11456 11392 0 5000 20 10 10 1 1 1 0 0 3\n'
               'DISPLAY_RESULT 0x46504231 0x600d600d 2 3 10 0 300 0 0 0 614400 0 0 300 0 0\n')
         def passed(*args,**kwargs): kwargs['on_start'](99125);return text
         with patch.object(ui.runner,'command',side_effect=passed): self.assertEqual(ui.execute(self.args),0)

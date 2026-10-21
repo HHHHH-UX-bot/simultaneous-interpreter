@@ -1,0 +1,164 @@
+{
+  "status": "passed",
+  "mode": "enzh",
+  "text_only_response": false,
+  "native_result": "PASS_ENGLISH_PROFILE checks=14670 finals=500",
+  "session": {
+    "modalities": [
+      "text",
+      "audio"
+    ],
+    "voice": "Tina",
+    "sample_rate": 16000,
+    "input_audio_format": "opus",
+    "output_audio_format": "pcm",
+    "input_audio_transcription": {
+      "model": "qwen3-asr-flash-realtime",
+      "language": "en"
+    },
+    "turn_detection": {
+      "type": "server_vad",
+      "threshold": 0.12,
+      "silence_duration_ms": 400,
+      "create_response": true,
+      "interrupt_response": false
+    },
+    "translation": {
+      "language": "zh",
+      "same_language_skip_options": {
+        "skip_text": false,
+        "skip_audio": false
+      }
+    }
+  },
+  "language_sessions": [
+    {
+      "modalities": [
+        "text",
+        "audio"
+      ],
+      "voice": "Tina",
+      "sample_rate": 16000,
+      "input_audio_format": "opus",
+      "output_audio_format": "pcm",
+      "input_audio_transcription": {
+        "model": "qwen3-asr-flash-realtime",
+        "language": "zh"
+      },
+      "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.12,
+        "silence_duration_ms": 400,
+        "create_response": true,
+        "interrupt_response": false
+      },
+      "translation": {
+        "language": "en",
+        "same_language_skip_options": {
+          "skip_text": false,
+          "skip_audio": false
+        }
+      }
+    },
+    {
+      "modalities": [
+        "text",
+        "audio"
+      ],
+      "voice": "Tina",
+      "sample_rate": 16000,
+      "input_audio_format": "opus",
+      "output_audio_format": "pcm",
+      "input_audio_transcription": {
+        "model": "qwen3-asr-flash-realtime",
+        "language": "en"
+      },
+      "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.12,
+        "silence_duration_ms": 400,
+        "create_response": true,
+        "interrupt_response": false
+      },
+      "translation": {
+        "language": "zh",
+        "same_language_skip_options": {
+          "skip_text": false,
+          "skip_audio": false
+        }
+      }
+    },
+    {
+      "modalities": [
+        "text",
+        "audio"
+      ],
+      "voice": "Tina",
+      "sample_rate": 16000,
+      "input_audio_format": "opus",
+      "output_audio_format": "pcm",
+      "input_audio_transcription": {
+        "model": "qwen3-asr-flash-realtime",
+        "language": "zh"
+      },
+      "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.12,
+        "silence_duration_ms": 400,
+        "create_response": true,
+        "interrupt_response": false
+      },
+      "translation": {
+        "language": "en",
+        "same_language_skip_options": {
+          "skip_text": false,
+          "skip_audio": false
+        }
+      }
+    },
+    {
+      "modalities": [
+        "text",
+        "audio"
+      ],
+      "voice": "Tina",
+      "sample_rate": 16000,
+      "input_audio_format": "opus",
+      "output_audio_format": "pcm",
+      "input_audio_transcription": {
+        "model": "qwen3-asr-flash-realtime",
+        "language": "en"
+      },
+      "turn_detection": {
+        "type": "server_vad",
+        "threshold": 0.12,
+        "silence_duration_ms": 400,
+        "create_response": true,
+        "interrupt_response": false
+      },
+      "translation": {
+        "language": "zh",
+        "same_language_skip_options": {
+          "skip_text": false,
+          "skip_audio": false
+        }
+      }
+    }
+  ],
+  "scope": "real C config/event/UI/client with mock codec and TLS boundary; no board or recognition quality test",
+  "input_sha256": {
+    "tests/english_profile_test.c": "dba3a4f57042b382b2ab9143b67f9f680118c5c1dbdf53f55fae197d24587736",
+    "software/network_ui/ogg_opus.c": "87f2ea21dea6347b66b50e09cc7478a81307ef86afba6b83079b8f4ea4964389",
+    "software/network_ui/cloud_events.c": "99e0719f8612391e3478bf55072b36c5d576110f5e04c57483fd78ae6cfc7ba6",
+    "software/network_ui/cloud_wire.c": "5aee969cb3c0ac340aa05edf1e7dadc5e3229710acbff82dc89ae8a81f4375f1",
+    "software/network_ui/cloud_frame.c": "05d1d7a8f4bf018b2ca15c7cab34516104800b6058c135986ad11c1a9ec7d3f3",
+    "software/network_ui/speech_playback.c": "c6fa0ede2fb795ae181129e81a7fd1808ff2b21acf41ca6dd77280881b1adb4f",
+    "software/network_ui/protocol.c": "19b5f8d10382e963ee3eaccc42138f33bd9637b6e108d4943e3c9801db10c204",
+    "software/subtitle_ui/ui_model.c": "872229f578a7b44244c655023031fe84e372571b1f8fbfe886a2f0429b0a184d",
+    "software/subtitle_ui/ui_render.c": "a8f95bf923def02cd6d4d1aef0e11a0e5fa33b9bd7b3da4fc695f57ade2ace85",
+    "output/subtitle_ui/ui_assets.c": "d55e19607ca54e7686128ee3d1fca65b013f1e9e31edd3577267b3c43c542a91",
+    "software/network_ui/cloud_client.c": "5d4002403a0410e8083b275864385cb4ff6ebecdee154396fa1f83f30d5edb78",
+    "software/network_ui/cloud_live.c": "8c0e1d12a525a9842d09e25961d930cbf338357b656a1f8e5dd976b0caee899e",
+    "software/network_ui/language_profile.h": "4ef328e93359869e68441ad2c314547f2c3bf1776ed4fd3d6d4bb45ed1abd077"
+  }
+}

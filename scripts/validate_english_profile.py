@@ -38,6 +38,13 @@ def main():
     def chunk(k,v):return struct.pack('>I',len(v))+k+v+struct.pack('>I',zlib.crc32(k+v)&0xffffffff)
     (out/'preview.png').write_bytes(b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',1024,600,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(rows))+chunk(b'IEND',b''))
     inputs=sources+['software/network_ui/cloud_client.c','software/network_ui/cloud_live.c','software/network_ui/language_profile.h']
-    record={'status':'passed','mode':a.mode,'text_only_response':a.text_only_response,'native_result':lines[-1],'session':session,'scope':'real C config/event/UI/client with mock codec and TLS boundary; no board or recognition quality test','input_sha256':{s:hashlib.sha256((ROOT/s).read_bytes()).hexdigest() for s in inputs}}
+    language_sessions=[json.loads(line[17:])['session'] for line in lines if line.startswith('LANGUAGE_SESSION ')]
+    if a.mode=='enzh':
+        assert len(language_sessions)==4
+        for i,s in enumerate(language_sessions):
+            assert s['input_audio_transcription']['language']==('zh' if i%2==0 else 'en')
+            assert s['translation']['language']==('en' if i%2==0 else 'zh')
+            assert s['modalities']==session['modalities']
+    record={'status':'passed','mode':a.mode,'text_only_response':a.text_only_response,'native_result':lines[-1],'session':session,'language_sessions':language_sessions,'scope':'real C config/event/UI/client with mock codec and TLS boundary; no board or recognition quality test','input_sha256':{s:hashlib.sha256((ROOT/s).read_bytes()).hexdigest() for s in inputs}}
     (out/'validation.json').write_text(json.dumps(record,indent=2)+'\n',encoding='utf-8');print(lines[-1],a.mode)
 if __name__=='__main__':main()

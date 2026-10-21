@@ -46,7 +46,7 @@ try {
     if {[state] ne "Running"} {error "Subtitle CPU is not running"}
     set before [ui_info]
     if {$action eq "command"} {
-        if {$command<1 || $command>7 || [ui_word 0x1e0c0]!=0x55494331} {error "Invalid UI command/identity"}
+        if {$command<1 || $command>11 || [ui_word 0x1e0c0]!=0x55494331} {error "Invalid UI command/identity"}
         if {$expected_epoch eq ""} {set expected_epoch [lindex $before 10]}
         set request [expr {([ui_word 0x1e0d0]+1)&0xffffffff}]
         mwr -force 0x1e0c8 $expected_epoch

@@ -11,8 +11,11 @@ enum ui_stage { UI_LISTENING, UI_RECOGNIZING, UI_TRANSLATING, UI_FINAL,
                 UI_CONNECTING, UI_OFFLINE };
 enum ui_command {
     UI_START, UI_PAUSE, UI_RESUME, UI_CLEAR,
-    UI_FONT_MINUS, UI_FONT_PLUS, UI_TOGGLE_SOURCE
+    UI_FONT_MINUS, UI_FONT_PLUS, UI_TOGGLE_SOURCE,
+    UI_LANGUAGE_MENU, UI_SELECT_EN_ZH, UI_SELECT_ZH_EN, UI_DISMISS_LANGUAGE,
+    UI_COMMAND_COUNT
 };
+enum ui_language { UI_EN_ZH, UI_ZH_EN };
 enum ui_event_type {
     UI_ASR_PARTIAL, UI_ASR_FINAL, UI_TRANSLATING_EVENT, UI_TRANSLATION_FINAL
 };
@@ -56,6 +59,8 @@ struct ui_state {
     uint32_t translation_revision;
     uint32_t last_final_segment;
     uint32_t last_final_source[UI_MAX_TEXT];
+    enum ui_language language;
+    uint32_t language_menu;
 };
 
 void ui_init(struct ui_state *state);

@@ -1,0 +1,35 @@
+import hashlib, json, subprocess, sys
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2]
+out=ROOT/'output/language_switch_20261021';out.mkdir(exist_ok=True)
+gcc='D:/cenvironment/mingw64/bin/gcc.exe'
+checks=[]
+def run(name,command):
+ r=subprocess.run(command,cwd=ROOT,capture_output=True,text=True)
+ (out/(name+'.log')).write_text(r.stdout+r.stderr,encoding='utf-8')
+ if r.returncode:print(r.stdout+r.stderr);r.check_returncode()
+ checks.append(dict(name=name,exit_code=0,result=r.stdout.strip().splitlines()[-1] if r.stdout.strip() else 'passed'))
+ print(name,checks[-1]['result'],flush=True)
+for label,flags in [('touch',['-DZ7_ARM_TLS']),('legacy',[])]:
+ exe=ROOT/('tmp/language_switch_20261021/'+label+'.exe')
+ run(label+'_build',[gcc,'-std=c11','-O2','-Wall','-Wextra','-Werror','-DZ7_SOURCE_EN','-DZ7_TRANSLATE_ZH',*flags,
+  '-I','software/z7_nano_usb','tests/language_picker_test.c','software/subtitle_ui/ui_model.c',
+  'software/subtitle_ui/ui_touch.c','-o',str(exe)])
+ run(label,[str(exe)])
+for name,args in [('native_text',['--mode','enzh','--text-only-response']),('native_audio',['--mode','enzh']),('native_enen',['--mode','enen'])]:
+ run(name,[sys.executable,'-B','-X','utf8','scripts/validate_english_profile.py',*args,'--gcc',gcc,'--output-dir',str(out/name)])
+for mode in ['zhzh','zhen']:
+ run('native_'+mode,[sys.executable,'-B','-X','utf8','scripts/validate_asr_accuracy.py','--mode',mode,'--arm-tls','--gcc',gcc])
+ record=ROOT/('output/zhen/validation.json' if mode=='zhen' else 'output/asr_accuracy/validation.json')
+ if record.exists():
+  import shutil;shutil.copyfile(record,out/('native_'+mode+'.json'))
+run('host_render',[sys.executable,'-B','-X','utf8','scripts/validate_subtitle_ui.py','--mode','enzh','--gcc',gcc])
+for test in ['test_subtitle_debug.py','test_network_client.py']:
+ run(test,[sys.executable,'-B','-X','utf8','-m','unittest','discover','-s','tests','-p',test])
+sources=['software/network_ui/cloud_client.c','software/network_ui/cloud_live.c','software/network_ui/language_profile.h',
+ 'software/subtitle_ui/ui_model.c','software/subtitle_ui/ui_model.h','software/subtitle_ui/ui_render.c',
+ 'software/subtitle_ui/ui_touch.c','software/subtitle_ui/ui_layout.h','tests/language_picker_test.c',
+ 'tests/english_profile_test.c','software/subtitle_ui/ui_host.c']
+(out/'validation.json').write_text(json.dumps(dict(status='passed',checks=checks,
+ source_sha256={n:hashlib.sha256((ROOT/n).read_bytes()).hexdigest() for n in sources}),indent=2)+'\n')
+print('PASS_LANGUAGE_SWITCH_NATIVE')

@@ -124,7 +124,7 @@ def main():
             peer.send(5,1,2,2,TRANSLATION,code=6)
             rejected=capture(a,record,'rejected_input_preserves_final',SOURCE,TRANSLATION,history)
             # Only rejected_events may change in the model after the one model-level rejection.
-            old=initial[32:32+11384];new=rejected[32:32+11384]
+            old=initial[32:32+11392];new=rejected[32:32+11392]
             rejected_offset=20+2*256*4+4*(4*4+2*256*4)+2*4
             if old[:rejected_offset]!=new[:rejected_offset] or old[rejected_offset+4:]!=new[rejected_offset+4:]:
                 raise RuntimeError('Rejected requests changed visible model state')

@@ -1,0 +1,611 @@
+{
+  "Status": "passed",
+  "Mode": "enzh",
+  "SourceHashes": {
+    "software/network_ui/language_profile.h": "4ef328e93359869e68441ad2c314547f2c3bf1776ed4fd3d6d4bb45ed1abd077",
+    "software/subtitle_ui/ui_model.h": "6b51903d6b5082e32e4e7c18598cf971743d40491119a2344c7e6bf0b1dfa25a",
+    "software/subtitle_ui/ui_layout.h": "39a43c89e97ebcd4e7e95a2ab899ab6b59cd117d0984ad58af7c02838244dd6d",
+    "software/subtitle_ui/ui_model.c": "872229f578a7b44244c655023031fe84e372571b1f8fbfe886a2f0429b0a184d",
+    "software/subtitle_ui/ui_assets.h": "e2e295e6f96f96fa10420f068644568340663b0aab8bef02891ef49f3a90a93f",
+    "output/subtitle_ui/ui_assets.c": "d55e19607ca54e7686128ee3d1fca65b013f1e9e31edd3577267b3c43c542a91",
+    "software/subtitle_ui/ui_render.h": "73a2a96260148739db239bb64c91718d3348d83f5985f673417955731184fd19",
+    "software/subtitle_ui/ui_render.c": "a8f95bf923def02cd6d4d1aef0e11a0e5fa33b9bd7b3da4fc695f57ade2ace85",
+    "software/subtitle_ui/ui_demo.h": "03391fde23c84d56e0a140ff628c797e796ad9ddf65076616988bf60829791a8",
+    "software/subtitle_ui/ui_demo.c": "a7e41d3ea231b8ab92da4044c1d6de526d9503107ae2ea7c18b374993fd6b614",
+    "software/subtitle_ui/ui_host.c": "056facf296291e429153fbb047f28b7eafde54c811f8a2f70a7bf086b8cce7bd",
+    "scripts/validate_subtitle_ui.py": "7467fc8eabfc0a0397f492c20660b33cdfeb405b5aaa94edfadaddd1e3c493ba"
+  },
+  "VerifiedAtUTC": "2026-10-21T08:05:32.613410+00:00",
+  "ModelBytes": 11392,
+  "FrameSize": [
+    1024,
+    600
+  ],
+  "Images": [
+    {
+      "File": "output/subtitle_ui/preview_0_0_0.png",
+      "Scenario": 0,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 0,
+      "SourceLines": 0,
+      "PixelSHA256": "eef54d13e0ae20ed8e8a6151edf337d738d47ff4962de77ed57f153ab61a131b"
+    },
+    {
+      "File": "output/subtitle_ui/preview_0_1_0.png",
+      "Scenario": 0,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 0,
+      "SourceLines": 0,
+      "PixelSHA256": "a388f91d8fcca23e79d0f163897a079a0c67bf53ba99ae2e077fb5981e408989"
+    },
+    {
+      "File": "output/subtitle_ui/preview_0_2_0.png",
+      "Scenario": 0,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 0,
+      "SourceLines": 0,
+      "PixelSHA256": "c871da6ce7a087be57adc75e2f1804d0dd1bc570806e8b48b5fbc09dd758a8e4"
+    },
+    {
+      "File": "output/subtitle_ui/preview_1_0_0.png",
+      "Scenario": 1,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 4,
+      "PixelSHA256": "8c09c22412c806bc0858a1b5c9413948bdc92c4d04ec986f62e54527a4cc68e6"
+    },
+    {
+      "File": "output/subtitle_ui/preview_1_1_0.png",
+      "Scenario": 1,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 4,
+      "PixelSHA256": "6270ea2c717bb6f43022e4dc768b13d82b9d5f50bb687ae8e7458bea66e2c4de"
+    },
+    {
+      "File": "output/subtitle_ui/preview_1_2_0.png",
+      "Scenario": 1,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 4,
+      "PixelSHA256": "6c16c9316e2b0a1f14cb84e7b92e36ed910fb9ffceabda22bb7b1bd4b08b40e1"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_0_0.png",
+      "Scenario": 2,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 8,
+      "SourceLines": 5,
+      "PixelSHA256": "96f840dba1283242d2a65fe6739a81b37534c2e5102cf2a1ae2693ec8b56c005"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_0_1.png",
+      "Scenario": 2,
+      "FontIndex": 0,
+      "Page": 1,
+      "CaptionPages": 2,
+      "CaptionLines": 8,
+      "SourceLines": 5,
+      "PixelSHA256": "5c76696b149534768f4c2297c2ffddb40dbe696aadf9c7d2db473533ffe54f96"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_1_0.png",
+      "Scenario": 2,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 4,
+      "CaptionLines": 10,
+      "SourceLines": 5,
+      "PixelSHA256": "b386c6a3625f676dbc225ef8287aedc057a466d609a28cd34732058c371f4fa7"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_1_1.png",
+      "Scenario": 2,
+      "FontIndex": 1,
+      "Page": 1,
+      "CaptionPages": 4,
+      "CaptionLines": 10,
+      "SourceLines": 5,
+      "PixelSHA256": "1f6f2a7ccd001dc00704e863dd7c787213265157a7992578f5223aa514b3824e"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_1_2.png",
+      "Scenario": 2,
+      "FontIndex": 1,
+      "Page": 2,
+      "CaptionPages": 4,
+      "CaptionLines": 10,
+      "SourceLines": 5,
+      "PixelSHA256": "791effe726c442968058ddfd6daa09ae701785af67f5250643c562d5fe1c3b05"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_1_3.png",
+      "Scenario": 2,
+      "FontIndex": 1,
+      "Page": 3,
+      "CaptionPages": 4,
+      "CaptionLines": 10,
+      "SourceLines": 5,
+      "PixelSHA256": "99fb49dcfd220ce047d6f6ebc48f1025254a53a135500105093017c35f87d67f"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_2_0.png",
+      "Scenario": 2,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 5,
+      "CaptionLines": 13,
+      "SourceLines": 5,
+      "PixelSHA256": "7c2685b8dc0b280714045f7a7df55ec0c15845a3458304fcd36a56a46bc376d3"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_2_1.png",
+      "Scenario": 2,
+      "FontIndex": 2,
+      "Page": 1,
+      "CaptionPages": 5,
+      "CaptionLines": 13,
+      "SourceLines": 5,
+      "PixelSHA256": "d5c12938a3ffaf38c994da7f61c4bedcaa6b128e38f77cb21ff860eee0294380"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_2_2.png",
+      "Scenario": 2,
+      "FontIndex": 2,
+      "Page": 2,
+      "CaptionPages": 5,
+      "CaptionLines": 13,
+      "SourceLines": 5,
+      "PixelSHA256": "77861a37a6f9384f8cdbc37c169c4a6671c73d4e45722caadbde7b39f7a5669e"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_2_3.png",
+      "Scenario": 2,
+      "FontIndex": 2,
+      "Page": 3,
+      "CaptionPages": 5,
+      "CaptionLines": 13,
+      "SourceLines": 5,
+      "PixelSHA256": "99efd8929f86ea31a34af5336599ba70395898d22a7058c6bd05f8981ce77c0f"
+    },
+    {
+      "File": "output/subtitle_ui/preview_2_2_4.png",
+      "Scenario": 2,
+      "FontIndex": 2,
+      "Page": 4,
+      "CaptionPages": 5,
+      "CaptionLines": 13,
+      "SourceLines": 5,
+      "PixelSHA256": "0401d0005c8ed93c7d1a2b2d7ea6d7444b7993125d5233080a1e2ffd2288c7c4"
+    },
+    {
+      "File": "output/subtitle_ui/preview_3_0_0.png",
+      "Scenario": 3,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 4,
+      "PixelSHA256": "fdbcca6fe4d37e6e953f1e7a2497e06508be4bc378c60b16cdadf9635b1db0df"
+    },
+    {
+      "File": "output/subtitle_ui/preview_3_1_0.png",
+      "Scenario": 3,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 4,
+      "PixelSHA256": "81272e1bca565c3133c5aee7103b3bf89efe286d4bb3a86a432af0ad7bca287c"
+    },
+    {
+      "File": "output/subtitle_ui/preview_3_2_0.png",
+      "Scenario": 3,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 4,
+      "PixelSHA256": "dc2269f36fc43ce3678d518049d7a62beb0d6012e1f06dc7a4a0ba10bdbc19a0"
+    },
+    {
+      "File": "output/subtitle_ui/preview_4_0_0.png",
+      "Scenario": 4,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 4,
+      "PixelSHA256": "76a754452157022730c93dddb05d63f59767efe55de46cb533e1ec18d8649aad"
+    },
+    {
+      "File": "output/subtitle_ui/preview_4_1_0.png",
+      "Scenario": 4,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 4,
+      "PixelSHA256": "cab7f0a1273843db086f80798d962e408df7f794f16c64b79ea8ffed22c92045"
+    },
+    {
+      "File": "output/subtitle_ui/preview_4_2_0.png",
+      "Scenario": 4,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 4,
+      "PixelSHA256": "c27d43a4bc5e258c78e6d264d856063a0ceaeb362459767a3c5d2d0b8f772287"
+    },
+    {
+      "File": "output/subtitle_ui/preview_5_0_0.png",
+      "Scenario": 5,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 0,
+      "SourceLines": 0,
+      "PixelSHA256": "eef54d13e0ae20ed8e8a6151edf337d738d47ff4962de77ed57f153ab61a131b"
+    },
+    {
+      "File": "output/subtitle_ui/preview_5_1_0.png",
+      "Scenario": 5,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 0,
+      "SourceLines": 0,
+      "PixelSHA256": "a388f91d8fcca23e79d0f163897a079a0c67bf53ba99ae2e077fb5981e408989"
+    },
+    {
+      "File": "output/subtitle_ui/preview_5_2_0.png",
+      "Scenario": 5,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 0,
+      "SourceLines": 0,
+      "PixelSHA256": "c871da6ce7a087be57adc75e2f1804d0dd1bc570806e8b48b5fbc09dd758a8e4"
+    },
+    {
+      "File": "output/subtitle_ui/preview_6_0_0.png",
+      "Scenario": 6,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 0,
+      "PixelSHA256": "c9a6a4222848b716e87f003774b02a2081fa7291ae138f906353d0876de9a60e"
+    },
+    {
+      "File": "output/subtitle_ui/preview_6_1_0.png",
+      "Scenario": 6,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 0,
+      "PixelSHA256": "62a63855cbbcf789ab94583319e81c377c70f700605cc0cd7c3995cc36a2a713"
+    },
+    {
+      "File": "output/subtitle_ui/preview_6_2_0.png",
+      "Scenario": 6,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 0,
+      "PixelSHA256": "4df1880252c145528d5479df63def3dd9ee745114a3481873f831cf146fc416e"
+    },
+    {
+      "File": "output/subtitle_ui/preview_7_0_0.png",
+      "Scenario": 7,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 1,
+      "PixelSHA256": "906ed2e108556e42354ecb06a54dce967ae291b303cc2050a0b7d422b5841364"
+    },
+    {
+      "File": "output/subtitle_ui/preview_7_1_0.png",
+      "Scenario": 7,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 1,
+      "PixelSHA256": "bf09eaf6f9bced3672b5c19754671ca62bdb995226f41c5a9330fcfd12a486ad"
+    },
+    {
+      "File": "output/subtitle_ui/preview_7_2_0.png",
+      "Scenario": 7,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 1,
+      "PixelSHA256": "370fa4d075dde4e1ba6757727c12304f493c8b416ee65ac2185ffb2fa6b0487e"
+    },
+    {
+      "File": "output/subtitle_ui/preview_8_0_0.png",
+      "Scenario": 8,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 3,
+      "PixelSHA256": "e40a1786f6eb6dcf25c54c840fd11fc9f2743bb806c18ba30a78faa172ba251b"
+    },
+    {
+      "File": "output/subtitle_ui/preview_8_0_1.png",
+      "Scenario": 8,
+      "FontIndex": 0,
+      "Page": 1,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 3,
+      "PixelSHA256": "e40a1786f6eb6dcf25c54c840fd11fc9f2743bb806c18ba30a78faa172ba251b"
+    },
+    {
+      "File": "output/subtitle_ui/preview_8_1_0.png",
+      "Scenario": 8,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 3,
+      "PixelSHA256": "ffb5893331c82dbba91adc394cc5ba81c3cd5f55f89a5e1e9fe1362b41587cef"
+    },
+    {
+      "File": "output/subtitle_ui/preview_8_1_1.png",
+      "Scenario": 8,
+      "FontIndex": 1,
+      "Page": 1,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 3,
+      "PixelSHA256": "ffb5893331c82dbba91adc394cc5ba81c3cd5f55f89a5e1e9fe1362b41587cef"
+    },
+    {
+      "File": "output/subtitle_ui/preview_8_2_0.png",
+      "Scenario": 8,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 3,
+      "PixelSHA256": "404a0aa32f6f0417d0bfb20d22ab2aef4ff4891ab0a7f5729bac9bcc5c33dd13"
+    },
+    {
+      "File": "output/subtitle_ui/preview_8_2_1.png",
+      "Scenario": 8,
+      "FontIndex": 2,
+      "Page": 1,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 3,
+      "PixelSHA256": "36f42503bc0b634bc3ef260476b4b74179a39ee25e74649889fc4f484742de10"
+    },
+    {
+      "File": "output/subtitle_ui/preview_9_0_0.png",
+      "Scenario": 9,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 4,
+      "PixelSHA256": "e495205e1b7775d96d2d2751fda5634a4d7b3a2b608c4ae9e437bc872c0a71ff"
+    },
+    {
+      "File": "output/subtitle_ui/preview_9_1_0.png",
+      "Scenario": 9,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 4,
+      "PixelSHA256": "56a128cfdc09aa346255c6554940d56cb7fb60b72d83c797a945a60023e71780"
+    },
+    {
+      "File": "output/subtitle_ui/preview_9_2_0.png",
+      "Scenario": 9,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 4,
+      "PixelSHA256": "a91e4d03b06270d2cb8a0a5e07a955177257c8daa1215f9f9e31533e0e6f063b"
+    },
+    {
+      "File": "output/subtitle_ui/preview_10_0_0.png",
+      "Scenario": 10,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 4,
+      "PixelSHA256": "974fbf4f32c31c46068a8a553365d190d56ec8c581e5b5b7dc34bf1b6f9c77ff"
+    },
+    {
+      "File": "output/subtitle_ui/preview_10_1_0.png",
+      "Scenario": 10,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 4,
+      "PixelSHA256": "2479a7b1d0dc91126654dc80036f9fed7cde855fb882a10a95636d8a44e3366d"
+    },
+    {
+      "File": "output/subtitle_ui/preview_10_2_0.png",
+      "Scenario": 10,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 4,
+      "PixelSHA256": "b460ecac4ac177c8ccf2d00bba0ad999c283fb05aeaebbab50bda694ff5c738d"
+    },
+    {
+      "File": "output/subtitle_ui/preview_11_0_0.png",
+      "Scenario": 11,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 4,
+      "PixelSHA256": "ec3f9c478e77378561015bd2344ce3e045ef09f489491a07945631b2093ca6bd"
+    },
+    {
+      "File": "output/subtitle_ui/preview_11_1_0.png",
+      "Scenario": 11,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 4,
+      "PixelSHA256": "4c2bf6240b98b0ddf02bbe334182e4fdd7a0dd18e7431014bfd20290c4041e32"
+    },
+    {
+      "File": "output/subtitle_ui/preview_11_2_0.png",
+      "Scenario": 11,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 4,
+      "PixelSHA256": "8b301147f7e1f8cbce52c72f56381fb51b1824067f282322c0a46e4db80cbf9f"
+    },
+    {
+      "File": "output/subtitle_ui/preview_12_0_0.png",
+      "Scenario": 12,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 4,
+      "PixelSHA256": "4eea669817885843d057f3c820a5b5020fd5cf6c20d44b0b6c4b2668a86404c8"
+    },
+    {
+      "File": "output/subtitle_ui/preview_12_1_0.png",
+      "Scenario": 12,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 4,
+      "PixelSHA256": "248f0affa8437bf2a31339be522d1a814db7d9ad29bb10c5634fb43310c0e6e7"
+    },
+    {
+      "File": "output/subtitle_ui/preview_12_2_0.png",
+      "Scenario": 12,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 4,
+      "PixelSHA256": "1dc3ce136680b96b5642a570fd8c0cc7b1811909d428ca15bd7e89a57ea322d7"
+    },
+    {
+      "File": "output/subtitle_ui/preview_13_0_0.png",
+      "Scenario": 13,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 4,
+      "PixelSHA256": "50f9f89719861742972e01787ccb7116de304c9abbf85f044e10a34ec641b598"
+    },
+    {
+      "File": "output/subtitle_ui/preview_13_1_0.png",
+      "Scenario": 13,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 4,
+      "PixelSHA256": "0463e6c619523120576d0cacaf802591d635c674beb280dfa67608ab692ab37c"
+    },
+    {
+      "File": "output/subtitle_ui/preview_13_2_0.png",
+      "Scenario": 13,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 4,
+      "PixelSHA256": "0c99e627a7d66d6a9e3f1a54fe0a0625268a425094e98ec9fd830296f3821671"
+    },
+    {
+      "File": "output/subtitle_ui/preview_14_0_0.png",
+      "Scenario": 14,
+      "FontIndex": 0,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 2,
+      "SourceLines": 4,
+      "PixelSHA256": "c2b8ff4fd0767dc29578508db25b6a89a497c6fcf1382fdd8fa5262feec2dd8f"
+    },
+    {
+      "File": "output/subtitle_ui/preview_14_1_0.png",
+      "Scenario": 14,
+      "FontIndex": 1,
+      "Page": 0,
+      "CaptionPages": 1,
+      "CaptionLines": 3,
+      "SourceLines": 4,
+      "PixelSHA256": "8529965256f2deaf16681a060b89b7dc34b5df336a604ea1cbb72a0f71ef4596"
+    },
+    {
+      "File": "output/subtitle_ui/preview_14_2_0.png",
+      "Scenario": 14,
+      "FontIndex": 2,
+      "Page": 0,
+      "CaptionPages": 2,
+      "CaptionLines": 4,
+      "SourceLines": 4,
+      "PixelSHA256": "ee07c2dff7e28b244e71f3ab33b964ca28d13f56f322d07a971ae05559a9169c"
+    }
+  ],
+  "Cases": [
+    "idle",
+    "final/history",
+    "long text/all pages",
+    "ASR draft retaining Chinese",
+    "paused",
+    "cleared",
+    "source hidden",
+    "negative glyph bearings",
+    "255-scalar bearing text",
+    "connecting with retained caption",
+    "offline with retained caption",
+    "ready to speak"
+  ],
+  "FontSizes": [
+    28,
+    36,
+    44
+  ],
+  "BufferCanariesVerified": true,
+  "MissingGlyphs": 0,
+  "ClippedGlyphPixels": 0,
+  "NativeLibrary": "tmp/subtitle_ui/host_de02b1e9/ui_host.dll",
+  "NativeLibrarySHA256": "d2450eb3d96e5777139e3b059dd4bb6b68e4433674aa2698158c2dd7988582bc",
+  "Scope": "Native C renderer and simulated model states only; no board or touch/translation test"
+}

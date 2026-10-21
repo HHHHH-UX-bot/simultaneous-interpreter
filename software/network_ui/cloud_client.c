@@ -132,13 +132,21 @@ static uint32_t selftest_next,selftest_ms;
 #define CLOUD_OUTPUT_VOICE ""
 #define CLOUD_TURN_OPTIONS ""
 #endif
-static const char session_update_json[] =
-    "{\"event_id\":\"session_config\",\"type\":\"session.update\","
-    "\"session\":{\"modalities\":[" CLOUD_OUTPUT_MODALITIES "]," CLOUD_OUTPUT_VOICE "\"sample_rate\":16000,"
-    "\"input_audio_format\":\"opus\",\"output_audio_format\":\"pcm\","
-    "\"input_audio_transcription\":{\"model\":\"qwen3-asr-flash-realtime\",\"language\":\"" CLOUD_INPUT_LANGUAGE "\"},"
-    "\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.12,\"silence_duration_ms\":400" CLOUD_TURN_OPTIONS "},"
-    "\"translation\":{\"language\":\"" CLOUD_TARGET_LANGUAGE "\",\"same_language_skip_options\":{\"skip_text\":false,\"skip_audio\":" CLOUD_AUDIO_SKIP "}}}}";
+#define TRANSLATION_SESSION(input,target) \
+    "{\"event_id\":\"session_config\",\"type\":\"session.update\"," \
+    "\"session\":{\"modalities\":[" CLOUD_OUTPUT_MODALITIES "]," CLOUD_OUTPUT_VOICE "\"sample_rate\":16000," \
+    "\"input_audio_format\":\"opus\",\"output_audio_format\":\"pcm\"," \
+    "\"input_audio_transcription\":{\"model\":\"qwen3-asr-flash-realtime\",\"language\":\"" input "\"}," \
+    "\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.12,\"silence_duration_ms\":400" CLOUD_TURN_OPTIONS "}," \
+    "\"translation\":{\"language\":\"" target "\",\"same_language_skip_options\":{\"skip_text\":false,\"skip_audio\":" CLOUD_AUDIO_SKIP "}}}}"
+static const char session_update_json[] = TRANSLATION_SESSION(CLOUD_INPUT_LANGUAGE,CLOUD_TARGET_LANGUAGE);
+#ifdef Z7_LANGUAGE_SWITCH
+#ifdef Z7_TRANSLATE_EN
+static const char alternate_session_json[] = TRANSLATION_SESSION("en","zh");
+#else
+static const char alternate_session_json[] = TRANSLATION_SESSION("zh","en");
+#endif
+#endif
 #define OPUS_FRAME_BYTES 640u
 /* 128 packets = 2.56 s of headroom: a single CIPSEND was measured stalling for
    1325 ms, which is longer than the old 48-packet queue could absorb. */
@@ -243,6 +251,15 @@ static int send_json(const char *json,uint32_t size) {
 }
 
 static int send_session_config(void) {
+#if defined(Z7_OPUS) && defined(Z7_LANGUAGE_SWITCH)
+    if(cloud_live_language()!=
+#ifdef Z7_TRANSLATE_EN
+       UI_ZH_EN
+#else
+       UI_EN_ZH
+#endif
+    ) return send_json(alternate_session_json,(uint32_t)sizeof(alternate_session_json)-1u);
+#endif
 #if defined(Z7_OPUS) && defined(Z7_ASR_SUBTITLE)
     uint32_t i=0;
     while(asr_model_path[i] && cloud_client_config.path[i]==asr_model_path[i]) ++i;

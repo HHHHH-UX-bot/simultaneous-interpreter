@@ -418,6 +418,7 @@ void cloud_live_init(struct ui_state *model) {
     cloud.report_ms=(uint32_t)-200;
 }
 int cloud_live_capture_enabled(void) {return capture_enabled;}
+enum ui_language cloud_live_language(void) {return cloud.model->language;}
 void cloud_live_connection(int ready) {
     if(!capture_enabled) return;
     struct ui_state *model=cloud.model;
@@ -438,12 +439,15 @@ void cloud_live_connection(int ready) {
     if(model->stage!=next) {model->stage=next;++model->change_sequence;}
 }
 void cloud_live_control(enum ui_command command) {
-    if(command==UI_PAUSE || command==UI_CLEAR) {
+    int language_change=command==UI_SELECT_EN_ZH || command==UI_SELECT_ZH_EN;
+    if(command==UI_PAUSE || command==UI_CLEAR || language_change) {
         capture_enabled=0;cloud.live.phase=0;cloud_client_stop();speech_playback_stop();
 #ifdef Z7_ARM_TLS
         network_cloud_run(0);
 #endif
-    } else if(command==UI_START || command==UI_RESUME) {
+    }
+    if(command==UI_START || command==UI_RESUME ||
+       (language_change && cloud.model->session==UI_RUNNING)) {
         capture_enabled=1;
         cloud.model->stage=UI_CONNECTING;++cloud.model->change_sequence;
 #ifdef Z7_ARM_TLS

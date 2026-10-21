@@ -34,6 +34,8 @@ EXPORT int ui_host_draw(uint32_t scenario,uint32_t font_index,uint32_t page,uint
         else if(scenario==9u) s.stage=UI_CONNECTING;
         else if(scenario==10u) {ui_control(&s,UI_PAUSE);s.stage=UI_OFFLINE;}
         else if(scenario==11u) s.stage=UI_LISTENING;
+        else if(scenario==12u) s.language_menu=1;
+        else if(scenario==13u || scenario==14u) {s.language=UI_ZH_EN;s.language_menu=scenario==13u;}
         else if(scenario==5u) ui_control(&s,UI_CLEAR);
         else if(scenario==6u) ui_control(&s,UI_TOGGLE_SOURCE);
         else if(scenario==7u || scenario==8u) {

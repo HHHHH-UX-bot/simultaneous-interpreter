@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-21",
+  "elf_sha256": "46a2c7033f39e3f4c6f1f49b427db1b0c4919374f1b8290ddecd90b74263a124",
+  "status": "passed_bidirectional_microphone_short_acceptance",
+  "chinese_to_english": "菜单、方向切换和中译英都正常",
+  "english_to_chinese": "切回英译中、字幕和字号都正常",
+  "limits": [
+    "not bidirectional endurance",
+    "no new headphone listening or persistent boot qualification"
+  ]
+}

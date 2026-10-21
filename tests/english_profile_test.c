@@ -206,6 +206,39 @@ int main(void){
     CHECK(!cloud_live_capture_enabled() && model.session==UI_IDLE && !model.final_count && !model.translated[0]);
     CHECK(ui_control(&model,UI_START));cloud_live_control(UI_START);cloud_live_begin(4200);
     CHECK(cloud_live_capture_enabled() && cloud.live.epoch==model.epoch && !model.final_count);
+#ifdef Z7_BILINGUAL
+    /* Runtime direction changes use real control/session/event paths. */
+    for(uint32_t turn=0;turn<4u;++turn) {
+        enum ui_language next=model.language==UI_EN_ZH?UI_ZH_EN:UI_EN_ZH;
+        enum ui_command select=next==UI_ZH_EN?UI_SELECT_ZH_EN:UI_SELECT_EN_ZH;
+        uint32_t epoch=model.epoch;
+        CHECK(ui_control(&model,UI_LANGUAGE_MENU) && model.language_menu);
+        CHECK(ui_control(&model,select));cloud_live_control(select);
+        CHECK(model.language==next && !model.language_menu && model.epoch==epoch+1u);
+        CHECK(model.session==UI_RUNNING && model.stage==UI_CONNECTING && client.phase==CLOUD_IDLE);
+        CHECK(!model.final_count && !model.translated[0] && model.font_index==font_choice);
+        event("{\"type\":\"conversation.item.input_audio_transcription.completed\",\"item_id\":\"late_direction\",\"transcript\":\"old direction\"}");
+        CHECK(!model.translated[0] && !model.final_count);
+        cloud_live_begin(4300u+turn*100u);
+        client.phase=CLOUD_WAITING_SESSION;cloud_client_session_created();
+        const char *input=next==UI_EN_ZH?"\"language\":\"en\"":"\"language\":\"zh\"";
+        const char *target=next==UI_EN_ZH?"\"translation\":{\"language\":\"zh\"":"\"translation\":{\"language\":\"en\"";
+        CHECK(strstr(session,input) && strstr(session,target));
+        printf("LANGUAGE_SESSION %s\n",session);
+        cloud_client_session_updated();CHECK(client.phase==CLOUD_STREAMING);
+        event("{\"type\":\"conversation.item.input_audio_transcription.completed\",\"item_id\":\"fresh_direction\",\"transcript\":\"hello\"}");
+        event("{\"type\":\"conversation.item.created\",\"item\":{\"id\":\"fresh_translation\"},\"previous_item_id\":\"fresh_direction\"}");
+        event("{\"type\":\"" TRANSLATION_FINAL "\",\"item_id\":\"fresh_translation\",\"response_id\":\"fresh_response\",\"" TRANSLATION_FIELD "\":\"translated\"}");
+        event("{\"type\":\"response.done\",\"response\":{\"id\":\"fresh_response\",\"status\":\"completed\"}}");
+        CHECK(model.final_count==1u && model.translated[0]=='t');
+    }
+    CHECK(ui_control(&model,UI_PAUSE));cloud_live_control(UI_PAUSE);
+    CHECK(ui_control(&model,UI_SELECT_ZH_EN));cloud_live_control(UI_SELECT_ZH_EN);
+    CHECK(model.session==UI_PAUSED && !cloud_live_capture_enabled() && client.phase==CLOUD_IDLE);
+    CHECK(ui_control(&model,UI_CLEAR) && model.language==UI_ZH_EN);
+    CHECK(ui_control(&model,UI_START));cloud_live_control(UI_START);cloud_live_begin(4800);
+    CHECK(model.language==UI_ZH_EN && cloud_live_capture_enabled());
+#endif
     *(volatile uint32_t *)0x43c20090u=0;
     client.now_ms=5000;cloud_client_speech_started(0);
     CHECK(*(volatile uint32_t *)0x43c20088u==0);

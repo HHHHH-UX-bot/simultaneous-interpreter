@@ -205,6 +205,8 @@ C1-7a 已执行 `python -B scripts/validate_z7_nano_tls_boot.py`、相关网络�
 
 2026-10-21 的分块 ARM TLS 方法由[原模式证据](../validation/arm-packets-20261021/README.md)和[文本对照](../validation/text-response-20261021/README.md)维护，不能误用上面的旧 ESP SSL 探测入口。按 [D16](DECISIONS.md#d16-初版以字幕为主保留本地回环)，字幕优先产品的显式构建选项为 `--mode enzh --touch --arm-tls --arm-tls-packets --text-only-response --uart-baud 1000000`；固定样本另加 `--selftest`，分别使用独立输出目录。字幕版会把 DAC 输出选择保持为已有 PL 本地回环，默认译音版仍选择译音通道。字幕版目前仍编入播放缓冲以保留对照范围，不把未做的内存裁剪写成优化成果。不加 `--text-only-response` 仍是历史译音构建，不能由字幕版结果给它放行。冷启动先检查 DONE/USR_ACCESS，未配置时不读 PL MMIO，核对 bit/PS/ELF 来源后再配置、运行、比对整帧并启动匹配的 CPU1 Host。
 
+当前 ARM TLS 双语版带顶部语言菜单，无须新构建参数，操作按 [UI_SPEC](../design/UI_SPEC.md#板端翻译方向切换2026-10-21)。切换后等右侧“已就绪”再说新方向；暂停中切换不会自动开始。脚本/原生比较器已同步到 11392 字节模型和 11456 字节快照，旧捕获不能冒充新版本证据。
+
 分块版暖加载的前置为已经暂停、network idle/error0、匹配 CPU1 已停止且 USB DMA 已 Halt；还须实际查询普通 `CIPMODE:0` 和无活动 TCP，再用 `UART_CUR` 回到已知 115200、验证 AT，应答确认后才能重载 CPU0。该路径不使用 `+++`，不照搬旧透传恢复脚本。运行期配置继续从隐藏输入进入 RAM。整帧捕获会短暂停 CPU0，须先暂停并关闭当前云链路，不能在持续音频上传中插入捕获来冒充无干扰观察。步骤描述不构成执行授权。
 
 接收停顿诊断另加 `--arm-tls-recv-probe`，必须同时指定 `--arm-tls-packets`，使用独立输出目录。该诊断在 60 秒无真实 TCP 字节、且 AT/二进制发送/接收均空闲时只发一次 `CIPRECVLEN?`；正常麦克风构建不启用。通过匹配符号的 [board_snapshot](../../scripts/repair/board_snapshot.py)只读公开 16 word 元数据；字段定义在 [network.c](../../software/network_ui/network.c) 的 `network_receive_probe_diag` 注释。返回非零且期间无新通知才支持“未通知缓冲”假设，仍不单独证明厂商根因；零只代表查询时 ESP 缓冲为空。失败结果不得由重连后的普通查询补填。

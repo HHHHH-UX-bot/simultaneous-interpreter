@@ -1,6 +1,6 @@
 # 译声：语音中文字幕终端
 
-英语输入的英译中、英译英已接入同一工程，采用显式模式选择；本轮板测进展与限制见 [ENGLISH](docs/context/ENGLISH.md)，当前接续见 [NOW](docs/context/NOW.md)。
+当前 ARM 字幕版可通过顶部下拉按钮在 `English → Chinese` 与 `Chinese → English` 间切换，用户已实屏确认两种方向。使用规则见[语言切换](docs/design/UI_SPEC.md#板端翻译方向切换2026-10-21)。英语独立识别仍保留显式构建入口；本轮板测进展与限制见 [ENGLISH](docs/context/ENGLISH.md)，当前接续见 [NOW](docs/context/NOW.md)。
 
 2026-10-21 已确认初版以字幕为主、保留麦克风到耳机的本地回环，见 [D16](docs/context/DECISIONS.md#d16-初版以字幕为主保留本地回环)。产品构建显式增加 `--text-only-response`，沿用同一采音、上传和 PL 回环；[本轮验证](docs/validation/text-response-20261021/README.md)已完成仅字幕固定样本 30 分钟板测，以及真实麦克风、字号和画面短验收。本地回环输出选择已核对；云端译音停更根因仍未确认。
 

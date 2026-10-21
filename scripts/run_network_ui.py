@@ -61,7 +61,7 @@ def build(a):
         if not m or int(m[1],16)!=address:raise RuntimeError('ARM mailbox/layout mismatch: '+name)
     if net.fb.hashes(APP_INPUTS)!=record['SourceHashes']:raise RuntimeError('Network inputs changed during build')
     record.update(Status='passed',VerifiedAtUTC=net.fb.now(),ELFSHA256=net.fb.sha(OUT/'framebuffer_app.elf'),
-        LoadSegments=ui.elf_layout(OUT/'framebuffer_app.elf'),ModelBytes=11384,CompileFlags=[str(f) for f in flags],
+        LoadSegments=ui.elf_layout(OUT/'framebuffer_app.elf'),ModelBytes=11392,CompileFlags=[str(f) for f in flags],
         PlatformBuildSHA256=net.fb.sha(PL_OUT/'build.json'),
         Application='network_simulated_subtitle_ui',Scope='Runtime-only Wi-Fi/TCP and simulated results; no audio, model inference or touch')
     save('build-app.json',record);print('PASS_NETWORK_UI_ARM_BUILD',flush=True);return 0

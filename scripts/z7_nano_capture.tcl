@@ -17,7 +17,7 @@ while {1} {
     after 10
 }
 if {[lindex $info 0]!=0x55493131 || [lindex $info 2]!=0x1b00000 ||
-    [lindex $info 3]!=11448 || [lindex $info 4]!=11384 || [lindex $info 15]!=3} {error "Wrong UI ABI"}
+    [lindex $info 3]!=11456 || [lindex $info 4]!=11392 || [lindex $info 15]!=3} {error "Wrong UI ABI"}
 stop
 if {![string match "Stopped:*" [state]]} {error "UI CPU did not stop"}
 set capture_failed [catch {
@@ -31,12 +31,12 @@ set capture_failed [catch {
         after 10
     }
     if {$current>1} {error "Invalid framebuffer index"}
-    set snapshot [expr {0x1b00000+$current*11448}]
+    set snapshot [expr {0x1b00000+$current*11456}]
     set header [mrd -force -value $snapshot 8]
     if {[lindex $header 0]!=0x55495331 || [lindex $header 1] ni {1 2} ||
-        [lrange $header 2 3] ne {11448 11384}} {error "Wrong active snapshot"}
+        [lrange $header 2 3] ne {11456 11392}} {error "Wrong active snapshot"}
     set base [expr {$current?0x01400000:0x01000000}]
-    mrd -force -bin -file [file join $folder snapshot.bin] $snapshot 2862
+    mrd -force -bin -file [file join $folder snapshot.bin] $snapshot 2864
     mrd -force -bin -file [file join $folder framebuffer.bin] $base 614400
 } capture_message capture_options]
 set resume_failed [catch {
