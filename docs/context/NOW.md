@@ -11,12 +11,15 @@
 
 ## 当前实际板载产品
 
+2026-10-22新增PL网口电脑实际画面、鼠标控制和历史CSV/TXT/JSON另存为，用户范围见[D23](DECISIONS.md#d23-pl网口电脑画面与历史保存2026-10-22)，构建/网络/保存方式见[REMOTE_DISPLAY](../design/REMOTE_DISPLAY.md)，证据见[本轮验证](../validation/remote-display-20261022/README.md)。此前译音/六句版本仍保留独立产物，不与本次加载身份混用。
+
 - Z7-Nano / xc7z010clg400-1，JTAG线缆210241277120；KD070V02 1024×600，CPU0负责UI/采音/ARM TLS/云连接，CPU1常驻USB触摸。
-- 正式应用 `output/tts/microphone_final/cloud_app.elf`，SHA256 `a1fa325c8bfdacea6c1e51ea02dd4fcebeaa2b69406db2ec0ebe7c411956e4cb`。Selftest=false、LatencyProbe=false、EventIDTrace=false；真实麦克风，默认中文译英文，可切英译中。ARM TLS确认上传、主动IPD、2Mbaud、Opus O2及1.28/2秒自适应缓冲，默认语速/音质保持。
-- 修复连续IPD分隔空行累积导致的AT回复溢出；CPU1每毫秒服务USB/触摸。PL仍为Vivado2018.3位流，USR_ACCESS=0x5a374e33、SHA256 `9bc9dff782163e222a5775f70d580f7709d01ac9fe41c454efd625ecc6831470`；没有修改PL/codec/UI风格。
+- 正式应用 `output/remote_display/microphone/cloud_app.elf`，SHA256 `dc0f82a78a88a01f0a10c7e8d30335be278522b8c55fdaea2e111d63f85b61d0`。RemoteDisplay=true、Selftest=false、LatencyProbe=false、EventIDTrace=false；真实麦克风，默认中文译英文，可切英译中。ARM TLS确认上传、主动IPD、2Mbaud、Opus O2及1.28/2秒自适应缓冲，默认语速/音质保持。
+- CPU1每毫秒服务USB/触摸。PL为Vivado2018.3新增100Mbps Etherlite/RGMII位流，USR_ACCESS=0x5a374e34、SHA256 `855b4fb689a80629f79eb73ed38004d2face18739c2803ab5249f9afa563d623`，时序0.212/0.011ns。音频逻辑和原UI风格保持，电脑传实际RGB像素，并将点击/拖动交给共用UI处理。
 - 同一40.129秒六句样本，两次最终产品配置均13条识别/译文/译音、原文匹配1.0、全部PCM播完、单次TLS、零网络故障/恢复、丢页、欠载、串口或解析错误。最后译文尾部6.89–8.47秒，全部译音尾部11.27–13.08秒；1M选定完整epoch对照10.789/14.061秒。保持1.0x仍会因译音长度超过输入而排队。
-- 最终真实麦克风就绪至 `2026-10-22T02:38:39.261680+00:00`：network4/error0、client4、TLS2/error0、USB PP1，上传116→343，CPU1心跳推进。无故障/恢复且仅1次TLS握手；真实麦克风长句听觉反馈仍独立验收。
-- 当前证据为正式build/load/touch_live/final_ready及[长句验证](../validation/long-speech-20261022/README.md)。失败复测、调试读取干扰、云会话波动和计时边界完整保留；不能将合成测试当作真人声学P50/P95。
+- 新网口平台同时显示时，40.129秒六句测试13条ASR/译文及13段译音全部完成，1,056,000PCM样本全部播放，原文匹配1.0，单次TLS、零丢页/欠载/串口及网络故障；最后译文6.604秒、全部DAC尾部12.562秒。网口PNG与DDR614400像素零差异，导出13条记录与独立板上快照逐字一致。
+- 最终真实麦克风就绪至 `2026-10-22T08:24:16.187978+00:00`：network4/error0、client4、TLS2/error0、USB PP1，上传314→540，CPU1心跳96121→132407。无故障/恢复且仅1次TLS握手；真实麦克风长句听觉反馈仍独立验收。
+- 当前证据为新正式build/load/touch_live/final_ready和[网口验证](../validation/remote-display-20261022/README.md)，此前[长句验证](../validation/long-speech-20261022/README.md)单独保留。失败复测、调试读取干扰、云会话波动和计时边界完整保留；不能将合成测试当作真人声学P50/P95。
 
 ## 已实现与已验证
 
@@ -37,8 +40,9 @@
 ## 使用入口
 
 - 根目录 `启动译声.cmd`：重新JTAG加载并交互输入Wi-Fi和百炼密钥；默认工作空间/模型路径可直接回车。当前屏幕USB供电已开。
+- 根目录 `打开电脑画面.cmd`：启动本机服务并打开 `http://127.0.0.1:8787`，点击/拖动操作同步到板端；下方导出按钮可选CSV/TXT/JSON和保存位置。导出当前RAM保留最多64条定稿，文件在电脑独立保存。
 - `scripts/build_tts.ps1` 重建软件与CPU1；`-RebuildFpga` 先做音频仿真再运行Vivado实现。加载用 `scripts/load_tts.py --configure`。
 - 设置、历史、凭据与JTAG程序断电丢失；未写Flash/SD/ESP固件。源码、日志、工程备份不含密钥/无线密码或真人原始音频。
-- 新旧构建与符号不能混用；调试/换固件先查实际板态和加载身份。此前未推送；用户已于2026-10-22授权提交本轮源码、测试及文档并创建PR，合并仍待仓库评审。
+- 新旧构建与符号不能混用；调试/换固件先查实际板态和加载身份。此前译音/长句源码已提交d91171d；用户进一步要求本次网口、电脑操作及历史导出源码一并提交，沿用[PR #6](https://github.com/HHHHH-UX-bot/simultaneous-interpreter/pull/6)，完整提交及远端head以该PR为准。未授权合并。
 
 入口规则见[AGENTS](../../AGENTS.md)，工具/目录见[MAP](MAP.md)、[RUNBOOK](RUNBOOK.md)，代码路由见[PROJECT_INDEX](../../PROJECT_INDEX.md)。

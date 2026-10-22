@@ -4,7 +4,7 @@
 
 本轮桌面工程实现设置页及双向译文语音，入口见 [TTS_SETTINGS](../design/TTS_SETTINGS.md)。历史定稿/ASR 风险仍按实际证据保留；以下旧章节只代表各自构建，实时所有权先读 [NOW](NOW.md)。
 
-当前正式译音构建参数为 `--mode zhen --speech --arm-tls --arm-tls-packets --arm-tls-active-recv --low-latency-playback --touch --uart-baud 2000000 --output-dir output/tts/microphone_final`，使用 SDK 2018.3 ARM GCC；`scripts/build_tts.ps1` 提供本机入口，`scripts/load_tts.py --configure` 自动加载位流、应用、CPU1 触摸并输入运行期配置。`--selftest` 才是固定样本，普通构建是麦克风；准备字库/显示头文件仍按既有入口，不能用命令列出当作已执行。D17 语言菜单仅供 ARM TLS 双语构建。
+当前正式译音构建参数为 `--mode zhen --speech --arm-tls --arm-tls-packets --arm-tls-active-recv --low-latency-playback --touch --uart-baud 2000000 --remote-display --output-dir output/remote_display/microphone`，使用 SDK 2018.3 ARM GCC；`scripts/build_tts.ps1` 提供本机入口，`-RebuildFpga` 生成USR_ACCESS=0x5a374e34的PL网口平台。`scripts/load_tts.py --configure` 根据应用元数据核对并加载匹配位流、应用、CPU1触摸，再输入运行期配置。旧平台仍可显式指定其匹配应用。`--selftest` 才是固定样本，普通构建是麦克风；准备字库/显示头文件仍按既有入口，不能用命令列出当作已执行。D17语言菜单仅供ARM TLS双语构建。电脑画面、直连地址和历史另存为见[REMOTE_DISPLAY](../design/REMOTE_DISPLAY.md)。
 
 暖换 ELF 前必须受控关闭云连接、确认普通 AT/TCP 已关闭、停止匹配 CPU1 并确认 USB DMA Halt；匹配同一 PL 时复用视频/音频位流，不为 UI 改动重做 FPGA。操作前实际核对线缆/PL/CPU/ELF，不读取私有凭据区。新模型/快照大小必须与捕获和主机解析器共同更新，旧 ABI 拒绝混用。当前设置页模型/快照135804/135868；`z7_nano_capture.tcl` 抓当前页需显式传期望模型大小135804，默认仍是旧版11392；比较器以已验证的主机模型大小为依据，不能用当前DLL重建旧快照。
 

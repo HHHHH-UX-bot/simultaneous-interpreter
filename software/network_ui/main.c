@@ -6,6 +6,9 @@
 #include "cloud_client.h"
 #include "speech_playback.h"
 #include "wifi_recover.h"
+#ifdef Z7_REMOTE_DISPLAY
+#include "remote_display.h"
+#endif
 #ifdef Z7_LATENCY_PROBE
 #include "../ps_bringup/cache.h"
 #endif
@@ -137,6 +140,9 @@ static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_
     arm_tls_init();
 #endif
     speech_playback_init();
+#ifdef Z7_REMOTE_DISPLAY
+    remote_display_init(now);
+#endif
     service_ms=now-1u;network_upload_duration=upload_sequence=upload_ready=0;
 #ifdef Z7_LATENCY_PROBE
     for(uint32_t i=0;i<16u;++i) service_perf[i]=0;
@@ -199,6 +205,9 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
 #endif
 #ifdef Z7_ARM_TLS
     cloud_live_connection(cloud_client_ready());
+#endif
+    #ifdef Z7_REMOTE_DISPLAY
+    remote_display_tick(now);
 #endif
     if(stream_pilot.request || stream_pilot.phase) stream_pilot_tick(now);
     else if(!cloud_live_owns_ui()

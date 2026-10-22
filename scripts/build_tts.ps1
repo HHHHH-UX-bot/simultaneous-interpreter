@@ -14,10 +14,10 @@ try {
         $taskXsim=Split-Path -Parent $Vivado
         & $Python scripts/run_audio_loopback.py simulate --xsim-bin $taskXsim
         if($LASTEXITCODE){throw 'Audio simulation failed'}
-        & $Python scripts/run_audio_loopback.py build --vivado $Vivado --xsim-bin $taskXsim
+        & $Python scripts/build_remote_display.py --vivado $Vivado
         if($LASTEXITCODE){throw 'Vivado implementation failed'}
     }
-    & $Python scripts/build_cloud_app.py --gcc $Gcc --mode zhen --speech --touch --arm-tls --arm-tls-packets --arm-tls-active-recv --low-latency-playback --uart-baud 2000000 --output-dir output/tts/microphone_final
+    & $Python scripts/build_cloud_app.py --gcc $Gcc --mode zhen --speech --touch --arm-tls --arm-tls-packets --arm-tls-active-recv --low-latency-playback --uart-baud 2000000 --remote-display --output-dir output/remote_display/microphone
     if($LASTEXITCODE){throw 'ARM application build failed'}
     & $Python scripts/run_z7_nano_usb_host.py build --gcc $Gcc
     if($LASTEXITCODE){throw 'Touch host build failed'}

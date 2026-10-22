@@ -119,6 +119,7 @@ def main():
     parser.add_argument("--selftest-pcm",type=Path,help="project-local generated PCM C file for a custom automatic speech test; requires --selftest")
     parser.add_argument("--selftest-once",action="store_true",help="send the synthetic speech once, then continue streaming silence")
     parser.add_argument("--touch",action="store_true",help="enable the Z7-Nano CPU1 touch consumer")
+    parser.add_argument("--remote-display",action="store_true",help="PL Ethernet framebuffer and mouse input; requires ARM TLS and touch profile")
     parser.add_argument("--speech", action="store_true",help="translated audio on lineout (requires playback PL; automatic for enzh)")
     parser.add_argument("--text-only-response", action="store_true", help="diagnostic: request text only while retaining the same audio upload/playback build")
     parser.add_argument("--output-dir", type=Path, help="separate build directory, including ELF, symbols and metadata")
@@ -228,6 +229,9 @@ def main():
     elif args.mode == "enen":
         flags += ["-DZ7_SOURCE_EN", "-DZ7_RECOGNIZE_EN"]
     sources = list(SOURCES)
+    if args.remote_display:
+        if not args.arm_tls or not args.touch or args.mode not in ("zhen","enzh"):parser.error("--remote-display requires --arm-tls --touch and a bilingual mode")
+        flags.append("-DZ7_REMOTE_DISPLAY");sources.append("software/network_ui/remote_display.c")
     if args.touch:
         flags += ["-DZ7_NANO_TOUCH","-I",str(ROOT/"software/z7_nano_usb")]
         sources.append("software/subtitle_ui/ui_touch.c")
@@ -314,6 +318,7 @@ def main():
         "LowLatencyPlayback": bool(args.low_latency_playback),
         "OpusOptimization": "O2",
         "Touch": bool(args.touch),
+        "RemoteDisplay":bool(args.remote_display),
         "Mode": args.mode,
         "Speech": bool(args.speech),
         "TextOnlyResponse": bool(args.text_only_response),

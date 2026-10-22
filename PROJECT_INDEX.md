@@ -6,6 +6,7 @@
 
 | 任务或问题 | 权威入口 | 职责 |
 |---|---|---|
+| PL网口电脑画面、鼠标控制、历史另存为 | [REMOTE_DISPLAY](docs/design/REMOTE_DISPLAY.md)、[本轮验证](docs/validation/remote-display-20261022/README.md) | 实际帧缓冲无损传输、共用触摸命中、CSV/TXT/JSON定稿导出、2018.3平台及实机证据 |
 | 优化连续长句的字幕/译音、上传与下行缓冲 | [长句验证](docs/validation/long-speech-20261022/README.md)、[前轮延迟验证](docs/validation/tts-latency-20261021/README.md)、[TTS_SETTINGS](docs/design/TTS_SETTINGS.md) | 六句自动实测、2Mbaud、IPD空行修复、Opus O2、计时取舍与真人长句验收边界 |
 | 修改设置页、译音、真实输出音量及 T2 | [译音与设置](docs/design/TTS_SETTINGS.md)、[设置页规范](docs/design/UI_SPEC.md#板端设置页2026-10-21)、[NOW](docs/context/NOW.md) | 当前设置、DAC 增益/静音/速度、云端文本与译音、延迟定义、构建与证据边界 |
 | 开发或验收独立历史记录页、英中对照与滑动 | [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)、[验证](docs/validation/history-ui-20261021/README.md)、[NOW](docs/context/NOW.md) | 64条英中对照、真实C滚动/手势、清空语义、内存及分项板测范围 |

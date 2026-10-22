@@ -71,6 +71,48 @@ static int button(uint32_t x,uint32_t y,const struct ui_state *state) {
     for(uint32_t i=0;i<5u;++i) if(x>=bounds[i][0] && x<bounds[i][1]) return (int)i;
     return -1;
 }
+static int pointer_command(const struct touch_tap *tap,const struct ui_state *state) {
+        int pressed=button(tap->press_x,tap->press_y,state),released=button(tap->x,tap->y,state),command=-1;
+        if(pressed>=0 && released==pressed) {
+            static const enum ui_command controls[]={UI_START,
+#ifdef Z7_HISTORY_UI
+                UI_OPEN_HISTORY,
+#else
+                UI_CLEAR,
+#endif
+                UI_TOGGLE_SOURCE,UI_FONT_MINUS,UI_FONT_PLUS,
+                UI_LANGUAGE_MENU,UI_SELECT_EN_ZH,UI_SELECT_ZH_EN,UI_DISMISS_LANGUAGE,
+                UI_CLOSE_HISTORY,UI_HISTORY_CLEAR,UI_HISTORY_OLDER,UI_HISTORY_NEWER,
+                UI_HISTORY_CANCEL_CLEAR,UI_HISTORY_CONFIRM_CLEAR,
+                UI_OPEN_SETTINGS,UI_CLOSE_SETTINGS,UI_TOGGLE_TTS,UI_VOLUME_MINUS,UI_VOLUME_PLUS,
+                UI_TOGGLE_MUTE,UI_RATE_MINUS,UI_RATE_PLUS};
+            command=controls[pressed];
+            if((command==UI_SELECT_EN_ZH && state->language==UI_EN_ZH) ||
+               (command==UI_SELECT_ZH_EN && state->language==UI_ZH_EN)) {
+#ifdef Z7_HISTORY_UI
+                command=state->settings_page?-1:UI_LANGUAGE_MENU;
+#else
+                command=UI_LANGUAGE_MENU;
+#endif
+            }
+            if(pressed==0) command=state->session==UI_RUNNING?UI_PAUSE:
+                (state->session==UI_PAUSED?UI_RESUME:(state->session==UI_IDLE?UI_START:-1));
+        }
+    return command;
+}
+uint32_t ui_touch_remote(struct ui_state *state,uint32_t px,uint32_t py,uint32_t x,uint32_t y) {
+    if(px>=1024u || x>=1024u || py>=600u || y>=600u)return 0;
+    int dx=(int)x-(int)px,dy=(int)y-(int)py;
+#ifdef Z7_HISTORY_UI
+    if(state->history_page && !state->history_confirm && (dy>12 || dy<-12) &&
+       px>=40u && px<972u && py>=UI_HISTORY_BODY_Y && py<UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT) {
+        return ui_history_scroll(state,-dy)?(uint32_t)UI_HISTORY_OLDER+1u:0u;
+    }
+#endif
+    if(dx>12 || dx<-12 || dy>12 || dy<-12)return 0;
+    struct touch_tap tap={px,py,x,y};int command=pointer_command(&tap,state);
+    return command>=0 && ui_control(state,(enum ui_command)command)?(uint32_t)command+1u:0u;
+}
 void ui_touch_init(const volatile struct touch_link *link,volatile struct touch_feedback *feedback) {
     memset((void *)feedback,0,sizeof(*feedback));
 #ifdef Z7_HISTORY_UI
@@ -135,32 +177,7 @@ uint32_t ui_touch_poll(const volatile struct touch_link *link,volatile struct to
     feedback->generation=generation;
     uint32_t result=0;
     if(read!=write) {
-        int pressed=button(tap.press_x,tap.press_y,state),released=button(tap.x,tap.y,state),command=-1;
-        if(pressed>=0 && released==pressed) {
-            static const enum ui_command controls[]={UI_START,
-#ifdef Z7_HISTORY_UI
-                UI_OPEN_HISTORY,
-#else
-                UI_CLEAR,
-#endif
-                UI_TOGGLE_SOURCE,UI_FONT_MINUS,UI_FONT_PLUS,
-                UI_LANGUAGE_MENU,UI_SELECT_EN_ZH,UI_SELECT_ZH_EN,UI_DISMISS_LANGUAGE,
-                UI_CLOSE_HISTORY,UI_HISTORY_CLEAR,UI_HISTORY_OLDER,UI_HISTORY_NEWER,
-                UI_HISTORY_CANCEL_CLEAR,UI_HISTORY_CONFIRM_CLEAR,
-                UI_OPEN_SETTINGS,UI_CLOSE_SETTINGS,UI_TOGGLE_TTS,UI_VOLUME_MINUS,UI_VOLUME_PLUS,
-                UI_TOGGLE_MUTE,UI_RATE_MINUS,UI_RATE_PLUS};
-            command=controls[pressed];
-            if((command==UI_SELECT_EN_ZH && state->language==UI_EN_ZH) ||
-               (command==UI_SELECT_ZH_EN && state->language==UI_ZH_EN)) {
-#ifdef Z7_HISTORY_UI
-                command=state->settings_page?-1:UI_LANGUAGE_MENU;
-#else
-                command=UI_LANGUAGE_MENU;
-#endif
-            }
-            if(pressed==0) command=state->session==UI_RUNNING?UI_PAUSE:
-                (state->session==UI_PAUSED?UI_RESUME:(state->session==UI_IDLE?UI_START:-1));
-        }
+        int command=pointer_command(&tap,state);
 #ifdef Z7_HISTORY_UI
         int dx=(int)tap.x-(int)tap.press_x,dy=(int)tap.y-(int)tap.press_y;
         if(gesture.suppress || dx>12 || dx<-12 || dy>12 || dy<-12) command=-1;

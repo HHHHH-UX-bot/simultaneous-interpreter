@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--app-dir',type=Path,default=ROOT/'output/tts/microphone_final')
+    p=argparse.ArgumentParser();p.add_argument('--app-dir',type=Path,default=ROOT/'output/remote_display/microphone')
     p.add_argument('--xsct',type=Path,default=Path('C:/Xilinx/SDK/2018.3/bin/xsct.bat'))
     p.add_argument('--configure',action='store_true');p.add_argument('--env',action='store_true')
     p.add_argument('--skip-touch-host',action='store_true',help='automatic diagnostics: leave CPU1 stopped after full system reset')
@@ -17,10 +17,12 @@ def main():
     elf=app/Path(build['ELF']).name
     if build['Status']!='passed' or build['ELFSHA256']!=sha(elf):raise RuntimeError('Verified current application required')
     if any(sha(ROOT/f)!=h for f,h in build['InputSHA256'].items()):raise RuntimeError('Sources changed: rebuild the application first')
-    pl=json.loads((ROOT/'output/z7_nano/audio_loopback/build.json').read_text());bit=ROOT/'output/z7_nano/audio/z7_nano_audio_top.bit'
+    platform=ROOT/('output/z7_nano/remote_display' if build.get('RemoteDisplay') else 'output/z7_nano/audio')
+    proof=platform/'build.json' if build.get('RemoteDisplay') else ROOT/'output/z7_nano/audio_loopback/build.json'
+    pl=json.loads(proof.read_text());bit=platform/'z7_nano_audio_top.bit'
     if pl['Status']!='passed' or pl['BitstreamSHA256']!=sha(bit):raise RuntimeError('Verified bitstream required')
     if any(sha(ROOT/item['File'])!=item['SHA256'] for item in pl['LogicHashes']):raise RuntimeError('PL inputs changed: rebuild first')
-    init=next((ROOT/'output/z7_nano/audio').rglob('ps7_init.tcl'))
+    init=next(platform.rglob('ps7_init.tcl'))
     attempt=app/'loads'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ');attempt.mkdir(parents=True)
     result=attempt/'result.json'
     run=subprocess.run([str(a.xsct),str(ROOT/'scripts/z7_nano_audio.tcl'),'run','210241277120',str(bit),str(result),str(init),str(elf)],capture_output=True,cwd=ROOT)

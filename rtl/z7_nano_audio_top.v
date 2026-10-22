@@ -44,8 +44,19 @@ module z7_nano_audio_top (
     // AT firmware, used by the PS for the cloud WebSocket session.
     output wire esp_tx,
     input  wire esp_rx
+`ifdef Z7_PL_ETHERNET
+    ,output wire eth_mdc, eth_reset_n, eth_txc, eth_tx_ctl,
+    output wire [3:0] eth_txd,
+    input wire eth_rxc, eth_rx_ctl,
+    input wire [3:0] eth_rxd,
+    inout wire eth_mdio
+`endif
 );
     wire pixel_clk, serial_clk_5x, locked, video_reset;
+`ifdef Z7_PL_ETHERNET
+    wire eth_ref_clk, eth_mdio_i, eth_mdio_o, eth_mdio_t;
+    IOBUF u_eth_mdio (.I(eth_mdio_o),.T(eth_mdio_t),.O(eth_mdio_i),.IO(eth_mdio));
+`endif
     wire video_hs, video_vs, video_de;
     wire [23:0] video_rgb, video_rgb_overlay;
     wire [31:0] frame_count;
@@ -100,7 +111,11 @@ module z7_nano_audio_top (
 
     // --- clocks and reset --------------------------------------------------
     hdmi_clock u_clock(.sys_clk(sys_clk), .reset(~sys_rst_n), .pixel_clk(pixel_clk),
-        .serial_clk_5x(serial_clk_5x), .locked(locked));
+        .serial_clk_5x(serial_clk_5x), .locked(locked)
+`ifdef Z7_PL_ETHERNET
+        ,.eth_ref_clk(eth_ref_clk)
+`endif
+    );
     async_rst_sync u_video_reset(.clk(pixel_clk), .reset_n(sys_rst_n & locked),
         .syn_reset(video_reset));
 
@@ -120,6 +135,12 @@ module z7_nano_audio_top (
         .playback_bclk(i2s_bclk),.playback_lrclk(i2s_dadlrc),
         .playback_dac(playback_dac),.playback_enable(playback_enable),
         .esp_tx(esp_tx), .esp_rx(esp_rx),
+`ifdef Z7_PL_ETHERNET
+        .eth_ref_clk(eth_ref_clk), .eth_mdc(eth_mdc), .eth_reset_n(eth_reset_n),
+        .eth_txc(eth_txc), .eth_tx_ctl(eth_tx_ctl), .eth_txd(eth_txd),
+        .eth_rxc(eth_rxc), .eth_rx_ctl(eth_rx_ctl), .eth_rxd(eth_rxd),
+        .eth_mdio_i(eth_mdio_i), .eth_mdio_o(eth_mdio_o), .eth_mdio_t(eth_mdio_t),
+`endif
         .live(audio_live), .codec_found(codec_found), .codec_addr_sel(codec_addr_sel),
         .init_busy(init_busy), .init_done(init_done), .init_error(init_error),
         .regs_written(regs_written),

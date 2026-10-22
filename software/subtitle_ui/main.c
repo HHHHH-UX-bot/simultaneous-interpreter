@@ -43,6 +43,11 @@ __attribute__((section(".ui_mailbox"),used)) volatile struct ui_information ui_i
 __attribute__((section(".ui_command"),used)) volatile struct ui_command_mailbox ui_command;
 __attribute__((section(".ui_runtime"),used)) struct ui_snapshot snapshots[2];
 static struct ui_state state;
+#ifdef Z7_REMOTE_DISPLAY
+static uint32_t remote_context(void) {
+    return (state.epoch<<3)|(state.settings_page?1u:0u)|(state.history_page?2u:0u)|(state.language_menu?4u:0u);
+}
+#endif
 static struct ui_demo_clock demo;
 static uint64_t started_ticks;
 static uint32_t generation,last_render_ms,max_render_ms;
@@ -127,6 +132,19 @@ static void process_command(void) {
 }
 static void process_controls(void) {
     process_command();
+#ifdef Z7_REMOTE_DISPLAY
+    _Static_assert(sizeof(struct ui_history_entry)==2072u,"Remote finalized history ABI");
+    if(remote_display_history_requested())
+        remote_display_history_publish(state.history,state.history_count,sizeof(state.history[0]),state.history_discarded,state.epoch,state.final_count);
+    struct remote_pointer pointer;
+    if(remote_display_input(&pointer)) {
+        uint32_t accepted=pointer.epoch==remote_context()?ui_touch_remote(&state,pointer.press_x,pointer.press_y,pointer.x,pointer.y):0;
+        remote_display_ack(accepted,remote_context());
+#ifdef UI_CONTROL_ACCEPTED
+        if(accepted) UI_CONTROL_ACCEPTED((enum ui_command)(accepted-1u));
+#endif
+    }
+#endif
 #ifdef Z7_NANO_TOUCH
     uint32_t command=ui_touch_poll((const volatile struct touch_link *)TOUCH_LINK_ADDRESS,&touch_feedback,&state);
     if(command>=5u && state.session==UI_RUNNING && demo.phase==4u) demo.marked_ms=now_ms();
@@ -161,6 +179,9 @@ static void draw(uint32_t index,uint32_t elapsed,uint32_t page) {
 #endif
 }
 static void publish_ui(uint32_t active) {
+#ifdef Z7_REMOTE_DISPLAY
+    remote_display_present((const uint32_t *)(active?FB_BASE1:FB_BASE0),snapshots[active].generation,remote_context());
+#endif
     const struct ui_state *shown=&snapshots[active].state;
     ++ui_info.sequence;barrier();
     ui_info.magic=0x55493131u;ui_info.snapshot_base=(uint32_t)snapshots;
