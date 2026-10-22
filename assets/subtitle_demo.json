@@ -64,7 +64,25 @@
     "history_confirm": "清空全部历史？",
     "history_keep": "保留当前字幕和翻译状态",
     "history_cancel": "取消",
-    "history_delete": "确认清空"
+    "history_delete": "确认清空",
+    "settings_sound": "声音",
+    "settings_tts": "译文语音播报",
+    "settings_volume": "输出音量",
+    "settings_rate": "播放速度",
+    "settings_dac_only": "仅调节译音输出，不改变麦克风输入。",
+    "settings_mute": "静音",
+    "settings_unmute": "取消静音",
+    "settings_display": "字幕与方向",
+    "settings_source": "显示原文",
+    "settings_language": "翻译方向",
+    "settings_reconnect": "切换方向将重新连接；设置立即生效。",
+    "settings_session_only": "设置在本次上电有效。播放速度会同时改变音调。",
+    "tts_off": "语音播报已关闭",
+    "tts_muted": "译音已静音",
+    "tts_playing": "正在播放译文",
+    "tts_buffering": "正在缓冲译音",
+    "tts_unavailable": "译音硬件未就绪",
+    "tts_ready": "等待译文语音"
   },
   "additional_texts": [
     "将提者在我们开始之前，请确保每个人都能听清演讲者的声音。我们会留一点时间在演讲结束后回答问题。"

@@ -72,15 +72,17 @@ int main(void) {
     tuh_hid_set_default_protocol(HID_PROTOCOL_REPORT);
     const tusb_rhport_init_t init={.role=TUSB_ROLE_HOST,.speed=TUSB_SPEED_HIGH};
     if(!tusb_init(0,&init)) usb_fail(2);
-    uint32_t ack_ms=report.heartbeat;
+    uint32_t poll_ms=tusb_time_millis_api()-1u;
     while(!report.stop_request) {
+        /* HID needs millisecond service. Repeated uncached USB/status writes
+           between ticks only contend with CPU0's streaming audio traffic. */
+        uint32_t now=tusb_time_millis_api();
+        if(now==poll_ms) continue;
+        poll_ms=now;
         if(usb_poll_enabled()) hcd_int_handler(0,false);
         tuh_task_ext(0,false);
-        report.heartbeat=tusb_time_millis_api();
-        if(report.heartbeat!=ack_ms) {
-            touch_acknowledge(&touch,(const volatile struct touch_feedback *)TOUCH_FEEDBACK_ADDRESS);
-            ack_ms=report.heartbeat;
-        }
+        report.heartbeat=now;
+        touch_acknowledge(&touch,(const volatile struct touch_feedback *)TOUCH_FEEDBACK_ADDRESS);
         report.portsc=usb_read(USB_BASE+0x184u);report.usbsts=usb_read(USB_BASE+0x144u);
     }
     if(!tuh_deinit(0)) usb_fail(18);

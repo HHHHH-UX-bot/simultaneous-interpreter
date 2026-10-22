@@ -39,7 +39,8 @@ def main():
         if previous.get('load_id')==load_id and previous.get('status') in ('running','unconfirmed','start_unconfirmed'):
             raise RuntimeError('Sample or stop the current Host before restarting')
         build=json.loads((app/'build.json').read_text())
-        if not build['Touch'] or build['ELFSHA256']!=base.sha(app/'cloud_app.elf') or loaded['elf_sha256']!=build['ELFSHA256']:
+        elf=app/Path(build['ELF']).name
+        if not build['Touch'] or build['ELFSHA256']!=base.sha(elf) or loaded['elf_sha256']!=build['ELFSHA256']:
             raise RuntimeError('Current loaded touch-enabled CPU0 build required')
         if any(base.sha(ROOT/name)!=digest for name,digest in build['InputSHA256'].items()):
             raise RuntimeError('Cloud build inputs changed')

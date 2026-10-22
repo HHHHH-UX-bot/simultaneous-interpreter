@@ -14,6 +14,7 @@ struct cloud_event {
     enum cloud_kind kind;
     uint32_t completed;
     uint32_t cumulative;       /* response.text.text carries the full text so far */
+    uint32_t output_final;     /* completed response.done has one final output item */
     uint32_t audio_start_ms;   /* speech_started: onset position in the uploaded audio stream */
     char item_id[CLOUD_ID_BYTES],response_id[CLOUD_ID_BYTES],error_code[CLOUD_ID_BYTES];
     char error_message[CLOUD_ID_BYTES];

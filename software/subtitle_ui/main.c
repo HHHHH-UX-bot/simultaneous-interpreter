@@ -32,8 +32,8 @@ struct ui_snapshot {
 _Static_assert(sizeof(struct display_result)==64,"Display ABI");
 _Static_assert(sizeof(struct ui_information)==64,"UI ABI");
 #ifdef Z7_HISTORY_UI
-_Static_assert(sizeof(struct ui_state)==135768u,"History model ABI");
-_Static_assert(sizeof(struct ui_snapshot)==135832u,"History snapshot ABI");
+_Static_assert(sizeof(struct ui_state)==135804u,"History/settings model ABI");
+_Static_assert(sizeof(struct ui_snapshot)==135868u,"History/settings snapshot ABI");
 #else
 _Static_assert(sizeof(struct ui_state)==11392u,"ARM/native model ABI requires 32-bit enums");
 _Static_assert(sizeof(struct ui_snapshot)==11456u,"ARM/native snapshot ABI");

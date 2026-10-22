@@ -1,17 +1,19 @@
-# 译声：Zynq 英中语音字幕终端
+# 译声：Zynq 双向语音传译终端
 
 目标是连接 Wi-Fi 后独立进行语音识别、英中翻译、HDMI 显示和 USB 触摸操作。现阶段为 Z7-Nano 7010 的 JTAG 易失原型，仍需要电脑完成下载、运行期凭据与开发调试，尚未实现独立上电启动。
 
-真实链路为 AN831/WM8731 麦克风 → PL I2S/16 kHz PCM → Cortex-A9 Opus/Ogg → ARM 可信 TLS → ESP8266 TCP/Wi-Fi → 百炼 → 双语字幕。CPU0 绘制 DDR 双缓冲，CPU1 执行 USB Host；采用裸机 C，未迁移 Linux/LVGL。硬件及接线见 [MAP](docs/context/MAP.md)，接口分工见 [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md)。
+真实链路为 AN831/WM8731 麦克风 → PL I2S/16 kHz PCM → Cortex-A9 Opus/Ogg → ARM 可信 TLS → ESP8266 TCP/Wi-Fi → 百炼 → 双语字幕与译文合成语音 → WM8731 DAC。CPU0 绘制 DDR 双缓冲，CPU1 执行 USB Host；采用裸机 C，未迁移 Linux/LVGL。硬件及接线见 [MAP](docs/context/MAP.md)，接口分工见 [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md)。
 
 ## 已有能力与限制
 
 - 顶部菜单支持 English → Chinese / Chinese → English，实际麦克风、触摸、三档字幕字号和清晰画面已有用户短验收。
-- 产品使用 `--text-only-response`，保留 PL 本地回环；L1/T1 使用与 UI 一致的抗锯齿卡片。本地耳机听感仍需单独验收。
+- 当前桌面工程请求目标文本和合成语音，DAC 输出译音；支持中英双向切换，并以原有卡片风格显示 L1/T1/T2 和播报状态。用户已确认听到译音、音量正常；完整声学时延仍需单独测量。
 - 仅字幕固定样本通过 30 分钟观察；真实麦克风仍存在**定稿队列阻塞**与 `UNEXPECTED_ASR_ERROR`。两句能显示不等于历史已正常，不宣布长期可靠。[历史版真实麦克风复测](docs/validation/history-mic-20261021/README.md)已确认两句预览正常但未入历史，暂停/继续后新增真实记录；旧版复现分别保留。
-- 用户本轮要求暂缓定稿排障，先实现**独立历史记录页：左英文、右中文、滑动和页内清空**。历史页已通过离线回归、ARM 构建、示例/空态/正式主界面整帧比对，以及真实 USB 滑动、翻页、返回验收；页内确认清空已通过板端命令检查，正式麦克风版已恢复连云；行为见 [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)；实际进度、运行身份和下一步唯一由 [NOW](docs/context/NOW.md)维护。
-- 下一阶段由队友开发独立设置页及真实参数控制，优先核实输出音量；当前设置按钮只有外观。交接入口见[设置页规范](docs/design/UI_SPEC.md#板端设置页下一阶段2026-10-21)，本次只提交计划和测试证据。
+- 原阶段已完成**独立历史记录页：左英文、右中文、滑动和页内清空**，取得其离线、整帧比对及真实USB滑动/翻页/返回证据。新译音阶段局部修正迟到预览、空定稿和response.done最终输出处理；[本轮验证](docs/validation/tts-settings-20261021/README.md)列明实际范围，长期可靠性仍单独验证。行为见 [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)，运行身份由 [NOW](docs/context/NOW.md)维护。
+- 独立设置页已提供播报、数字音量/静音、播放速度、字号、原文与方向控制；见[译音与设置专题](docs/design/TTS_SETTINGS.md)。桌面工程可使用 `启动译声.cmd` 重新加载，运行期凭据仍需重新输入。
 - 断电会丢失应用和运行期配置；持久历史、启动镜像、可信上电时间/熵、长期稳定性及代表性语音质量未放行。未写 Flash/SD 或 ESP 固件。
+
+连续长句已做6句、每句25–29字的两轮真实云链路自动测试，并修复IPD空行累积故障；当前采用2Mbaud和Opus O2，完整数字及保留限制见[长句验证](docs/validation/long-speech-20261022/README.md)。
 
 ## 使用与开发入口
 

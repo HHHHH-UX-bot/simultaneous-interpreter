@@ -20,6 +20,8 @@ enum ui_command {
     UI_LANGUAGE_MENU, UI_SELECT_EN_ZH, UI_SELECT_ZH_EN, UI_DISMISS_LANGUAGE,
     UI_OPEN_HISTORY, UI_CLOSE_HISTORY, UI_HISTORY_CLEAR,
     UI_HISTORY_CONFIRM_CLEAR, UI_HISTORY_CANCEL_CLEAR, UI_HISTORY_OLDER, UI_HISTORY_NEWER,
+    UI_OPEN_SETTINGS, UI_CLOSE_SETTINGS, UI_TOGGLE_TTS, UI_VOLUME_MINUS, UI_VOLUME_PLUS,
+    UI_TOGGLE_MUTE, UI_RATE_MINUS, UI_RATE_PLUS,
     UI_COMMAND_COUNT
 };
 enum ui_language { UI_EN_ZH, UI_ZH_EN };
@@ -73,6 +75,8 @@ struct ui_state {
     uint32_t language_menu;
 #ifdef Z7_HISTORY_UI
     uint32_t history_page,history_scroll,history_limit,history_follow,history_confirm,history_discarded;
+    uint32_t settings_page,tts_enabled,output_volume,output_muted,rate_index;
+    uint32_t voice_status,voice_latency_ms,voice_latency_valid,voice_buffer_ms;
 #endif
 };
 

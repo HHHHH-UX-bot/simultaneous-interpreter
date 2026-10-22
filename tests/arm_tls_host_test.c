@@ -37,10 +37,12 @@ static void (*receiver)(uint8_t);
 int network_stream_attach(void (*p)(uint8_t)) {receiver=p;network_info.phase=4;attached=1;return 1;}
 int network_send(const uint8_t *p,uint32_t n) {if(txsize || n>2048) return 0;memcpy(tx,p,n);txsize=n;txpos=0;return 1;}
 static void plain_received(uint8_t b) {(void)b;++rxbytes;}
+static void plain_received_bytes(const uint8_t *p,uint32_t n) {(void)p;rxbytes+=n;}
 int main(int argc,char **argv) {
     int negative=argc>1 && !strcmp(argv[1],"expired");
     int noseed=argc>1 && !strcmp(argv[1],"noseed");
     int full_record=argc>1 && !strcmp(argv[1],"full_record");
+    int bulk=argc>1 && !strcmp(argv[1],"bulk");
     corrupt=argc>1 && !strcmp(argv[1],"corrupt");
     WSADATA w;WSAStartup(MAKEWORD(2,2),&w);
     struct addrinfo *ai=0;int rc=getaddrinfo("ws-zckg39zhbiii3yrv.cn-beijing.maas.aliyuncs.com","443",0,&ai);
@@ -67,7 +69,7 @@ int main(int argc,char **argv) {
         else if(n==0) break;
         arm_tls_tick(GetTickCount()-start);
         if(arm_tls_ready() && !sent) {
-            arm_tls_attach(plain_received);
+            if(bulk) arm_tls_attach_bytes(plain_received_bytes);else arm_tls_attach(plain_received);
             const char *q="GET / HTTP/1.1\r\nHost: ws-zckg39zhbiii3yrv.cn-beijing.maas.aliyuncs.com\r\nConnection: close\r\n\r\n";
             uint8_t padded[2048];uint32_t bytes=(uint32_t)strlen(q);
             if(full_record) {

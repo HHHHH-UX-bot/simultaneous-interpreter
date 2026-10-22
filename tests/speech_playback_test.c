@@ -81,7 +81,10 @@ int main(void) {
     CHECK(!speech_playback_audio("AA==",4) && queued==before);
     CHECK(!speech_playback_audio("AA=A",4) && queued==before);
     for(unsigned batch=2;batch<10;++batch) send_audio(batch*4800u,4800);
-    advance(1);CHECK(regs[0x9c/4]&2u);
+    advance(1);CHECK(!(regs[0x9c/4]&2u)); /* Software depth alone cannot prime DAC. */
+    advance(16);CHECK(regs[0x9c/4]&2u);
+    CHECK(regs[0xa4/4]>7000u); /* Physical reservoir survives a 50 ms service gap. */
+    regs[0xa4/4]-=1200u;regs[0xac/4]+=1200u;test_now+=50u;
     // Twelve seconds of real-time input crosses the ten-second ring while
     // the simulated DAC consumes samples only when playback is enabled.
     for(unsigned batch=10;batch<60;++batch) {advance(200);send_audio(batch*4800u,4800);}
@@ -132,6 +135,20 @@ int main(void) {
     expected_at=61446;n=make_message(61446,6);CHECK(receive(message,n,NULL)==0);
     speech_playback_done();advance(1);
     CHECK(regs[0x9c/4]&2u);
+#ifdef Z7_LOW_LATENCY_PLAYBACK
+    /* Fast 320 ms chunks arriving every 240 ms: start early, then preserve all
+       12.8 s of signed PCM across the ring without speed-up or underruns. */
+    memset(regs,0,sizeof(regs));received=expected_at=test_now=0;
+    regs[0x98/4]=0x31594c50;speech_playback_init();cloud_wire_init(receive,NULL);
+    send_audio(0,7680);advance(240);CHECK(!(regs[0x9c/4]&2u));
+    send_audio(7680,7680);advance(240);CHECK(!(regs[0x9c/4]&2u));
+    send_audio(15360,7680);advance(240);CHECK(!(regs[0x9c/4]&2u));
+    send_audio(23040,7680);advance(20);CHECK(regs[0x9c/4]&2u);
+    CHECK(voice_ms<800u);
+    for(unsigned batch=4;batch<40;++batch) {advance(240);send_audio(batch*7680u,7680);}
+    speech_playback_done();while(queued || regs[0xa4/4]) advance(1);advance(1);
+    CHECK(received==307200 && regs[0xac/4]==received && speech_diag.starts==1 && !regs[0xa8/4]);
+#endif
     puts("PASS_SPEECH_PLAYBACK real WS/JSON/base64, signed PCM order, >4k events, 12s ring wrap, jitter without underruns, prefill and short tails");
     return 0;
 }

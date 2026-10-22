@@ -288,6 +288,35 @@ void ui_render_latency(uint32_t *pixels,uint32_t readings,struct ui_render_stats
     }
 }
 #ifdef Z7_HISTORY_UI
+static void settings_view(struct paint *p,const struct ui_state *s) {
+    one_line(p,label("settings"),28,24,14,300,INK);
+    round_rect(p,24,84,476,404,12,PAPER);round_rect(p,520,84,480,404,12,PAPER);
+    one_line(p,label("settings_sound"),28,44,100,400,INK);
+    one_line(p,label("settings_tts"),18,44,158,260,INK);
+    button_at(p,328,142,148,label(s->tts_enabled?"on":"off"),s->tts_enabled);
+    one_line(p,label("settings_volume"),18,44,230,120,INK);
+    static const uint32_t minus[]={'-',0},plus[]={'+',0};
+    uint32_t number[24];decimal(s->output_volume,number);uint32_t n=0;while(number[n]) ++n;number[n++]='%';number[n]=0;
+    button_at(p,168,212,64,minus,0);one_line(p,number,24,252,226,72,INK);button_at(p,328,212,64,plus,0);
+    one_line(p,label("settings_rate"),18,44,306,120,INK);
+    static const uint32_t rates[3][5]={{'0','.','8','x',0},{'1','.','0','x',0},{'1','.','2','x',0}};
+    button_at(p,168,288,64,minus,0);one_line(p,rates[s->rate_index<3?s->rate_index:1],24,252,302,72,INK);button_at(p,328,288,64,plus,0);
+    one_line(p,label("settings_dac_only"),14,44,366,412,MUTED);
+    button_at(p,44,400,180,label(s->output_muted?"settings_unmute":"settings_mute"),s->output_muted);
+    one_line(p,label("settings_display"),28,540,100,400,INK);
+    one_line(p,label("font"),18,540,158,100,INK);
+    button_at(p,660,142,64,minus,0);button_at(p,912,142,64,plus,0);
+    one_line(p,label(s->font_index==0?"small":(s->font_index==2?"large":"normal")),18,772,158,112,INK);
+    one_line(p,label("settings_source"),18,540,230,250,INK);
+    button_at(p,824,212,152,label(s->show_source?"on":"off"),s->show_source);
+    one_line(p,label("settings_language"),18,540,306,400,INK);
+    button_at(p,540,360,204,language_directions[0],s->language==UI_EN_ZH);
+    button_at(p,764,360,212,language_directions[1],s->language==UI_ZH_EN);
+    one_line(p,label("settings_reconnect"),14,540,444,420,MUTED);
+    rect(p,0,508,UI_WIDTH,92,PAPER);rect(p,0,508,UI_WIDTH,1,LINE);
+    button(p,24,176,label("history_back"),1);
+    one_line(p,label("settings_session_only"),14,232,550,752,MUTED);
+}
 static const uint32_t *history_text(const struct ui_history_entry *entry,int english) {
     int source_is_english=entry->language==UI_EN_ZH;
     return english==source_is_english?entry->source:entry->translated;
@@ -389,6 +418,7 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     struct paint p={pixels,stats,0};
     rect(&p,0,0,UI_WIDTH,UI_HEIGHT,CANVAS);rect(&p,0,0,UI_WIDTH,64,PAPER);rect(&p,0,63,UI_WIDTH,1,LINE);
 #ifdef Z7_HISTORY_UI
+    if(s->settings_page) {settings_view(&p,s);return;}
     if(s->history_page) {history_view(&p,s);return;}
 #endif
     round_rect(&p,24,13,36,36,8,ACTION);
@@ -423,7 +453,15 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
 #else
     one_line(&p,label("language"),18,156,21,320,MUTED);
 #endif
+#ifdef Z7_HISTORY_UI
+    round_rect(&p,716,8,104,48,8,LINE);round_rect(&p,717,9,102,46,7,0xf1f6f6u);
+    static const uint32_t voice_label[]={'T','2',' ','V','O','I','C','E',0},ms[]={'m','s',0};
+    uint32_t voice_number[16]={'-','-',0};
+    if(s->voice_latency_valid) decimal(s->voice_latency_ms>99999u?99999u:s->voice_latency_ms,voice_number);
+    one_line(&p,voice_label,14,726,11,84,MUTED);one_line(&p,voice_number,18,726,28,62,INK);one_line(&p,ms,14,792,32,22,MUTED);
+#else
     one_line(&p,label("touch"),14,720,24,116,MUTED);
+#endif
     round_rect(&p,850,17,150,30,15,TINT);
 #ifdef Z7_UI_ENGLISH
     one_line(&p,mode_badge,14,894,22,96,ACTION);
@@ -478,16 +516,22 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     one_line(&p,label("count"),14,898,143,70,MUTED);decimal(s->final_count,number);
     one_line(&p,number,24,898,166,80,INK);
     rect(&p,760,207,220,1,LINE);one_line(&p,label("input"),14,760,218,146,MUTED);
+#ifdef Z7_HISTORY_UI
+    const char *voice_key=!s->tts_enabled?"tts_off":(s->output_muted || !s->output_volume?"tts_muted":
+        (s->voice_status==3u?"tts_playing":(s->voice_status==2u?"tts_buffering":(s->voice_status==4u?"tts_unavailable":"tts_ready"))));
+    one_line(&p,label(voice_key),18,760,242,220,ACTION);
+#else
     for(uint32_t i=0;i<8u;++i) {
         int h=s->session==UI_RUNNING && s->stage!=UI_CONNECTING && s->stage!=UI_OFFLINE?
             8+(int)((elapsed_ms/170u+i*7u)%24u):4;
         round_rect(&p,914+(int)i*8,246-h,4,h,2,ACTION);
     }
+#endif
 #ifdef Z7_ARM_TLS
     const char *connection=s->stage==UI_CONNECTING?"connection_wait":
         (s->stage==UI_OFFLINE?"connection_offline":(s->session==UI_IDLE?"connection_start":
         (s->session==UI_PAUSED?"connection_paused":"connection_ready")));
-    paragraph(&p,label(connection),14,(struct clip){760,254,220,45},MUTED,0,0,0);
+    paragraph(&p,label(connection),14,(struct clip){760,274,220,25},MUTED,0,0,0);
 #elif defined(Z7_UI_ENGLISH)
     static const uint32_t bilingual_hint[]={'L','i','v','e',' ','s','u','b','t','i','t','l','e','s',0};
     paragraph(&p,bilingual_hint,14,(struct clip){760,254,220,45},MUTED,0,0,0);

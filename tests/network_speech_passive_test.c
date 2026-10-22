@@ -1,5 +1,7 @@
 #define NETWORK_TLS_TEST_NO_MAIN
 #include "network_tls_test.c"
+#define TEST_READ_BYTES 2048u
+#define TEST_READ_COMMAND "AT+CIPRECVDATA=0,2048\r\n"
 void cache_clean_range(const void *start,unsigned bytes) {(void)start;(void)bytes;}
 static unsigned pending_bytes,delivered,read_queries,uploads,upload_left,passive_selected;
 static unsigned reject_first_read=1,empty_error,length_queries;
@@ -33,8 +35,8 @@ static void passive_write(uint32_t offset,uint32_t value) {
         if(reject_length_query) {enqueue("\r\nERROR\r\n");passive_used=0;return;}
         snprintf(sizes,sizeof(sizes),"\r\n+CIPRECVLEN:%u,0,0,0,0\r\nOK\r\n",pending_bytes);enqueue(sizes);
     }
-    else if(!strcmp(passive_command,"AT+CIPRECVDATA=0,2048\r\n")) {
-        unsigned n=pending_bytes<2048?pending_bytes:2048;char prefix[64];++read_queries;
+    else if(!strcmp(passive_command,TEST_READ_COMMAND)) {
+        unsigned n=pending_bytes<TEST_READ_BYTES?pending_bytes:TEST_READ_BYTES;char prefix[64];++read_queries;
         if(short_reads && n>137u) n=137u;
         if(reject_first_read || (!n && empty_error)) {
             reject_first_read=0;enqueue("\r\nERROR\r\n");passive_used=0;return;
@@ -69,7 +71,7 @@ int main(void) {
     }
     check(delivered==16407u && uploads==8 && !network_info.error,"binary download and microphone both finish");
     for(unsigned i=0;i<100;++i) network_tick(&state,++clock_ms);
-    check(read_queries>=10 && length_queries>=1 && !network_stream_busy(),"transient read rejection retains live SSL and retries buffered data");
+    check(read_queries>=(16407u+TEST_READ_BYTES-1u)/TEST_READ_BYTES+1u && length_queries>=1 && !network_stream_busy(),"transient read rejection retains live SSL and retries buffered data");
     unsigned previous_queries=read_queries;
     unsigned previous_lengths=length_queries;
     enqueue("\r\n+IPD,0,8\r\n"); /* SSL notification can exceed plaintext bytes. */

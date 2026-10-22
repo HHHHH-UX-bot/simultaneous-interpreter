@@ -31,6 +31,7 @@ void network_cloud_run(int run){(void)run;}
 void network_stream_failed(void){++failures;}
 void stream_pilot_set_receiver(void (*p)(uint8_t)){(void)p;}
 int arm_tls_attach(void (*p)(uint8_t)){(void)p;return 1;}
+int arm_tls_attach_bytes(void (*p)(const uint8_t *,uint32_t)){(void)p;return 1;}
 int arm_tls_send(const uint8_t *p,uint32_t n){
     CHECK(n<=2048);if(blocked)return 0;
     if(n && p[0]==0x89u)++pings;
@@ -56,7 +57,16 @@ int main(void){
     const char path[]="/api-ws/v1/realtime?model=qwen3.5-livetranslate-flash-realtime";
     memcpy((void *)cloud_client_config.path,path,sizeof(path));
 #endif
+#ifdef Z7_HISTORY_UI
+    CHECK(ui_control(&model,UI_FONT_PLUS));CHECK(ui_control(&model,UI_TOGGLE_SOURCE));
+    model.output_volume=40;model.output_muted=1;model.rate_index=0;model.tts_enabled=0;
+#endif
     cloud_client_start(0);client.phase=CLOUD_WAITING_SESSION;
+#ifdef Z7_HISTORY_UI
+    CHECK(model.font_index==2 && !model.show_source && model.output_volume==40 && model.output_muted && !model.rate_index && !model.tts_enabled);
+    CHECK(ui_control(&model,UI_FONT_MINUS));CHECK(ui_control(&model,UI_TOGGLE_SOURCE));
+    model.output_volume=70;model.output_muted=0;model.rate_index=1;model.tts_enabled=1;
+#endif
     network_info.phase=4;
     cloud_live_connection(cloud_client_ready());CHECK(model.stage==UI_CONNECTING);
     blocked=1;cloud_client_session_created();CHECK(client.update_pending);

@@ -9,7 +9,8 @@ struct cloud_wire_context {
     void *user;
     struct cloud_wire_stats stats;
     uint32_t available,active,frame_read,frame_size,opcode,fin,fragmented,used,control_used,out_used;
-    uint8_t incoming,control[125],out[131];
+    const uint8_t *incoming;
+    uint8_t control[125],out[131];
     char json[CLOUD_JSON_BYTES];
 };
 __attribute__((section(".cloud_runtime"))) static struct cloud_wire_context cloud_wire;
@@ -17,7 +18,9 @@ __attribute__((section(".cloud_masks"),used)) uint8_t cloud_masks[128];
 static ssize_t cloud_wire_recv(uint8_t *buffer,size_t size,int flags,void *user) {
     (void)flags;(void)user;
     if(!cloud_wire.available || !size) return -1;
-    buffer[0]=cloud_wire.incoming;cloud_wire.available=0;return 1;
+    if(size>cloud_wire.available) size=cloud_wire.available;
+    memcpy(buffer,cloud_wire.incoming,size);cloud_wire.incoming+=size;
+    cloud_wire.available-=(uint32_t)size;return (ssize_t)size;
 }
 static ssize_t cloud_wire_send(const uint8_t *data,size_t size,int flags,void *user) {
     (void)flags;(void)user;
@@ -48,10 +51,12 @@ static int cloud_wire_control(void) {
     if(cloud_wire.opcode==WSLAY_PING) ++cloud_wire.stats.pings;else cloud_wire.stats.closed=1;
     return 0;
 }
-void cloud_wire_byte(uint8_t byte) {
+void cloud_wire_byte(uint8_t byte) {cloud_wire_bytes(&byte,1);}
+void cloud_wire_bytes(const uint8_t *data,uint32_t bytes) {
+    if(!bytes) return;
     if(cloud_wire.stats.error) return;
     if(cloud_wire.stats.closed) {cloud_wire.stats.error=2;return;}
-    cloud_wire.incoming=byte;cloud_wire.available=1;
+    cloud_wire.incoming=data;cloud_wire.available=bytes;
     for(;;) {
         struct wslay_frame_iocb in={0};ssize_t got=wslay_frame_recv(cloud_wire.frame,&in);
         if(got==WSLAY_ERR_WANT_READ) return;
