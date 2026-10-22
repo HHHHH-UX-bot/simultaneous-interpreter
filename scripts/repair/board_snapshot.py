@@ -9,7 +9,7 @@ p.add_argument('--output',type=Path,required=True)
 p.add_argument('--xsdb',type=Path,default=Path(r'C:\Xilinx\Vivado\2018.3\bin\xsdb.bat'))
 a=p.parse_args()
 symbols={parts[2]:int(parts[0],16) for line in a.symbols.read_text().splitlines() if len(parts:=line.split())==3}
-counts={'network_report':16,'cloud_report':16,'client':24,'duplex_diag':38,'duplex_fault_state':25,'upload_diag':7,'speech_diag':18,'link_recovery_diag':7,'session_diag':6,'receive_priority_diag':5,'caption_queue_diag':36,'final_diag':13,'cloud_health':16,'network_heap':9}
+counts={'network_report':16,'cloud_report':16,'client':24,'duplex_diag':38,'duplex_fault_state':25,'upload_diag':7,'speech_diag':18,'link_recovery_diag':7,'session_diag':9,'receive_priority_diag':5,'caption_queue_diag':36,'final_diag':15,'cloud_health':16,'network_heap':9}
 counts['keepalive_diag']=5
 counts['link_quality']=5
 counts['first_wire_fault']=8
@@ -29,7 +29,9 @@ script=['connect -url TCP:127.0.0.1:3121','after 300',
 for name,n in counts.items():
     if name in symbols: script.append(f'puts "COUNTER {name} [mrd -force -value 0x{symbols[name]:x} {n}]"')
 for name,address,n in [('uart',0x43c30018,6),('uart_state',0x43c30004,2),('capture',0x43c20090,2),('usb_power',0xe0002184,1)]:
-    script.append(f'puts "COUNTER {name} [mrd -force -value 0x{address:x} {n}]"')
+    addresses=' '.join(f'0x{address+4*i:x}' for i in range(n))
+    script.append(f'set values {{}}; foreach a {{{addresses}}} {{lappend values [mrd -force -value $a]}}')
+    script.append(f'puts "COUNTER {name} $values"')
 script.append('disconnect')
 temp = Path(__file__).resolve().parents[2] / 'tmp/board_observation'
 temp.mkdir(parents=True, exist_ok=True)

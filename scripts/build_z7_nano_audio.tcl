@@ -11,6 +11,7 @@
 # Usage: vivado -mode batch -source scripts/build_z7_nano_audio.tcl -tclargs build
 set root [file normalize [file join [file dirname [info script]] ..]]
 set action [lindex $argv 0]
+set remote_ui [expr {[lindex $argv 2] eq "remote-ui"}]
 # Optional second argument: output directory. Used to build in a scratch tree
 # while the main project is open in the GUI.
 set out [expr {[llength $argv] > 1 ? [lindex $argv 1] : [file join $root output z7_nano audio]}]
@@ -58,7 +59,7 @@ set_property -dict [list CONFIG.c_include_s2mm {0} CONFIG.c_include_mm2s {1} \
     CONFIG.c_include_mm2s_dre {0}] $dma
 set video [create_bd_cell -type module -reference framebuffer_video video]
 set regs [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 regs]
-set_property CONFIG.NUM_MI 4 $regs
+set_property CONFIG.NUM_MI [expr {$remote_ui ? 5 : 4}] $regs
 set memory [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 memory]
 set_property CONFIG.NUM_MI 1 $memory
 set reset [create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 reset]
@@ -154,6 +155,7 @@ foreach pin {esp_tx esp_rx} {
 set uart_segment [get_bd_addr_segs -of_objects [get_bd_intf_pins uart/S_AXI]]
 if {[llength $uart_segment] != 1} {error "UART register segment missing"}
 create_bd_addr_seg -range 0x10000 -offset 0x43c30000 [get_bd_addr_spaces ps7/Data] $uart_segment SEG_UART
+if {$remote_ui} {source [file join $root scripts pl_ethernet_bd.tcl]}
 assign_bd_address [get_bd_addr_segs ps7/S_AXI_HP0/HP0_DDR_LOWOCM]
 validate_bd_design
 if {[get_property CONFIG.c_prmry_is_aclk_async $dma] != 0} {error "VDMA did not infer the common clock"}
@@ -191,12 +193,30 @@ foreach filename {z7_nano_audio_top.v i2c_master.v wm8731_init.v i2s_loopback.v 
 }
 add_files -fileset constrs_1 [file join $cfgdir hdmi.xdc]
 add_files -fileset constrs_1 [file join $cfgdir audio.xdc]
+if {$remote_ui} {
+    set_property verilog_define {Z7_PL_ETHERNET} [get_filesets sources_1]
+    add_files -fileset constrs_1 [file join $root hardware z7_nano pl_ethernet.xdc]
+    set_property PROCESSING_ORDER LATE [get_files pl_ethernet.xdc]
+    add_files -fileset constrs_1 [file join $root hardware z7_nano pl_ethernet_clock.xdc]
+    set_property PROCESSING_ORDER EARLY [get_files pl_ethernet_clock.xdc]
+}
 set_property top z7_nano_audio_top [get_filesets sources_1]
 update_compile_order -fileset sources_1
 
 if {$action eq "design"} {puts PASS_Z7_NANO_AUDIO_DESIGN; close_project; exit}
 synth_design -top z7_nano_audio_top -part $board_part
 opt_design
+if {$remote_ui} {
+    # MII FFs now connect to the PG160 bridge, rather than directly to pads.
+    set_property IOB false [get_cells -hier -filter {NAME =~ *ethernet* && IOB == TRUE}]
+    # PG135 carrier-sense status enters an explicit two-FF AXI-clock synchronizer.
+    # Exclude only its asynchronous first D pin; keep stage 1 -> stage 2 timed.
+    set crs_first [get_cells -hier -filter {NAME =~ *ethernet*/EMAC_I/C_SENSE_SYNC_1}]
+    set crs_second [get_cells -hier -filter {NAME =~ *ethernet*/EMAC_I/C_SENSE_SYNC_2}]
+    if {[llength $crs_first]!=1 || [llength $crs_second]!=1} {error "Carrier sense CDC stages missing"}
+    set_property ASYNC_REG TRUE [concat $crs_first $crs_second]
+    set_false_path -to [get_pins $crs_first/D]
+}
 # The tap waits one extra 20 ns destination cycle for this held data bundle.
 # Bound data/control route skew to 15 ns; async clock groups do not check it.
 set tap_ends [get_cells -hier -regexp {.*u_sample_tap/(data1_reg\[[0-9]+\]|t1_reg)}]
@@ -204,10 +224,16 @@ if {[llength $tap_ends] != 17} {error "Microphone CDC endpoints missing"}
 set tap_starts [all_fanin -flat -startpoints_only -only_cells -to [get_pins -of_objects $tap_ends -filter {REF_PIN_NAME == D}]]
 if {[llength $tap_starts] != 17} {error "Microphone CDC sources missing"}
 set_bus_skew -from $tap_starts -to $tap_ends 15.0
+if {$remote_ui} {
+    foreach {p ball} {eth_mdc G14 eth_mdio J15 eth_reset_n L19 eth_txc L14 eth_tx_ctl N16 eth_txd[0] M14 eth_txd[1] L15 eth_txd[2] M15 eth_txd[3] N15 eth_rxc K17 eth_rx_ctl K18 eth_rxd[0] J14 eth_rxd[1] K14 eth_rxd[2] M18 eth_rxd[3] M17} {
+        if {[get_property PACKAGE_PIN [get_ports $p]] ne $ball || [get_property IOSTANDARD [get_ports $p]] ne "LVCMOS33"} {error "Ethernet pin/electrical mismatch $p"}
+    }
+    write_checkpoint -force [file join $out ethernet_postopt.dcp]
+}
 place_design
 phys_opt_design
 route_design
-set usr_access [expr {[lindex $argv 2] eq "tx-trace" ? 0x5a375458 : 0x5a374e33}]
+set usr_access [expr {[lindex $argv 2] eq "tx-trace" ? 0x5a375458 : ($remote_ui ? 0x5a374e34 : 0x5a374e33)}]
 set_property BITSTREAM.CONFIG.USR_ACCESS [format "0x%08x" $usr_access] [current_design]
 report_timing_summary -report_unconstrained -file [file join $out reports timing.rpt]
 set tap_skew_report [report_bus_skew -return_string]

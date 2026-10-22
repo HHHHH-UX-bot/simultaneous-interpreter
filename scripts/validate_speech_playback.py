@@ -14,6 +14,8 @@ def main():
     temp=ROOT/'tmp/speech_playback';temp.mkdir(parents=True,exist_ok=True)
     out=ROOT/'output/zhen';out.mkdir(parents=True,exist_ok=True)
     cases=[('speech_playback',['-DZ7_TRANSLATE_AUDIO'],['tests/speech_playback_test.c','software/network_ui/cloud_events.c','software/network_ui/cloud_wire.c','software/network_ui/cloud_frame.c']),
+           ('cloud_wire_bulk',['-DZ7_TRANSLATE_AUDIO'],['tests/cloud_wire_bulk_test.c','software/network_ui/cloud_wire.c','software/network_ui/cloud_frame.c']),
+           ('speech_playback_low_latency',['-DZ7_TRANSLATE_AUDIO','-DZ7_LOW_LATENCY_PLAYBACK'],['tests/speech_playback_test.c','software/network_ui/cloud_events.c','software/network_ui/cloud_wire.c','software/network_ui/cloud_frame.c']),
            ('network_duplex',['-DZ7_NETWORK_CAPABILITIES','-DZ7_TRANSLATE_AUDIO'],['tests/network_duplex_test.c','software/network_ui/network.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','output/subtitle_ui/ui_assets.c'])]
     cases.append(('network_tls',['-DZ7_NETWORK_CAPABILITIES'],['tests/network_tls_test.c','software/network_ui/network.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','output/subtitle_ui/ui_assets.c']))
     cases.append(('network_tls_audio',['-DZ7_NETWORK_CAPABILITIES','-DZ7_TRANSLATE_AUDIO'],['tests/network_tls_test.c','software/network_ui/network.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','output/subtitle_ui/ui_assets.c']))
@@ -23,11 +25,14 @@ def main():
     cases.append(('network_speech_no_length',['-DZ7_NETWORK_CAPABILITIES','-DZ7_TRANSLATE_AUDIO','-DZ7_SSL_DRAIN_FIRST','-DZ7_SSL_NO_LENGTH_QUERY'],['tests/network_speech_no_length_test.c','software/network_ui/network.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','output/subtitle_ui/ui_assets.c']))
     cases.append(('network_tls_raw',['-DZ7_NETWORK_CAPABILITIES','-DZ7_TRANSLATE_AUDIO','-DZ7_TLS_PASSTHROUGH'],['tests/network_tls_raw_test.c','software/network_ui/network.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','output/subtitle_ui/ui_assets.c']))
     cases.append(('network_arm_tcp',['-DZ7_NETWORK_CAPABILITIES','-DZ7_TRANSLATE_AUDIO','-DZ7_TLS_PASSTHROUGH','-DZ7_ARM_TLS'],['tests/network_tls_raw_test.c','software/network_ui/network.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','output/subtitle_ui/ui_assets.c']))
+    cases.append(('network_arm_tcp_passive',['-DZ7_NETWORK_CAPABILITIES','-DZ7_TRANSLATE_AUDIO','-DZ7_ARM_TLS'],['tests/network_speech_passive_test.c','software/network_ui/network.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','output/subtitle_ui/ui_assets.c']))
+    cases.append(('network_arm_tcp_active',['-DZ7_NETWORK_CAPABILITIES','-DZ7_TRANSLATE_AUDIO','-DZ7_ARM_TLS','-DZ7_ARM_TCP_ACTIVE_RECV'],['tests/network_arm_active_test.c','software/network_ui/network.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','output/subtitle_ui/ui_assets.c']))
     results={}
     cases.append(('wifi_recover',[],['tests/wifi_recover_test.c','software/network_ui/wifi_recover.c']))
     cases.append(('wifi_recover_921600',['-DZ7_UART_LEGACY_STREAM'],['tests/wifi_recover_test.c','software/network_ui/wifi_recover.c']))
     cases.append(('wifi_recover_460800',['-DZ7_UART_460800_STREAM'],['tests/wifi_recover_test.c','software/network_ui/wifi_recover.c']))
     cases.append(('wifi_recover_1m',['-DZ7_UART_1M_STREAM'],['tests/wifi_recover_test.c','software/network_ui/wifi_recover.c']))
+    cases.append(('wifi_recover_1666',['-DZ7_UART_1666666_STREAM'],['tests/wifi_recover_test.c','software/network_ui/wifi_recover.c']))
     cases.append(('network_framing_recovery',['-DZ7_NETWORK_CAPABILITIES','-DZ7_TRANSLATE_AUDIO'],['tests/network_framing_recovery_test.c','software/network_ui/network.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','output/subtitle_ui/ui_assets.c']))
     for _,_,sources in cases:
         if 'software/network_ui/network.c' in sources: sources.append('software/network_ui/wifi_recover.c')

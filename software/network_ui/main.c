@@ -6,6 +6,12 @@
 #include "cloud_client.h"
 #include "speech_playback.h"
 #include "wifi_recover.h"
+#ifdef Z7_REMOTE_DISPLAY
+#include "remote_display.h"
+#endif
+#ifdef Z7_LATENCY_PROBE
+#include "../ps_bringup/cache.h"
+#endif
 #ifdef Z7_ARM_TLS
 #include "arm_tls.h"
 #endif
@@ -18,6 +24,16 @@ static void uart_write(uint32_t offset,uint32_t value) {*(volatile uint32_t *)(0
 __attribute__((section(".network_upload_control"),used)) volatile uint32_t network_upload_duration;
 static uint32_t service_ms,upload_start,upload_sequence,upload_ready,upload_sent_ms;
 static uint32_t gt_ticks(void) {return *(volatile uint32_t *)0xf8f00200u;}
+#ifdef Z7_LATENCY_PROBE
+__attribute__((section(".cloud_runtime"),used)) volatile uint32_t service_perf[16];
+static uint32_t perf_last,perf_clean;
+static void service_measure(uint32_t slot,uint32_t start) {
+    if(!cloud_client_ready()) return;
+    uint32_t duration=gt_ticks()-start;
+    service_perf[slot]+=duration;
+    if(duration>service_perf[slot+1u]) service_perf[slot+1u]=duration;
+}
+#endif
 /* The ESP AT firmware corrupts the first byte it receives after a long idle, so
    the link is warmed once with a disposable AT. */
 static void uart_flush(void) {uart_write(12,15);}
@@ -31,26 +47,31 @@ static int uart_at(const char *text,uint32_t window_ms) {
     while((uint32_t)(gt_ticks()-start)<limit) {
         if(uart_read(4)&1u) {
             char c=(char)(uart_read(20)&0xffu);
-            if(c=='O') phase=1;else if(phase==1u && c=='K') return 1;else phase=0;
+            if(c=='O') phase=1;
+            else if(phase==1u && c=='K') phase=2;
+            else if(phase==2u && c=='\r') phase=3;
+            else if(phase==3u && c=='\n') return 1;
+            else phase=0;
         }
     }
     return 0;
 }
-/* The cloud audio path needs far more than 115200 baud: 16 kHz 16-bit PCM in
-   base64 is about 46 kB/s. Negotiate the module up to 921600 (divider 54) and
-   fall back to the previous rate if the module does not follow. */
+/* UART_CUR survives a PS/PL reload. Probe every supported volatile rate so a
+   new build can negotiate its selected rate after a diagnostic build. */
 static void uart_link_setup(void) {
 #ifdef Z7_STREAM_TRANSPORT
-    const uint32_t rates[]={434u,WIFI_STREAM_DIVISOR,54u};
-    for(uint32_t i=0;i<3u;++i) {
+    const uint32_t rates[]={WIFI_STREAM_DIVISOR,434u,50u,30u,25u,54u,109u};
+    for(uint32_t i=0;i<sizeof(rates)/sizeof(rates[0]);++i) {
         uart_flush();uart_write(8,rates[i]);
         (void)uart_at("AT\r\n",150);
         if(!uart_at("AT\r\n",300)) continue;
-        if(rates[i]==WIFI_STREAM_DIVISOR) return;
+        if(rates[i]==WIFI_STREAM_DIVISOR) {uart_flush();return;}
         if(!uart_at(WIFI_STREAM_UART_COMMAND,500)) return;
         for(volatile uint32_t wait=0;wait<4000000u;++wait) {}
         uart_flush();uart_write(8,WIFI_STREAM_DIVISOR);
-        if(uart_at("AT\r\n",300)) return;
+        /* Failed baud probes can latch framing errors before a verified AT.
+           Clear only here, before any session/audio traffic exists. */
+        if(uart_at("AT\r\n",300)) {uart_flush();return;}
         uart_flush();uart_write(8,rates[i]);return;
     }
 #else
@@ -119,7 +140,14 @@ static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_
     arm_tls_init();
 #endif
     speech_playback_init();
+#ifdef Z7_REMOTE_DISPLAY
+    remote_display_init(now);
+#endif
     service_ms=now-1u;network_upload_duration=upload_sequence=upload_ready=0;
+#ifdef Z7_LATENCY_PROBE
+    for(uint32_t i=0;i<16u;++i) service_perf[i]=0;
+    perf_last=perf_clean=0;
+#endif
     ui_render_set_service(render_service);
 #ifdef Z7_UART_921600
     uart_accepted=0;
@@ -128,7 +156,23 @@ static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_
 static void network_background_tick(struct ui_state *s,uint32_t now) {
     if(now-service_ms<1u) return;
     service_ms=now;
+#ifdef Z7_LATENCY_PROBE
+    uint32_t perf_start=gt_ticks(),perf_stage=perf_start;
+    uint32_t gap=perf_start-perf_last;perf_last=perf_start;
+    if(service_perf[0] && cloud_client_ready() && gap>service_perf[1]) service_perf[1]=gap;
+    ++service_perf[0];
+#endif
+#ifdef Z7_HISTORY_UI
+    static const uint32_t speeds[]={80,100,120};
+    speech_playback_settings(s->tts_enabled,s->output_muted?0u:s->output_volume,
+                             speeds[s->rate_index<3u?s->rate_index:1u]);
+#endif
     speech_playback_tick(now);
+#ifdef Z7_HISTORY_UI
+    struct speech_status voice;speech_playback_status(&voice);
+    s->voice_status=voice.state;s->voice_latency_ms=voice.latency_ms;
+    s->voice_latency_valid=voice.latency_valid;s->voice_buffer_ms=voice.buffer_ms;
+#endif
 #ifdef Z7_ARM_TLS
     network_cloud_run(cloud_live_capture_enabled());
 #endif
@@ -142,15 +186,28 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
     if(network_info.phase==6u) cloud_client_stop();
 #endif
     cloud_live_tick(now);
+#ifdef Z7_LATENCY_PROBE
+    service_measure(2u,perf_stage);perf_stage=gt_ticks();
+#endif
 #ifdef Z7_ARM_TLS
     if(cloud_live_capture_enabled() || network_info.phase!=8u) arm_tls_tick(now);
     if(cloud_live_capture_enabled() && arm_tls_ready()) cloud_client_start(now);
 #else
     if(network_info.phase==8u) cloud_client_start(now);
 #endif
+#ifdef Z7_LATENCY_PROBE
+    service_measure(4u,perf_stage);perf_stage=gt_ticks();
+#endif
     cloud_client_tick(now);
+#ifdef Z7_LATENCY_PROBE
+    service_measure(6u,perf_stage);service_measure(8u,perf_start);
+    if(now-perf_clean>=200u) {perf_clean=now;cache_clean_range((const void *)service_perf,sizeof(service_perf));}
+#endif
 #ifdef Z7_ARM_TLS
     cloud_live_connection(cloud_client_ready());
+#endif
+    #ifdef Z7_REMOTE_DISPLAY
+    remote_display_tick(now);
 #endif
     if(stream_pilot.request || stream_pilot.phase) stream_pilot_tick(now);
     else if(!cloud_live_owns_ui()

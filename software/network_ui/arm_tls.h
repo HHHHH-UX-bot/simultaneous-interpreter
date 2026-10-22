@@ -9,4 +9,5 @@ int arm_tls_ready(void);
 int arm_tls_active(void);
 int arm_tls_send(const uint8_t *data,uint32_t size);
 int arm_tls_attach(void (*receive)(uint8_t));
+int arm_tls_attach_bytes(void (*receive)(const uint8_t *,uint32_t));
 #endif

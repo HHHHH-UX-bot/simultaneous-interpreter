@@ -32,8 +32,8 @@ struct ui_snapshot {
 _Static_assert(sizeof(struct display_result)==64,"Display ABI");
 _Static_assert(sizeof(struct ui_information)==64,"UI ABI");
 #ifdef Z7_HISTORY_UI
-_Static_assert(sizeof(struct ui_state)==135768u,"History model ABI");
-_Static_assert(sizeof(struct ui_snapshot)==135832u,"History snapshot ABI");
+_Static_assert(sizeof(struct ui_state)==135804u,"History/settings model ABI");
+_Static_assert(sizeof(struct ui_snapshot)==135868u,"History/settings snapshot ABI");
 #else
 _Static_assert(sizeof(struct ui_state)==11392u,"ARM/native model ABI requires 32-bit enums");
 _Static_assert(sizeof(struct ui_snapshot)==11456u,"ARM/native snapshot ABI");
@@ -127,6 +127,19 @@ static void process_command(void) {
 }
 static void process_controls(void) {
     process_command();
+#ifdef Z7_REMOTE_DISPLAY
+    _Static_assert(sizeof(struct ui_history_entry)==2072u,"Remote finalized history ABI");
+    if(remote_display_history_requested())
+        remote_display_history_publish(state.history,state.history_count,sizeof(state.history[0]),state.history_discarded,state.epoch,state.final_count);
+    struct remote_pointer pointer;
+    if(remote_display_input(&pointer)) {
+        uint32_t accepted=pointer.epoch==ui_view_context(&state)?ui_touch_remote(&state,pointer.press_x,pointer.press_y,pointer.x,pointer.y):0;
+        remote_display_ack(accepted,ui_view_context(&state));
+#ifdef UI_CONTROL_ACCEPTED
+        if(accepted) UI_CONTROL_ACCEPTED((enum ui_command)(accepted-1u));
+#endif
+    }
+#endif
 #ifdef Z7_NANO_TOUCH
     uint32_t command=ui_touch_poll((const volatile struct touch_link *)TOUCH_LINK_ADDRESS,&touch_feedback,&state);
     if(command>=5u && state.session==UI_RUNNING && demo.phase==4u) demo.marked_ms=now_ms();
@@ -161,6 +174,9 @@ static void draw(uint32_t index,uint32_t elapsed,uint32_t page) {
 #endif
 }
 static void publish_ui(uint32_t active) {
+#ifdef Z7_REMOTE_DISPLAY
+    remote_display_present((const uint32_t *)(active?FB_BASE1:FB_BASE0),snapshots[active].generation,ui_view_context(&snapshots[active].state));
+#endif
     const struct ui_state *shown=&snapshots[active].state;
     ++ui_info.sequence;barrier();
     ui_info.magic=0x55493131u;ui_info.snapshot_base=(uint32_t)snapshots;

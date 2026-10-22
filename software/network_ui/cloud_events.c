@@ -70,7 +70,7 @@ static int cloud_json_scalar(const char *s,int end,int *at,uint32_t *cp) {
     if(*cp=='\n' || *cp=='\r' || *cp=='\t') *cp=' ';
     return *cp>=0x20u && *cp!=0x7fu && *cp<=0x10ffffu && !(*cp>=0xd800u && *cp<=0xdfffu);
 }
-static enum cloud_parse_code cloud_json_text(const char *s,const jsmntok_t *t,int token,uint32_t *out) {
+static enum cloud_parse_code cloud_json_text(const char *s,const jsmntok_t *t,int token,uint32_t *out,int allow_empty) {
     if(token<0 || t[token].type!=JSMN_STRING) return CLOUD_SCHEMA;
     int at=t[token].start;uint32_t n=0;
     while(at<t[token].end) {
@@ -85,7 +85,7 @@ static enum cloud_parse_code cloud_json_text(const char *s,const jsmntok_t *t,in
         if(!cloud_json_scalar(s,t[token].end,&at,out+n)) return CLOUD_JSON;
         ++n;
     }
-    out[n]=0;return n?CLOUD_OK:CLOUD_SCHEMA;
+    out[n]=0;return (n || allow_empty)?CLOUD_OK:CLOUD_SCHEMA;
 }
 /* Appends a JSON string to an existing UTF-32 buffer (partial ASR text). */
 static enum cloud_parse_code cloud_json_text_append(const char *s,const jsmntok_t *t,int token,
@@ -173,7 +173,9 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
     if(cloud_json_equal(s,tokens+type,"conversation.item.input_audio_transcription.completed")) {
         event->kind=CLOUD_ASR_FINAL;
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
-        return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,"transcript"),event->text);
+        /* An explicit empty ASR final terminates a false VAD/speculative turn.
+           Missing or non-string transcripts remain schema errors. */
+        return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,"transcript"),event->text,1);
     }
     if(cloud_json_equal(s,tokens+type,"response.audio.delta")) {
         value=cloud_json_member(s,tokens,count,0,"delta");
@@ -208,7 +210,7 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         int rtok=cloud_json_member(s,tokens,count,0,"response_id");
         if(rtok>=0) (void)cloud_json_identifier(s,tokens,rtok,event->response_id);
         int dtok=cloud_json_member(s,tokens,count,0,"delta");
-        if(dtok<0 || cloud_json_text(s,tokens,dtok,event->text)) event->text[0]=0;
+        if(dtok<0 || cloud_json_text(s,tokens,dtok,event->text,0)) event->text[0]=0;
         return CLOUD_OK;
     }
     if(cloud_json_equal(s,tokens+type,"response.text.done") || cloud_json_equal(s,tokens+type,"response.audio_transcript.done")) {
@@ -216,14 +218,32 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"response_id"),event->response_id);if(code) return code;
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,0,"item_id"),event->item_id);if(code) return code;
         const char *key=cloud_json_equal(s,tokens+type,"response.audio_transcript.done")?"transcript":"text";
-        return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,key),event->text);
+        return cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,0,key),event->text,0);
     }
     if(cloud_json_equal(s,tokens+type,"response.done")) {
         event->kind=CLOUD_RESPONSE_DONE;int response=cloud_json_member(s,tokens,count,0,"response");
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,response,"id"),event->response_id);if(code) return code;
         value=cloud_json_member(s,tokens,count,response,"status");
         if(value<0 || tokens[value].type!=JSMN_STRING) return CLOUD_SCHEMA;
-        event->completed=(uint32_t)cloud_json_equal(s,tokens+value,"completed");return CLOUD_OK;
+        event->completed=(uint32_t)cloud_json_equal(s,tokens+value,"completed");
+        /* response.done also carries authoritative output. A separate transcript
+           done event can be absent; never substitute a speculative preview. */
+        int output=cloud_json_member(s,tokens,count,response,"output");
+        if(event->completed && output>=0 && tokens[output].type==JSMN_ARRAY && tokens[output].size==1) {
+            int item=output+1,content=cloud_json_member(s,tokens,count,item,"content");
+            int status=cloud_json_member(s,tokens,count,item,"status"),role=cloud_json_member(s,tokens,count,item,"role");
+            if(status>=0 && role>=0 && cloud_json_equal(s,tokens+status,"completed") &&
+               cloud_json_equal(s,tokens+role,"assistant") && content>=0 &&
+               tokens[content].type==JSMN_ARRAY && tokens[content].size==1) {
+                int part=content+1,kind=cloud_json_member(s,tokens,count,part,"type");
+                const char *key=kind>=0 && cloud_json_equal(s,tokens+kind,"audio")?"transcript":
+                    (kind>=0 && cloud_json_equal(s,tokens+kind,"text")?"text":0);
+                if(key && !cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,item,"id"),event->item_id) &&
+                   !cloud_json_text(s,tokens,cloud_json_member(s,tokens,count,part,key),event->text,1)) event->output_final=1;
+                else {event->item_id[0]=0;event->text[0]=0;}
+            }
+        }
+        return CLOUD_OK;
     }
     if(cloud_json_equal(s,tokens+type,"input_audio_buffer.speech_started")) {
         event->kind=CLOUD_SPEECH_STARTED;
@@ -256,7 +276,10 @@ enum cloud_parse_code cloud_event_parse(const char *s,uint32_t bytes,struct clou
         event->kind=CLOUD_ERROR;int error=cloud_json_member(s,tokens,count,0,"error");
         code=cloud_json_identifier(s,tokens,cloud_json_member(s,tokens,count,error,"code"),event->error_code);
         if(code) return code;
-        return cloud_json_ascii(s,tokens,cloud_json_member(s,tokens,count,error,"message"),event->error_message);
+        /* A valid service error code must not disappear because its human
+           message is non-ASCII or longer than the small diagnostic buffer. */
+        (void)cloud_json_ascii(s,tokens,cloud_json_member(s,tokens,count,error,"message"),event->error_message);
+        return CLOUD_OK;
     }
     return CLOUD_OK;
 }

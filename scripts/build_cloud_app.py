@@ -64,7 +64,7 @@ SOURCES = [
 OPUS_DIR = ROOT / "third_party/opus"
 OPUS_CFLAGS = [
     "-mcpu=cortex-a9", "-marm", "-mfloat-abi=soft", "-mno-unaligned-access",
-    "-Os", "-g", "-ffreestanding", "-fno-builtin", "-fno-stack-protector",
+    "-O2", "-g", "-ffreestanding", "-fno-builtin", "-fno-stack-protector",
     "-fno-strict-aliasing", "-fno-short-enums", "-std=c11",
     "-DFIXED_POINT", "-DOPUS_BUILD", "-DDISABLE_FLOAT_API=1", "-DVAR_ARRAYS=1",
     "-include", str(OPUS_DIR / "config/opus_alloc_override.h"),
@@ -116,21 +116,30 @@ def main():
                         help="source/target profile: zhzh, zhen, enzh or enen")
     parser.add_argument("--selftest", action="store_true",
                         help="build the microphone-less self-test ELF from the matching generated TTS PCM")
+    parser.add_argument("--selftest-pcm",type=Path,help="project-local generated PCM C file for a custom automatic speech test; requires --selftest")
+    parser.add_argument("--selftest-once",action="store_true",help="send the synthetic speech once, then continue streaming silence")
     parser.add_argument("--touch",action="store_true",help="enable the Z7-Nano CPU1 touch consumer")
+    parser.add_argument("--remote-display",action="store_true",help="PL Ethernet framebuffer and mouse input; requires ARM TLS and touch profile")
     parser.add_argument("--speech", action="store_true",help="translated audio on lineout (requires playback PL; automatic for enzh)")
     parser.add_argument("--text-only-response", action="store_true", help="diagnostic: request text only while retaining the same audio upload/playback build")
     parser.add_argument("--output-dir", type=Path, help="separate build directory, including ELF, symbols and metadata")
     parser.add_argument("--link-diagnostics", action="store_true", help="sample ESP heap at idle AT boundaries")
+    parser.add_argument("--event-id-trace", action="store_true", help="record bounded hashed event IDs/lengths; no speech text")
+    parser.add_argument("--latency-probe", action="store_true", help="record queue and transport timing metadata; no audio/text payloads")
+    parser.add_argument("--low-latency-playback", action="store_true", help="adapt 1.28 s / 2 s voice prefill to observed PCM receive cadence")
     parser.add_argument("--tls-passthrough", action="store_true", help="single verified TLS connection with raw duplex UART")
     parser.add_argument("--arm-tls", action="store_true", help="verified TLS on Zynq; ESP carries raw TCP")
     parser.add_argument("--arm-tls-packets", action="store_true", help="ARM TLS over acknowledged CIPSEND blocks, without UART passthrough")
+    parser.add_argument("--arm-tls-active-recv", action="store_true", help="ARM TCP packet transport with active IPD receive, avoiding passive read round trips")
     parser.add_argument("--arm-tls-recv-probe", action="store_true", help="diagnostic: query passive TCP length once after 60 seconds without payload")
     parser.add_argument("--tls-relay", help="diagnostic IPv4:port TCP relay; ARM still verifies the real cloud certificate")
     parser.add_argument("--tls-wire-trace",action="store_true",help="requires the matching TX_TRACE diagnostic PL")
     parser.add_argument("--drain-before-upload", action="store_true", help="experimental SSL receive-first scheduling")
     parser.add_argument("--ssl-read-until-empty", action="store_true", help="experimental SSL reads without encrypted-length queries")
-    parser.add_argument("--uart-baud", type=int, choices=(460800,921600,1000000,2000000),default=2000000)
+    parser.add_argument("--uart-baud", type=int, choices=(460800,921600,1000000,1666666,2000000),default=2000000)
     args = parser.parse_args()
+    if args.selftest_pcm and not args.selftest:parser.error('--selftest-pcm requires --selftest')
+    if args.selftest_once and not args.selftest:parser.error('--selftest-once requires --selftest')
     if PROFILE and args.mode != PROFILE["mode"]:
         parser.error("This folder belongs to " + PROFILE["mode"] + "; use its matching project")
     if args.mode == "enzh":
@@ -142,6 +151,8 @@ def main():
         parser.error("--arm-tls-packets requires --arm-tls without --tls-passthrough")
     if args.arm_tls_recv_probe and not args.arm_tls_packets:
         parser.error("--arm-tls-recv-probe requires --arm-tls-packets")
+    if args.arm_tls_active_recv and not args.arm_tls_packets:
+        parser.error("--arm-tls-active-recv requires --arm-tls-packets")
     if args.arm_tls:
         if args.mode == "zhen" and not args.speech:
             parser.error("--mode zhen --arm-tls requires --speech")
@@ -164,6 +175,10 @@ def main():
         raise SystemExit("ARM GCC not found: " + str(gcc))
     OUT.mkdir(parents=True, exist_ok=True)
     flags = list(FLAGS)
+    if args.event_id_trace or args.latency_probe:flags.append('-DZ7_EVENT_ID_TRACE')
+    if args.latency_probe:flags.append('-DZ7_LATENCY_PROBE')
+    if args.low_latency_playback:flags.append('-DZ7_LOW_LATENCY_PLAYBACK')
+    if args.arm_tls_active_recv:flags.append('-DZ7_ARM_TCP_ACTIVE_RECV')
     if args.tls_wire_trace:
         if not args.tls_relay:parser.error('--tls-wire-trace requires --tls-relay')
         if args.arm_tls_packets:parser.error('--tls-wire-trace requires UART passthrough; packet AT bytes are not TLS bytes')
@@ -201,6 +216,8 @@ def main():
         flags.append("-DZ7_UART_460800_STREAM")
     elif args.uart_baud==1000000:
         flags.append("-DZ7_UART_1M_STREAM")
+    elif args.uart_baud==1666666:
+        flags.append("-DZ7_UART_1666666_STREAM")
     flags = ["-Wl,-Map=" + str(OUT / "cloud_app.map") if flag.startswith("-Wl,-Map=") else flag for flag in flags]
     if args.mode == "zhen":
         flags.remove("-DZ7_ASR_SUBTITLE")
@@ -212,6 +229,9 @@ def main():
     elif args.mode == "enen":
         flags += ["-DZ7_SOURCE_EN", "-DZ7_RECOGNIZE_EN"]
     sources = list(SOURCES)
+    if args.remote_display:
+        if not args.arm_tls or not args.touch or args.mode not in ("zhen","enzh"):parser.error("--remote-display requires --arm-tls --touch and a bilingual mode")
+        flags.append("-DZ7_REMOTE_DISPLAY");sources.append("software/network_ui/remote_display.c")
     if args.touch:
         flags += ["-DZ7_NANO_TOUCH","-I",str(ROOT/"software/z7_nano_usb")]
         sources.append("software/subtitle_ui/ui_touch.c")
@@ -239,10 +259,11 @@ def main():
         flags.append("-DZ7_TEXT_ONLY_RESPONSE")
     elf_name = "cloud_app.elf"
     if args.selftest:
-        generated = ROOT / ("output/selftest_en/selftest_pcm.c" if args.mode in ("enzh", "enen") else "output/cloud_app/selftest_pcm.c")
+        generated = args.selftest_pcm.resolve() if args.selftest_pcm else ROOT / ("output/selftest_en/selftest_pcm.c" if args.mode in ("enzh", "enen") else "output/cloud_app/selftest_pcm.c")
         if not generated.is_file():
             raise SystemExit("selftest PCM not generated: " + str(generated))
         flags.append("-DZ7_SELFTEST_AUDIO")
+        if args.selftest_once:flags.append('-DZ7_SELFTEST_ONCE')
         sources.append(generated.relative_to(ROOT).as_posix())
         elf_name = "cloud_app_selftest.elf"
     opus_objects = OUT / "opus_obj"
@@ -291,12 +312,19 @@ def main():
         "Flags": flags,
         "Sources": sources,
         "Selftest": bool(args.selftest),
+        "SelftestOnce": bool(args.selftest_once),
+        "EventIDTrace": bool(args.event_id_trace or args.latency_probe),
+        "LatencyProbe": bool(args.latency_probe),
+        "LowLatencyPlayback": bool(args.low_latency_playback),
+        "OpusOptimization": "O2",
         "Touch": bool(args.touch),
+        "RemoteDisplay":bool(args.remote_display),
         "Mode": args.mode,
         "Speech": bool(args.speech),
         "TextOnlyResponse": bool(args.text_only_response),
         "ArmTLS": bool(args.arm_tls),
         "ArmTLSPackets": bool(args.arm_tls_packets),
+        "ArmTLSActiveReceive": bool(args.arm_tls_active_recv),
         "ArmTLSReceiveProbe": bool(args.arm_tls_recv_probe),
         "TLSWireTrace": bool(args.tls_wire_trace),
         "UARTBaud": args.uart_baud,

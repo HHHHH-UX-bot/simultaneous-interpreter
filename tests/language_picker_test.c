@@ -47,7 +47,7 @@ int main(void) {
     CHECK(click(300,UI_LANGUAGE_MENU_Y+10)==UI_SELECT_EN_ZH+1);
     CHECK(state.session==UI_PAUSED && state.language==UI_EN_ZH);
     CHECK(feedback.accepted[UI_FONT_PLUS]==1 && feedback.reserved==10 && feedback.ignored==1);
-    CHECK(sizeof(state)==135768 && sizeof(feedback)==64);
+    CHECK(sizeof(state)==135804 && sizeof(feedback)==64);
     puts("PASS_LANGUAGE_PICKER touch, dismiss, drag, same selection, epoch and paused change");
     return 0;
 #endif

@@ -57,7 +57,7 @@ def main():
         display.save(OUT/"host_build.json",{"status":"building","input_hashes":before})
         flags=["-mcpu=cortex-a9","-marm","-mfloat-abi=soft","-mno-unaligned-access","-O2","-g","-ffreestanding",
                "-fno-builtin","-fno-stack-protector","-ffunction-sections","-fdata-sections",
-               "-Wall","-Wextra","-Werror","-nostdlib","-Wl,--build-id=none,--gc-sections",
+               "-Wall","-Wextra","-Werror","-nostdlib","-Wl,--build-id=none,--gc-sections,-z,max-page-size=4096",
                "-T",SRC/"host_link.ld","-I",SRC,"-I",VENDOR/"src","-I",OUT,
                "-Wl,-Map="+str(OUT/"host.map")]
         base.run([args.gcc,*flags,ROOT/"software/ps_bringup/start.S",SRC/"host.c",SRC/"usb_board.c",SRC/"touch_input.c",

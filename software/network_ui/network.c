@@ -111,6 +111,13 @@ __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t receive
 static uint32_t link_recovering,link_recovery_started;
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t link_recovery_diag[7];
 #define PASSIVE_READ_BYTES 2048u
+#define PASSIVE_READ_COMMAND "AT+CIPRECVDATA=0,2048\r\n"
+#ifdef Z7_LATENCY_PROBE
+/* RX count/bytes/total/max milliseconds/peak pending; TX count/bytes/total/max.
+   Public transport metadata only, not AT replies or credential storage. */
+__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t transport_perf[16];
+static uint32_t perf_rx_ms,perf_rx_bytes,perf_tx_ms,perf_report_ms;
+#endif
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t duplex_fault_state[25];
 /* Capture sticky hardware evidence before recovery clears the UART counters. */
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t first_uart_fault[8];
@@ -225,6 +232,17 @@ static int starts(const char *s,const char *prefix) {
 }
 #endif
 static void wipe(char *p,uint32_t n) {volatile char *v=p;while(n--) *v++=0;fence();}
+static void clear_reply(void) {
+    reply_size=reply_line_start=0;wipe(reply,sizeof(reply));
+}
+static void remove_notification_reply(void) {
+    if(reply_line_start<reply_size) reply_size=reply_line_start;
+    /* Active IPD blocks each carry CRLF framing. Keep one delimiter so
+       complete AT replies remain recognizable, without growing per packet. */
+    while(reply_size>=4u && reply[reply_size-4u]=='\r' && reply[reply_size-3u]=='\n' &&
+          reply[reply_size-2u]=='\r' && reply[reply_size-1u]=='\n') reply_size-=2u;
+    reply[reply_size]=0;
+}
 static void fault(uint32_t error) {
 #ifdef Z7_PASSIVE_RECV_PROBE
     receive_probe_done(2,0);
@@ -278,12 +296,12 @@ static void fault(uint32_t error) {
     if(raw_state==6 || raw_state==RAW_UNCONFIRMED) {
         raw_state=RAW_UNCONFIRMED;command_phase=ack_pending=0;
         network_info.phase=6;network_info.error=42;
-        wipe(command,sizeof(command));wipe(reply,sizeof(reply));return;
+        wipe(command,sizeof(command));clear_reply();return;
     }
     if(raw_state==7) {
         raw_state=command_phase=ack_pending=0;network_info.phase=6;
         if(!network_info.error) network_info.error=error;
-        wipe(command,sizeof(command));wipe(reply,sizeof(reply));return;
+        wipe(command,sizeof(command));clear_reply();return;
     }
     if(raw_state) {
         if(!network_info.error) network_info.error=error;
@@ -293,14 +311,14 @@ static void fault(uint32_t error) {
     if(network_capabilities.phase==1) {network_capabilities.phase=6;network_capabilities.error=error;}
 #endif
     network_info.phase=6;network_info.error=error;command_phase=0;ack_pending=0;resync=0;
-    wipe(command,sizeof(command));wipe(reply,sizeof(reply));wipe(join_command,sizeof(join_command));
+    wipe(command,sizeof(command));clear_reply();wipe(join_command,sizeof(join_command));
     if(enabled) (void)ui_control(model,UI_PAUSE);
 }
 static void begin_command(const char *text,uint32_t timeout) {
     command_size=length(text);
     if(command_size>=sizeof(command)) {fault(10);return;}
     for(uint32_t i=0;i<=command_size;++i) command[i]=text[i];
-    command_pos=reply_size=0;reply[0]=0;command_deadline=current_time+timeout;command_phase=1;
+    command_pos=reply_size=reply_line_start=0;reply[0]=0;command_deadline=current_time+timeout;command_phase=1;
 }
 static uint32_t decimal(char *p,uint32_t v) {
     char reversed[10];uint32_t n=0;
@@ -338,6 +356,9 @@ int network_send(const uint8_t *data,uint32_t size) {
     if(tls_mode && !tx_trace_frozen) tls_tx_trace_add(network_tx_queue_trace,ack,size);
 #endif
     send_size=size;ack_pending=1;
+#ifdef Z7_LATENCY_PROBE
+    perf_tx_ms=current_time;
+#endif
     if(raw_state==1) {command_phase=3;command_pos=0;command_deadline=current_time+10000;}
     else send_ack_command();
     return 1;
@@ -441,7 +462,7 @@ static int tls_time_valid(void) {
 static void tls_result(int failure) {
     if(tls_closing) {
         if(failure && (tls_closing!=1 || tls_connected)) {fault(46);return;}
-        command_phase=0;wipe(reply,sizeof(reply));line_used=0;
+        command_phase=0;clear_reply();line_used=0;
         if(tls_closing==1) {
             tls_connected=0;tls_closing=2;begin_command("AT+CIPMUX=0\r\n",4000);
 #ifdef Z7_STREAM_TRANSPORT
@@ -463,13 +484,13 @@ static void tls_result(int failure) {
     if(tls_step==4 && !contains(reply,"+CIPSSLCCONF:0,2,0,0\r\n")) {fault(44);return;}
     if(tls_step==2 && !tls_time_valid()) {
         if((int32_t)(current_time-tls_time_deadline)>=0) {fault(45);return;}
-        command_phase=0;wipe(reply,sizeof(reply));tls_wait_until=current_time+1000u;return;
+        command_phase=0;clear_reply();tls_wait_until=current_time+1000u;return;
     }
     if(tls_step==7 && !tls_connected) {fault(44);return;}
 #else
     if(tls_step==1 && !tls_connected) {fault(44);return;}
 #endif
-    command_phase=0;wipe(reply,sizeof(reply));
+    command_phase=0;clear_reply();
     if(++tls_step<sizeof(tls_commands)/sizeof(tls_commands[0])) {
         if(tls_step==2) tls_time_deadline=current_time+15000u;
         tls_issue();
@@ -533,7 +554,7 @@ static void capability_result(int failure) {
         }
         if(valid) network_capabilities.ok_mask|=bit;else network_capabilities.invalid_mask|=bit;
     }
-    command_phase=0;wipe(reply,sizeof(reply));
+    command_phase=0;clear_reply();
     if(++capability_query<5) {
         network_capabilities.query_index=capability_query;begin_command(capability_commands[capability_query],4000);
     } else {network_capabilities.phase=2;network_info.phase=0;}
@@ -644,7 +665,7 @@ static void configuration(void) {
     if(cloud_tls) {tls_mode=1u+network_config.reserved;tls_step=tls_wait_until=tls_connected=tls_closing=0;peer=0;}
 #endif
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
-#ifdef Z7_TLS_PASSTHROUGH
+#if defined(Z7_TLS_PASSTHROUGH) || defined(Z7_ARM_TCP_ACTIVE_RECV)
     passive_enabled=0;
 #else
     passive_enabled=cloud_tls;
@@ -695,8 +716,7 @@ static void line_event(void) {
         /* A prior SEND OK may have cleared reply while this notification was
            only partly received. Trimming must never grow the cleared buffer
            and expose NUL holes ahead of the next CIPSEND prompt. */
-        if(reply_line_start<reply_size) reply_size=reply_line_start;
-        reply[reply_size]=0;
+        remove_notification_reply();
         return;
     }
 #endif
@@ -768,6 +788,9 @@ static void receive(uint8_t byte) {
         while(i<line_used && line[i]>='0' && line[i]<='9') {count=count*10u+(uint32_t)(line[i++]-'0');if(count>PASSIVE_READ_BYTES) {fault(24);return;}}
         if(i==13 || i!=line_used-1u) {fault(24);return;}
         ipd_left=count;ipd_client=0;passive_header=1;line_used=0;
+#ifdef Z7_LATENCY_PROBE
+        perf_rx_bytes=count;
+#endif
         /* SSL's IPD count includes encrypted overhead. A successful empty
            plaintext read must not leave that overhead as a permanent backlog. */
         passive_unread=count && passive_unread>count?passive_unread-count:0;
@@ -780,15 +803,14 @@ static void receive(uint8_t byte) {
         if(count==PASSIVE_READ_BYTES) passive_pending=1;
         else if(count && !passive_pending) passive_pending=2;
 #endif
-        if(reply_line_start<reply_size) reply_size=reply_line_start;
-        reply[reply_size]=0;
+        remove_notification_reply();
         return;
     }
 #endif
     if(byte==':' && ipd_header()) {
         // Remove the IPD prefix already collected in the response buffer.
         // It is notification framing, not an AT command reply.
-        if(reply_line_start<=reply_size) {reply_size=reply_line_start;reply[reply_size]=0;}
+        remove_notification_reply();
     }
     if(byte=='>' && command_phase==2 && ack_pending && network_info.phase==4) {line_used=0;prompt_padding=1;}
 }
@@ -810,7 +832,7 @@ static void command_tick(void) {
         if(network_info.phase==4 && stream_receive) {
             ++send_failures;network_info.last_code=800u+(send_failures>99u?99u:send_failures);
             command_phase=ack_pending=0;command_size=command_pos=0;
-            wipe(reply,sizeof(reply));reply_size=0;
+            clear_reply();
             if(!resync) {resync=1;begin_command("AT\r\n",2000);return;}
         }
         fault(27);return;
@@ -826,14 +848,20 @@ static void command_tick(void) {
         for(uint32_t budget=0;budget<64 && command_pos<command_size && (read_reg(4)&2u);++budget)
             write_reg(16,(uint8_t)command[command_pos++]);
         if(command_pos<command_size || (read_reg(4)&4u)) return;
-        command_phase=2;wipe(command,sizeof(command));reply_size=0;reply[0]=0;
+        command_phase=2;wipe(command,sizeof(command));reply_size=reply_line_start=0;reply[0]=0;
     } else if(command_phase==3) {
         /* With no RTS/CTS, flooding the ESP RX UART while it decrypts and
            streams PCM can lose input bytes. Pace audio-mode writes at up to
            8 bytes/ms while continuing to drain the independent receive stream. */
 #ifdef Z7_STREAM_TRANSPORT
 #ifdef Z7_NETWORK_CAPABILITIES
+#ifdef Z7_ARM_TLS
+        /* ESP carries TCP only: match the already tested passive TCP budget.
+           The SSL-only eight-byte throttle otherwise backs up active uploads. */
+        const uint32_t tx_budget=64u;
+#else
         const uint32_t tx_budget=passive_enabled?64u:8u;
+#endif
 #else
         const uint32_t tx_budget=8u;
 #endif
@@ -859,12 +887,16 @@ static void command_tick(void) {
 #ifdef Z7_STREAM_TRANSPORT
             if(stream_receive) {fault(28);return;}
 #endif
-            wipe(reply,sizeof(reply));reply_size=0;return;
+            clear_reply();return;
         }
         if(contains(reply,"\r\nSEND OK\r\n")) {
-            send_failures=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;
+#ifdef Z7_LATENCY_PROBE
+            uint32_t ms=current_time-perf_tx_ms;++transport_perf[8];transport_perf[9]+=send_size;
+            transport_perf[10]+=ms;if(ms>transport_perf[11]) transport_perf[11]=ms;
+#endif
+            send_failures=0;command_phase=ack_pending=0;clear_reply();return;
         }
-        if(resync && contains(reply,"\r\nOK\r\n")) {resync=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));return;}
+        if(resync && contains(reply,"\r\nOK\r\n")) {resync=0;command_phase=ack_pending=0;clear_reply();return;}
         return;
     }
     if(command_phase!=2) return;
@@ -872,7 +904,7 @@ static void command_tick(void) {
     if(tls_mode && network_info.phase==1 && setup_step==SETUP_COUNT && tls_step==(sizeof(tls_commands)/sizeof(tls_commands[0]))-1u) {
         if(contains(reply,"ERROR") || contains(reply,"FAIL")) {fault(43);return;}
         if(!contains(reply,">")) return;
-        command_phase=0;reply_size=line_used=0;wipe(reply,sizeof(reply));
+        command_phase=0;reply_size=line_used=0;clear_reply();
         raw_state=1;network_info.phase=8;network_info.client=0;
         tls_step=(uint32_t)(sizeof(tls_commands)/sizeof(tls_commands[0]));
         saved_retry_count=saved_retry_at=0;return;
@@ -893,7 +925,7 @@ static void command_tick(void) {
             network_heap[5]=current_time;network_heap[8]=1;
         } else network_heap[8]=2;
         network_heap[0]=0x31504845u;heap_clean();
-        heap_query=command_phase=0;reply_size=0;wipe(reply,sizeof(reply));return;
+        heap_query=command_phase=0;clear_reply();return;
     }
 #endif
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
@@ -903,7 +935,7 @@ static void command_tick(void) {
 #ifdef Z7_SSL_NO_LENGTH_QUERY
             /* ERROR can mean an empty socket or a transient allocation miss.
                Retry once, then poll at a low rate; never query encrypted length. */
-            passive_read=command_phase=0;reply_size=0;wipe(reply,sizeof(reply));
+            passive_read=command_phase=0;clear_reply();
             if(++passive_empty_attempts<2u) {
                 passive_pending=1;passive_retry_at=current_time+20u;
             } else {
@@ -933,7 +965,14 @@ static void command_tick(void) {
                 if(count) passive_pending=1;
                 passive_retry_at=current_time+(count?0u:20u);
             } else if(!passive_header || ipd_left) {fault(24);return;}
-            passive_read=command_phase=0;wipe(reply,sizeof(reply));reply_size=0;
+#ifdef Z7_LATENCY_PROBE
+            if(passive_read==1u) {
+                uint32_t ms=current_time-perf_rx_ms;++transport_perf[1];transport_perf[2]+=perf_rx_bytes;
+                transport_perf[3]+=ms;if(ms>transport_perf[4]) transport_perf[4]=ms;
+                transport_perf[7]=current_time;transport_perf[13]=perf_rx_bytes;
+            }
+#endif
+            passive_read=command_phase=0;clear_reply();
         }
         return;
     }
@@ -941,7 +980,7 @@ static void command_tick(void) {
     if(peer && setup_step==SETUP_SERVER && !raw_state) {
         if(contains(reply,"ERROR") || contains(reply,"FAIL")) fault(29);
         else if(contains(reply,">")) {
-            command_phase=0;line_used=reply_size=0;reply[0]=0;raw_state=1;
+            command_phase=0;line_used=reply_size=reply_line_start=0;reply[0]=0;raw_state=1;
             network_info.phase=4;network_info.client=0;enabled=1;
             (void)ui_control(model,UI_CLEAR);(void)ui_control(model,UI_START);
         }
@@ -955,26 +994,26 @@ static void command_tick(void) {
 #ifdef Z7_STREAM_TRANSPORT
             if(stream_receive) {fault(28);return;}
 #endif
-            wipe(reply,sizeof(reply));reply_size=0;
+            clear_reply();
             if(send_failures>8u) fault(28);
             else if(!resync) {resync=1;begin_command("AT\r\n",2000);}
             return;
         }
-        else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=0;reply[0]=0;command_deadline=current_time+30000;}
+        else if(contains(reply,">")) {command_phase=3;command_pos=0;reply_size=reply_line_start=0;reply[0]=0;command_deadline=current_time+30000;}
         return; // An earlier OK is not the CIPSEND prompt.
     }
     if(network_info.phase==4 && resync) {
         /* The AT resync probe reply belongs to the probe, not to the setup/TLS
            state machine: swallowing it prevents a stray phase=3 transition. */
         if(contains(reply,"\r\nOK\r\n") || contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n")) {
-            resync=0;command_phase=ack_pending=0;wipe(reply,sizeof(reply));reply_size=0;
+            resync=0;command_phase=ack_pending=0;clear_reply();
         }
         return;
     }
     int failure=contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n");
     if(!contains(reply,"\r\nOK\r\n") && !failure) return;
     if(raw_state==6 || raw_state==7) {
-        command_phase=0;wipe(reply,sizeof(reply));line_used=0;
+        command_phase=0;clear_reply();line_used=0;
         if(failure) {if(!network_info.error) network_info.error=41;raw_state=0;network_info.phase=6;return;}
         if(raw_state==6) {raw_state=7;begin_command("AT+CIPCLOSE\r\n",4000);}
         else {
@@ -1024,7 +1063,7 @@ static void command_tick(void) {
 #endif
     }
     if(setup_step==SETUP_IP) {network_info.sta_ip=parse_ip(reply);if(!network_info.sta_ip) {fault(31);return;}}
-    command_phase=0;wipe(reply,sizeof(reply));
+    command_phase=0;clear_reply();
 #ifdef Z7_NETWORK_CAPABILITIES
     if(tls_mode && setup_step==SETUP_ACTIVE_RECEIVE) {setup_step=SETUP_COUNT;tls_issue();return;}
 #endif
@@ -1053,6 +1092,10 @@ static void raw_cleanup(void) {
 }
 void network_init(wifi_read_fn r,wifi_write_fn w) {
     read_reg=r;write_reg=w;
+#ifdef Z7_LATENCY_PROBE
+    for(uint32_t i=0;i<16u;++i) transport_perf[i]=0;
+    perf_rx_ms=perf_rx_bytes=perf_tx_ms=perf_report_ms=0;
+#endif
 #ifdef Z7_NETWORK_CAPABILITIES
     cloud_suspended=cloud_resume_pending=0;
 #endif
@@ -1188,13 +1231,13 @@ static void recover_uart(void) {
             uart_recovery=2;uart_recovery_pos=current_time+100u;
         }
     } else if(uart_recovery==2 && (int32_t)(current_time-uart_recovery_pos)>=0) {
-        uart_recovery=3;uart_recovery_pos=0;reply_size=0;reply[0]=0;
+        uart_recovery=3;uart_recovery_pos=0;reply_size=reply_line_start=0;reply[0]=0;
     } else if(uart_recovery==3) {
         const char probe[]="AT\r\n";
         while(uart_recovery_pos<4u && (read_reg(4)&2u)) write_reg(16,(uint8_t)probe[uart_recovery_pos++]);
         if(uart_recovery_pos==4u && !(read_reg(4)&4u)) uart_recovery=4;
     } else if(uart_recovery==4 && contains(reply,"\r\nOK\r\n")) {
-        uart_sync_needed=uart_recovery=0;reply_size=0;wipe(reply,sizeof(reply));retry_setup();
+        uart_sync_needed=uart_recovery=0;clear_reply();retry_setup();
     }
 }
 #endif
@@ -1217,7 +1260,7 @@ static void retry_faulted(void) {
     }
     if(uart_sync_needed) {
         uart_recovery=1;uart_recovery_pos=0;uart_recovery_deadline=current_time+5000u;
-        stream_receive=0;reply_size=0;reply[0]=0;return;
+        stream_receive=0;reply_size=reply_line_start=0;reply[0]=0;return;
     }
 #endif
     retry_setup();
@@ -1273,7 +1316,7 @@ void network_tick(struct ui_state *state,uint32_t now) {
         // Promote a fully transmitted command BEFORE draining its response.
         // RX remains buffered while FIFO/prefetch/PHY is still busy.
         if(command_phase==1 && command_pos==command_size && !(read_reg(4)&4u)) {
-            command_phase=2;wipe(command,sizeof(command));reply_size=0;reply[0]=0;
+            command_phase=2;wipe(command,sizeof(command));reply_size=reply_line_start=0;reply[0]=0;
         } else if(command_phase==3 && command_pos==send_size && !(read_reg(4)&4u)) {
             command_phase=4; /* RX may already contain the early SEND OK. */
         }
@@ -1326,12 +1369,22 @@ void network_tick(struct ui_state *state,uint32_t now) {
                (int32_t)(current_time-passive_retry_at)>=0) {
                 uint32_t query=passive_pending==2u;
                 passive_pending=0;passive_read=query?2u:1u;passive_header=0;
-                begin_command(query?"AT+CIPRECVLEN?\r\n":"AT+CIPRECVDATA=0,2048\r\n",4000);
+#ifdef Z7_LATENCY_PROBE
+                perf_rx_ms=current_time;perf_rx_bytes=0;
+#endif
+                begin_command(query?"AT+CIPRECVLEN?\r\n":PASSIVE_READ_COMMAND,4000);
             }
 #endif
         }
     }
 done:
+#ifdef Z7_LATENCY_PROBE
+    if(now-perf_report_ms>=100u) {
+        perf_report_ms=now;transport_perf[0]=0x31465054u;transport_perf[6]=PASSIVE_READ_BYTES;transport_perf[12]=now;
+        if(passive_unread>transport_perf[5]) transport_perf[5]=passive_unread;
+        cache_clean_range((const void *)transport_perf,sizeof(transport_perf));
+    }
+#endif
 #if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
     /* Complete the owned binary transaction before issuing the close command. */
     if(packet_close_pending && (network_info.phase==4 || network_info.phase==8) &&

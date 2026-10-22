@@ -181,6 +181,12 @@ static uint32_t opus_head,opus_tail;
 static uint32_t opus_flush_ms=OPUS_FLUSH_MIN_MS;
 static uint32_t opus_wait_ms,opus_age_max_ms,opus_wait_max_ms;
 static uint32_t opus_wait_started,opus_waiting;
+#ifdef Z7_LATENCY_PROBE
+/* now, queued frames, current/sent-max age, wait-max, flush, capture FIFO,
+   encoded/sent frames, partial PCM bytes, FIFO peak. No payloads. */
+__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t pipeline_diag[12];
+static uint32_t pipeline_report_ms;
+#endif
 
 #ifdef Z7_ASR_SUBTITLE
 /* The dedicated ASR endpoint has a different session schema: translation and
@@ -302,6 +308,7 @@ void cloud_client_session_updated(void) {
 volatile uint32_t diag_speech_started,diag_peak;
 void cloud_client_speech_started(uint32_t audio_start_ms) {
     (void)audio_start_ms;
+    speech_playback_utterance();
     ++diag_speech_started;
     ++upload_diag.speech_started;
     upload_diag_clean();
@@ -364,7 +371,11 @@ void cloud_client_start(uint32_t now) {
     last_rx_ms=now;ping_sent=0;
 #endif
     cloud_live_begin(now);                     // model session + wire mapper
+#ifdef Z7_ARM_TLS
+    arm_tls_attach_bytes(cloud_client_receive_bytes);
+#else
     network_stream_attach(cloud_client_receive);
+#endif
     send_handshake();
 }
 
@@ -399,6 +410,15 @@ void cloud_client_receive(uint8_t byte) {
        client.phase==CLOUD_STREAMING) {
         cloud_wire_byte(byte);
     }
+}
+void cloud_client_receive_bytes(const uint8_t *data,uint32_t bytes) {
+#ifdef Z7_TLS_PASSTHROUGH
+    last_rx_ms=client.now_ms;keepalive_diag[3]=last_rx_ms;
+#endif
+    uint32_t at=0;
+    while(at<bytes && client.phase==CLOUD_HANDSHAKE) cloud_client_receive(data[at++]);
+    if(at<bytes && (client.phase==CLOUD_WAITING_SESSION || client.phase==CLOUD_WAITING_UPDATE || client.phase==CLOUD_STREAMING))
+        cloud_wire_bytes(data+at,bytes-at);
 }
 
 /* Discard everything the PL buffered before the cloud session started, so the
@@ -611,7 +631,13 @@ void cloud_client_tick(uint32_t now) {
         }
         queue_opus_frame(frame);
         selftest_ms+=20u;
-        if(selftest_ms>=selftest_speech_ms+30000u) selftest_ms=0;
+        if(selftest_ms>=selftest_speech_ms+30000u) {
+#ifdef Z7_SELFTEST_ONCE
+            selftest_ms=selftest_speech_ms+30000u;
+#else
+            selftest_ms=0;
+#endif
+        }
         selftest_next+=20u;
     }
 #else
@@ -668,6 +694,15 @@ void cloud_client_tick(uint32_t now) {
         }
         break;
     }
+#ifdef Z7_LATENCY_PROBE
+    if(now-pipeline_report_ms>=100u) {
+        pipeline_report_ms=now;
+        uint32_t d[]={0x314c5055u,now,opus_tail-opus_head,opus_tail!=opus_head?now-opus_packet_ms[opus_head%OPUS_QUEUE]:0,
+            opus_age_max_ms,opus_wait_max_ms,opus_flush_ms,audio_regs32(AUDIO_FIFO_COUNT),
+            opus_tail,client.opus_frames,client.pcm_bytes,upload_diag.fifo_max};
+        memcpy((void *)pipeline_diag,d,sizeof(d));cache_clean_range((const void *)pipeline_diag,sizeof(pipeline_diag));
+    }
+#endif
 #else
     uint32_t count=audio_regs32(AUDIO_FIFO_COUNT);
     if(count>256u) count=256u;

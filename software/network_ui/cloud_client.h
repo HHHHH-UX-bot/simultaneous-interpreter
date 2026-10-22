@@ -45,6 +45,7 @@ void cloud_client_speech_started(uint32_t audio_start_ms);
 void cloud_client_capture_freeze(void);
 void cloud_client_stop(void);
 void cloud_client_receive(uint8_t byte);
+void cloud_client_receive_bytes(const uint8_t *data,uint32_t bytes);
 void cloud_client_tick(uint32_t now);
 void cloud_client_translation(uint32_t now);
 void cloud_client_response_done(void);

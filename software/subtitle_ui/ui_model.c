@@ -94,6 +94,7 @@ void ui_init(struct ui_state *state)
     state->show_source = 1;
 #ifdef Z7_HISTORY_UI
     state->history_follow=1;
+    state->tts_enabled=1;state->output_volume=70;state->rate_index=1;
 #endif
 #ifdef Z7_TRANSLATE_EN
     state->language = UI_ZH_EN;
@@ -110,6 +111,13 @@ int ui_history_scroll(struct ui_state *state,int delta) {
     state->history_scroll=(uint32_t)next;
     state->history_follow=state->history_scroll==state->history_limit;
     increment(&state->change_sequence);return 1;
+}
+#endif
+#ifdef Z7_HISTORY_UI
+uint32_t ui_view_context(const struct ui_state *state)
+{
+    return (state->epoch<<4)|(state->settings_page?1u:0u)|(state->history_page?2u:0u)|
+           (state->language_menu?4u:0u)|(state->history_confirm?8u:0u);
 }
 #endif
 int ui_control(struct ui_state *state, enum ui_command command)
@@ -141,6 +149,10 @@ int ui_control(struct ui_state *state, enum ui_command command)
         break;
     case UI_CLEAR:
         if (state->epoch == UI_U32_MAX) return 0;
+#ifdef Z7_HISTORY_UI
+        uint32_t enabled=state->tts_enabled,volume=state->output_volume,muted=state->output_muted,rate=state->rate_index;
+        uint32_t settings_page=state->settings_page;
+#endif
         next_epoch = state->epoch + 1;
         font_index = state->font_index;
         show_source = state->show_source;
@@ -151,6 +163,10 @@ int ui_control(struct ui_state *state, enum ui_command command)
         state->font_index = font_index;
         state->show_source = show_source;
         state->language = language;
+#ifdef Z7_HISTORY_UI
+        state->tts_enabled=enabled;state->output_volume=volume;state->output_muted=muted;state->rate_index=rate;
+        state->settings_page=settings_page;
+#endif
         state->change_sequence = next_sequence;
         break;
     case UI_FONT_MINUS:
@@ -198,6 +214,7 @@ int ui_control(struct ui_state *state, enum ui_command command)
 #endif
 #ifdef Z7_HISTORY_UI
     case UI_OPEN_HISTORY:
+        state->settings_page=0;
         state->history_page=1;state->history_confirm=0;state->history_follow=1;state->language_menu=0;
         break;
     case UI_CLOSE_HISTORY:
@@ -222,6 +239,35 @@ int ui_control(struct ui_state *state, enum ui_command command)
         return ui_history_scroll(state,-(UI_HISTORY_BODY_HEIGHT-60));
     case UI_HISTORY_NEWER:
         return ui_history_scroll(state,UI_HISTORY_BODY_HEIGHT-60);
+    case UI_OPEN_SETTINGS:
+        state->settings_page=1;state->history_page=state->history_confirm=state->language_menu=0;
+        break;
+    case UI_CLOSE_SETTINGS:
+        if(!state->settings_page) return 0;
+        state->settings_page=0;
+        break;
+    case UI_TOGGLE_TTS:
+        state->tts_enabled=!state->tts_enabled;
+        break;
+    case UI_VOLUME_MINUS:
+        if(!state->output_volume) return 0;
+        state->output_volume=state->output_volume>=10u?state->output_volume-10u:0;
+        break;
+    case UI_VOLUME_PLUS:
+        if(state->output_volume>=100u) return 0;
+        state->output_volume=state->output_volume<=90u?state->output_volume+10u:100u;
+        break;
+    case UI_TOGGLE_MUTE:
+        state->output_muted=!state->output_muted;
+        break;
+    case UI_RATE_MINUS:
+        if(!state->rate_index) return 0;
+        --state->rate_index;
+        break;
+    case UI_RATE_PLUS:
+        if(state->rate_index>=2u) return 0;
+        ++state->rate_index;
+        break;
 #endif
     default:
         return 0;

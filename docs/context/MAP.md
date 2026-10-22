@@ -1,5 +1,16 @@
 # 对象与位置映射
 
+## 2026-10-21 桌面译音与设置工程
+
+本轮在桌面新建 `simultaneous-interpreter-tts-20261021`，从上游 `940e2a6` 克隆后修改，没有覆盖旧桌面工程。实际工具为 Vivado/SDK 2018.3；运行时使用本机已有的 Codex Python/Pillow，未另行安装依赖。
+
+- 正式应用：`output/tts/microphone_final/`，真实麦克风、默认中文译英文、双向菜单，关闭事件 ID 诊断。
+- FPGA：`output/z7_nano/audio/` 与 `audio_loopback/build.json`，USR_ACCESS `0x5a374e33`；CPU1 为 `output/z7_nano/usb/host.elf`，来自本次实际触摸描述符。
+- 本机证据：`output/tts/` 中的原生回归、两方向固定样本、板端像素比对、真实麦克风诊断和各自 build/load/symbols。各目录不能互换符号或推定板载身份。
+- 新入口：`scripts/build_tts.ps1`、`scripts/load_tts.py` 和根目录 `启动译声.cmd`。旧脚本、旧 ELF 与旧纯字幕结果保留原范围。
+
+实际所有者以 [NOW](NOW.md) 及对应 load.json/现场读取为准；完整参数和延迟定义见 [TTS_SETTINGS](../design/TTS_SETTINGS.md)。
+
 ## 2026-10-20 中译中补充
 
 两种模式共用 `software/network_ui/` 和 `third_party/mbedtls/`；2026-10-20 的独立中译中加载/PR 验证属于 [ZHZH](ZHZH.md) 的历史范围，不代表当前板上模式。当前所有者和最新证据见 [NOW](NOW.md)。

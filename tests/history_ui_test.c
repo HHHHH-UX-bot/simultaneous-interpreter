@@ -46,7 +46,7 @@ int main(void) {
     for(unsigned i=0;i<pad;++i)memory[i]=memory[pad+count+i]=0xa5c35a3c;
     ui_init(&state);CHECK(ui_control(&state,UI_START));
     link.magic=TOUCH_LINK_MAGIC;link.generation=42;ui_touch_init(&link,&feedback);
-    CHECK(sizeof(state)==135768u && sizeof(struct touch_feedback)==64u);
+    CHECK(sizeof(state)==135804u && sizeof(struct touch_feedback)==64u);
     for(unsigned i=1;i<=72;++i) {
         if(i%7==0) {uint32_t old_count=state.history_count,old_epoch=state.epoch;
             CHECK(ui_control(&state,state.language==UI_EN_ZH?UI_SELECT_ZH_EN:UI_SELECT_EN_ZH));

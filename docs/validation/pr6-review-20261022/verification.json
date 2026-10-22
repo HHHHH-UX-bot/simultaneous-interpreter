@@ -1,0 +1,620 @@
+{
+  "status": "passed_no_outstanding_review_blockers",
+  "verified_utc": "2026-10-22T09:32:08.464192+00:00",
+  "pr_url": "https://github.com/HHHHH-UX-bot/simultaneous-interpreter/pull/6",
+  "base_sha": "940e2a68d141f8f905ee3da91140397062ed1ce3",
+  "reviewed_original_head": "0721b46f44fc94dbc39a5a8160199666812f891c",
+  "premerge_fixes": [
+    {
+      "severity": "P2",
+      "issue": "history confirmation omitted from input context",
+      "resolved": "shared ui_view_context includes modal bit; stale history-frame click rejected"
+    },
+    {
+      "severity": "P2",
+      "issue": "rendered frame tagged with live model context",
+      "resolved": "frame context comes from its exact snapshot; current state remains the input check"
+    },
+    {
+      "severity": "P2",
+      "issue": "small wheel deltas treated as button taps",
+      "resolved": "normalize and accumulate wheel units; send drag only above actual tap threshold"
+    }
+  ],
+  "independent_reviews": {
+    "audio_transport": "no confirmed P1/P2 in specified audio/network/cloud changes",
+    "remote_ui": "all three P2 independently rechecked; corrected workspace approved"
+  },
+  "results": {
+    "remote_display": {
+      "status": "passed",
+      "checks": "PASS_REMOTE_DISPLAY checks=626103 full RGB exact, long runs, packet bounds, IP checksum, cookie and duplicate input",
+      "pointer_checks": "PASS_REMOTE_POINTER checks=28 shared hit test, settings, real preferences, history, drag guard, epoch",
+      "history_save_checks": "PASS_HISTORY_SAVE CSV/TXT/JSON, Unicode chosen path, cancellation, overwrite dialog option; native chooser mocked",
+      "pixels_verified": 614400,
+      "scope": "real C encoder/ARP/IP/UDP and Python decoder, synthetic pixels; hardware and mouse UI separately verified",
+      "input_sha256": {
+        "tests/remote_pointer_test.c": "862de6788d32fd658e01eff7fd1652c81959edea0823410cccbf53d35a489bc8",
+        "software/subtitle_ui/ui_touch.c": "a72cad5187e4e0b5cd9d11708d80bbbb2be6a03d9f8c2ffb52653fba2b6315d7",
+        "software/subtitle_ui/ui_touch.h": "83e1b46e29e14ffbd8f2b667d98e6253e51f1c1361da27ac37ec956db253af1e",
+        "software/subtitle_ui/ui_model.c": "2dbd784d972ff0723afb1a87b7bcfbd1f195061b54cdd958acad0d667d100786",
+        "software/network_ui/remote_display.c": "554c57ff5236b27e9e3ebb2ff93f40eacf09b44bdc9d38b36bf0696a57339851",
+        "software/network_ui/remote_display.h": "cba6f718cd6932e0fb7ab641393c4bff776fdf113abca7d8881400de3258b752",
+        "tests/remote_display_test.c": "671c76e6e7fac3a9e4e1a69d43af1b22bb358e72f111486f5edb10c1858400ed",
+        "scripts/remote_display_server.py": "b306bbde3a7d9993bdb42b6c6be650d2dee1a84b0ea9e466de2cc953b9d363c7",
+        "scripts/history_save_dialog.py": "b04aa35f269d08d79a524f21eafe042fe8188166ab23caacc920469c5407bcdf",
+        "assets/remote_display.html": "74ee5adea34f23d3758b75cd701beb93ae73adff597e11057dee56ae5f4ce87b",
+        "scripts/validate_remote_display.py": "5ecb90e75722d3fd758862d1ddeef142da50b9efb945fdc7808a51f58b415c0f",
+        "tests/history_save_test.py": "cbf7813d8be517794cb3fd52d5c7739e11a85b6f8673e9cfb4c9c9d1bae7141e"
+      }
+    },
+    "settings": {
+      "status": "passed",
+      "tests": {
+        "settings": "PASS_SETTINGS_UI checks=39 model_bytes=135804 feedback_bytes=64",
+        "tts_controls": "PASS_TTS_CONTROLS signed digital volume, mute, 0.8/1.0/1.2 speed, speech-off tail discard and T2 timing",
+        "late_preview": "PASS_LATE_PREVIEW checks=3152 finals=96 empty_asr=32 empty_targets=8 response_done_finals=32 no stale slots, fabricated history or final text overwrite"
+      },
+      "input_sha256": {
+        "software/subtitle_ui/ui_model.h": "c4169dffdc0b116c071bb077f909eefbcdf455b76fff3d9e8a673f35b9f9d490",
+        "software/subtitle_ui/ui_model.c": "2dbd784d972ff0723afb1a87b7bcfbd1f195061b54cdd958acad0d667d100786",
+        "software/subtitle_ui/ui_touch.c": "a72cad5187e4e0b5cd9d11708d80bbbb2be6a03d9f8c2ffb52653fba2b6315d7",
+        "software/subtitle_ui/ui_render.c": "3efaac635f2381935bd3101f672fcd41e5e74772835cf06544dba66c9e423a36",
+        "software/network_ui/speech_playback.c": "907c2085705af88d68ec98078a7b6b3d0c314a895caac10f936fb0285437e3ad",
+        "software/network_ui/speech_playback.h": "8fe4ea43ff6cd4ebaa31bb30cc5ac46d6cc7e1f88b1c4352806b4f6bd75f6eea",
+        "software/network_ui/cloud_live.c": "d501f62c4d10f1dc04d88d3c266f1c91439b98818eafbd2ff1a6da03323306ab",
+        "software/network_ui/cloud_events.c": "633c2d457cdc14b2c8356b685e17e7441c08b3879e6d139afc086bbf7c12bec2",
+        "tests/settings_ui_test.c": "de1a06a4f4e00b725ba9e98f9b3b91393037df1280ae04895cd020be62f408cd",
+        "tests/tts_controls_test.c": "108bf81e66afc4dc52f2ec5a8c3240afdbf653011017ad691cc3b1dd13a689a8",
+        "tests/late_preview_test.c": "9f069852e2ba277659ac18df293caa8dc6c11f5d133c81447abc9e9f63f58705"
+      }
+    },
+    "history": {
+      "status": "passed",
+      "scope": "offline synthetic finals, actual C model/render/touch; no microphone/cloud/hardware acceptance",
+      "result": "PASS_HISTORY_UI checks=377 capacity=64 model_bytes=135804 feedback_bytes=64",
+      "previews": [
+        "confirm.png",
+        "empty.png",
+        "latest.png",
+        "main.png",
+        "middle.png",
+        "oldest.png",
+        "single.png"
+      ],
+      "input_sha256": {
+        "tests/history_ui_test.c": "9d59b24bd0d2bc4f64d80a1237e8a2930a2d4df5ac6334ea88df7e236ac3ed3d",
+        "software/subtitle_ui/ui_model.c": "2dbd784d972ff0723afb1a87b7bcfbd1f195061b54cdd958acad0d667d100786",
+        "software/subtitle_ui/ui_touch.c": "a72cad5187e4e0b5cd9d11708d80bbbb2be6a03d9f8c2ffb52653fba2b6315d7",
+        "software/subtitle_ui/ui_render.c": "3efaac635f2381935bd3101f672fcd41e5e74772835cf06544dba66c9e423a36",
+        "output/subtitle_ui/ui_assets.c": "33b660fcd868c6b3ba1749272a41c28f552ec7c278c73cda4579171cccb586fd",
+        "software/subtitle_ui/ui_model.h": "c4169dffdc0b116c071bb077f909eefbcdf455b76fff3d9e8a673f35b9f9d490",
+        "software/subtitle_ui/ui_layout.h": "31bed9fe4052b57abaa6b9a41c6696907707b8d9bc068aa419dae454c4a475f5",
+        "software/subtitle_ui/ui_render.h": "0d6cd45e1fbbeeb2d990815beae122f21413c7c1ac0bb16b58efbeff33f97d8f",
+        "software/subtitle_ui/ui_assets.h": "e2e295e6f96f96fa10420f068644568340663b0aab8bef02891ef49f3a90a93f",
+        "software/subtitle_ui/ui_touch.h": "83e1b46e29e14ffbd8f2b667d98e6253e51f1c1361da27ac37ec956db253af1e",
+        "software/z7_nano_usb/touch_link.h": "4cfb13c8a328606bb3caf83b630ab8bb25be73792b1718eb300a3e6f7ad17aa5"
+      }
+    },
+    "english": {
+      "status": "passed",
+      "mode": "enzh",
+      "text_only_response": false,
+      "native_result": "PASS_ENGLISH_PROFILE checks=14683 finals=500",
+      "session": {
+        "modalities": [
+          "text",
+          "audio"
+        ],
+        "voice": "Tina",
+        "sample_rate": 16000,
+        "input_audio_format": "opus",
+        "output_audio_format": "pcm",
+        "input_audio_transcription": {
+          "model": "qwen3-asr-flash-realtime",
+          "language": "en"
+        },
+        "turn_detection": {
+          "type": "server_vad",
+          "threshold": 0.12,
+          "silence_duration_ms": 400,
+          "create_response": true,
+          "interrupt_response": false
+        },
+        "translation": {
+          "language": "zh",
+          "same_language_skip_options": {
+            "skip_text": false,
+            "skip_audio": false
+          }
+        }
+      },
+      "language_sessions": [
+        {
+          "modalities": [
+            "text",
+            "audio"
+          ],
+          "voice": "Tina",
+          "sample_rate": 16000,
+          "input_audio_format": "opus",
+          "output_audio_format": "pcm",
+          "input_audio_transcription": {
+            "model": "qwen3-asr-flash-realtime",
+            "language": "zh"
+          },
+          "turn_detection": {
+            "type": "server_vad",
+            "threshold": 0.12,
+            "silence_duration_ms": 400,
+            "create_response": true,
+            "interrupt_response": false
+          },
+          "translation": {
+            "language": "en",
+            "same_language_skip_options": {
+              "skip_text": false,
+              "skip_audio": false
+            }
+          }
+        },
+        {
+          "modalities": [
+            "text",
+            "audio"
+          ],
+          "voice": "Tina",
+          "sample_rate": 16000,
+          "input_audio_format": "opus",
+          "output_audio_format": "pcm",
+          "input_audio_transcription": {
+            "model": "qwen3-asr-flash-realtime",
+            "language": "en"
+          },
+          "turn_detection": {
+            "type": "server_vad",
+            "threshold": 0.12,
+            "silence_duration_ms": 400,
+            "create_response": true,
+            "interrupt_response": false
+          },
+          "translation": {
+            "language": "zh",
+            "same_language_skip_options": {
+              "skip_text": false,
+              "skip_audio": false
+            }
+          }
+        },
+        {
+          "modalities": [
+            "text",
+            "audio"
+          ],
+          "voice": "Tina",
+          "sample_rate": 16000,
+          "input_audio_format": "opus",
+          "output_audio_format": "pcm",
+          "input_audio_transcription": {
+            "model": "qwen3-asr-flash-realtime",
+            "language": "zh"
+          },
+          "turn_detection": {
+            "type": "server_vad",
+            "threshold": 0.12,
+            "silence_duration_ms": 400,
+            "create_response": true,
+            "interrupt_response": false
+          },
+          "translation": {
+            "language": "en",
+            "same_language_skip_options": {
+              "skip_text": false,
+              "skip_audio": false
+            }
+          }
+        },
+        {
+          "modalities": [
+            "text",
+            "audio"
+          ],
+          "voice": "Tina",
+          "sample_rate": 16000,
+          "input_audio_format": "opus",
+          "output_audio_format": "pcm",
+          "input_audio_transcription": {
+            "model": "qwen3-asr-flash-realtime",
+            "language": "en"
+          },
+          "turn_detection": {
+            "type": "server_vad",
+            "threshold": 0.12,
+            "silence_duration_ms": 400,
+            "create_response": true,
+            "interrupt_response": false
+          },
+          "translation": {
+            "language": "zh",
+            "same_language_skip_options": {
+              "skip_text": false,
+              "skip_audio": false
+            }
+          }
+        }
+      ],
+      "scope": "real C config/event/UI/client with mock codec and TLS boundary; no board or recognition quality test",
+      "input_sha256": {
+        "tests/english_profile_test.c": "1c6b94d1f440e275bdcdd366ff3e7a237e5a635978577c037652be8bce87c6b0",
+        "software/network_ui/ogg_opus.c": "87f2ea21dea6347b66b50e09cc7478a81307ef86afba6b83079b8f4ea4964389",
+        "software/network_ui/cloud_events.c": "633c2d457cdc14b2c8356b685e17e7441c08b3879e6d139afc086bbf7c12bec2",
+        "software/network_ui/cloud_wire.c": "afac46e2e724a1125a9fdd5039684e94ffd2fb9328b917698b0a0ff0be30e4e5",
+        "software/network_ui/cloud_frame.c": "05d1d7a8f4bf018b2ca15c7cab34516104800b6058c135986ad11c1a9ec7d3f3",
+        "software/network_ui/speech_playback.c": "907c2085705af88d68ec98078a7b6b3d0c314a895caac10f936fb0285437e3ad",
+        "software/network_ui/protocol.c": "19b5f8d10382e963ee3eaccc42138f33bd9637b6e108d4943e3c9801db10c204",
+        "software/subtitle_ui/ui_model.c": "2dbd784d972ff0723afb1a87b7bcfbd1f195061b54cdd958acad0d667d100786",
+        "software/subtitle_ui/ui_render.c": "3efaac635f2381935bd3101f672fcd41e5e74772835cf06544dba66c9e423a36",
+        "output/subtitle_ui/ui_assets.c": "33b660fcd868c6b3ba1749272a41c28f552ec7c278c73cda4579171cccb586fd",
+        "software/network_ui/cloud_client.c": "1ea61362279d655e18c5fe7c600023dac2bcf83fd5790e4a430e3da7a319c911",
+        "software/network_ui/cloud_live.c": "d501f62c4d10f1dc04d88d3c266f1c91439b98818eafbd2ff1a6da03323306ab",
+        "software/network_ui/language_profile.h": "4ef328e93359869e68441ad2c314547f2c3bf1776ed4fd3d6d4bb45ed1abd077"
+      }
+    },
+    "tls": {
+      "passed": true,
+      "cases": [
+        {
+          "test": "normal:",
+          "returncode": 0,
+          "result": {
+            "passed": true,
+            "error": 0,
+            "verify_flags": 0,
+            "handshakes": 1,
+            "handshake_ms": 562,
+            "plaintext_rx": 238,
+            "ciphertext_rx": 3861,
+            "ciphertext_tx": 399,
+            "wire_tx": 399,
+            "attached": 1,
+            "corrupted": 0
+          }
+        },
+        {
+          "test": "normal:bulk",
+          "returncode": 0,
+          "result": {
+            "passed": true,
+            "error": 0,
+            "verify_flags": 0,
+            "handshakes": 1,
+            "handshake_ms": 578,
+            "plaintext_rx": 238,
+            "ciphertext_rx": 3861,
+            "ciphertext_tx": 399,
+            "wire_tx": 399,
+            "attached": 1,
+            "corrupted": 0
+          }
+        },
+        {
+          "test": "active:bulk",
+          "returncode": 0,
+          "result": {
+            "passed": true,
+            "error": 0,
+            "verify_flags": 0,
+            "handshakes": 1,
+            "handshake_ms": 594,
+            "plaintext_rx": 238,
+            "ciphertext_rx": 3861,
+            "ciphertext_tx": 399,
+            "wire_tx": 399,
+            "attached": 1,
+            "corrupted": 0
+          }
+        },
+        {
+          "test": "normal:full_record",
+          "returncode": 0,
+          "result": {
+            "passed": true,
+            "error": 0,
+            "verify_flags": 0,
+            "handshakes": 1,
+            "handshake_ms": 563,
+            "plaintext_rx": 238,
+            "ciphertext_rx": 3861,
+            "ciphertext_tx": 2354,
+            "wire_tx": 2354,
+            "attached": 1,
+            "corrupted": 0
+          }
+        },
+        {
+          "test": "wrong_host:",
+          "returncode": 0,
+          "result": {
+            "passed": true,
+            "error": -9984,
+            "verify_flags": 4,
+            "handshakes": 1,
+            "handshake_ms": 0,
+            "plaintext_rx": 0,
+            "ciphertext_rx": 3288,
+            "ciphertext_tx": 158,
+            "wire_tx": 151,
+            "attached": 1,
+            "corrupted": 0
+          }
+        },
+        {
+          "test": "normal:expired",
+          "returncode": 0,
+          "result": {
+            "passed": true,
+            "error": -9984,
+            "verify_flags": 1,
+            "handshakes": 1,
+            "handshake_ms": 0,
+            "plaintext_rx": 0,
+            "ciphertext_rx": 3288,
+            "ciphertext_tx": 158,
+            "wire_tx": 151,
+            "attached": 1,
+            "corrupted": 0
+          }
+        },
+        {
+          "test": "normal:noseed",
+          "returncode": 0,
+          "result": {
+            "passed": true,
+            "error": -1,
+            "verify_flags": 4294967295,
+            "handshakes": 0,
+            "handshake_ms": 0,
+            "plaintext_rx": 0,
+            "ciphertext_rx": 0,
+            "ciphertext_tx": 0,
+            "wire_tx": 0,
+            "attached": 0,
+            "corrupted": 0
+          }
+        },
+        {
+          "test": "normal:corrupt",
+          "returncode": 0,
+          "result": {
+            "passed": true,
+            "error": -29056,
+            "verify_flags": 0,
+            "handshakes": 1,
+            "handshake_ms": 594,
+            "plaintext_rx": 0,
+            "ciphertext_rx": 3861,
+            "ciphertext_tx": 399,
+            "wire_tx": 399,
+            "attached": 1,
+            "corrupted": 1
+          }
+        }
+      ],
+      "utc": "2026-10-22T09:28:10.749369+00:00",
+      "scope": "real TLS service, fragmented TCP, authentication and ciphertext integrity; no API key",
+      "input_sha256": {
+        "software/network_ui/arm_tls.c": "f39b35d44b4d1f65f7429aef0f6a156ae3acb1d5bb3f1b35b3d07bafbbf3e6b2",
+        "software/network_ui/arm_tls.h": "5ef102f3b1fdd6880e7281d8ea0ec66008e6ae223c0543c52522b65a8c31646a",
+        "software/network_ui/tls_config.h": "e9dfc82a996c7a740b6c7114c206faab109a8ef59a8691bc243b512c6648c930",
+        "software/network_ui/tls_root.h": "5798be910cac2974ba78c20629cef29c765d66b57638c5d52a4e3805423494ea",
+        "software/network_ui/tls_tx_trace.h": "05e25b73fc8f0f0a7d8d2a3ae99a9cc316316e27e8075423940095c8371bc949",
+        "tests/arm_tls_host_test.c": "22de98daacc2cda59b157ea2259f1b6d347fd444622d3245e34514816e338a6d",
+        "third_party/mbedtls/SOURCE.json": "5e432858b0b1547a43791f1efc042f147079e1cef1b40ad233ac4858000c0e69"
+      }
+    },
+    "audio_simulation": {
+      "Status": "passed",
+      "AttemptId": "a38ba294-985e-4384-a834-6693293b3e92",
+      "VerifiedAtUTC": "2026-10-22T09:23:36.753182+00:00",
+      "Tests": [
+        {
+          "Top": "tb_i2c_wm8731",
+          "Marker": "PASS_I2C_WM8731",
+          "Info": []
+        },
+        {
+          "Top": "tb_i2c_read",
+          "Marker": "PASS_I2C_READ",
+          "Info": []
+        },
+        {
+          "Top": "tb_i2s_loopback",
+          "Marker": "PASS_I2S_LOOPBACK",
+          "Info": [
+            "INFO loopback: bit-exact at a delay of 3 frames (192 BCLK cycles)"
+          ]
+        },
+        {
+          "Top": "tb_audio_latency",
+          "Marker": "PASS_AUDIO_LATENCY",
+          "Info": []
+        },
+        {
+          "Top": "tb_audio_regs",
+          "Marker": "PASS_AUDIO_REGS",
+          "Info": []
+        },
+        {
+          "Top": "tb_audio_sample_tap",
+          "Marker": "PASS_AUDIO_SAMPLE_TAP",
+          "Info": []
+        },
+        {
+          "Top": "tb_audio_playback",
+          "Marker": "PASS_AUDIO_PLAYBACK",
+          "Info": []
+        },
+        {
+          "Top": "tb_audio_overlay",
+          "Marker": "PASS_AUDIO_OVERLAY",
+          "Info": []
+        }
+      ],
+      "LogicHashes": [
+        {
+          "File": "rtl/i2c_master.v",
+          "SHA256": "93ea995f75e61d31ba0307c5c574e84f2599d6ee10ebab4cac477278c3af2447"
+        },
+        {
+          "File": "rtl/wm8731_init.v",
+          "SHA256": "45ba7fb0d3a381a640a75123019be05974102a8f5c2bcf36d475ce7ed7ad67a3"
+        },
+        {
+          "File": "rtl/i2s_loopback.v",
+          "SHA256": "d6f8f11802d6f12c408e37a499a5a7b15dfc2281dac885e8aca8bbaa8e44124b"
+        },
+        {
+          "File": "rtl/audio_latency.v",
+          "SHA256": "2e82b9fb37a259cfcd0b0a9558590ea8eeabef9c57a8d88cf2fd161ed976cd9c"
+        },
+        {
+          "File": "rtl/audio_regs.v",
+          "SHA256": "3ff59fd0ed539cef59e316d5884810c806964c755d5032ccca1137b690783a48"
+        },
+        {
+          "File": "rtl/audio_playback.v",
+          "SHA256": "dd3cc46c0d8194ef3e46c690a673022263cc089667dda2a7021e36d011772047"
+        },
+        {
+          "File": "rtl/audio_overlay.v",
+          "SHA256": "ad2e09ece1c22c24bd7c5a67a48e7d56d6f7426f512aabe6536b6c0e870ea77c"
+        },
+        {
+          "File": "rtl/audio_sample_tap.v",
+          "SHA256": "b4490d368a5ccd71d28ac903da0f658de87b2fc0efac763c99b5fb795624d576"
+        }
+      ],
+      "TestHashes": [
+        {
+          "File": "sim/tb_i2c_wm8731.v",
+          "SHA256": "ce705aafb9faa8b3785ca43ecf010062c6c17a8f7fbe26f3bc833e708b8be431"
+        },
+        {
+          "File": "sim/tb_i2c_read.v",
+          "SHA256": "3296f1ecb4be1a6a6339e7e531a4a0cfbe4add74a63782b16c9ffb78ec8e4f80"
+        },
+        {
+          "File": "sim/tb_i2s_loopback.v",
+          "SHA256": "3a51ebd8b83dd8f58defd1d842ed8a1e7d23000a530c8edfa719bcdc151e8a33"
+        },
+        {
+          "File": "sim/tb_audio_latency.v",
+          "SHA256": "98dc5ef4ba87a8753d70334eacf7c092d420af11449cd0073048b46ad4e93194"
+        },
+        {
+          "File": "sim/tb_audio_regs.v",
+          "SHA256": "9a855190381dd21538ddca6cb3817789db60081497810bcda51a30cb75cfedf9"
+        },
+        {
+          "File": "sim/tb_audio_sample_tap.v",
+          "SHA256": "b68b386a7aec887f9463d21b888bebffd42495673dcdf82882f55a540b4d5c03"
+        },
+        {
+          "File": "sim/tb_audio_playback.v",
+          "SHA256": "bb7d3d93871f71287878141dd18eb9f1977868f3b34849e66f8bdedd7d779239"
+        },
+        {
+          "File": "sim/tb_audio_overlay.v",
+          "SHA256": "e04368f44c1a48c227b76612f3d069b8d0b56b00659b36a81aed12d49e61625c"
+        }
+      ]
+    },
+    "speech": {
+      "status": "passed",
+      "tests": {
+        "speech_playback": "PASS_SPEECH_PLAYBACK real WS/JSON/base64, signed PCM order, >4k events, 12s ring wrap, jitter without underruns, prefill and short tails",
+        "cloud_wire_bulk": "PASS_CLOUD_WIRE_BULK checks=46 arbitrary splits, merged frames, fragmented messages, interleaved ping and frame bounds",
+        "speech_playback_low_latency": "PASS_SPEECH_PLAYBACK real WS/JSON/base64, signed PCM order, >4k events, 12s ring wrap, jitter without underruns, prefill and short tails",
+        "network_duplex": "PASS_NETWORK_DUPLEX microphone CIPSEND progresses with continuous IPD; all incoming and outgoing bytes exact",
+        "network_tls": "PASS_NETWORK_RUNTIME checks=3806\r\nPASS_NETWORK_TLS checks=13980",
+        "network_tls_audio": "PASS_NETWORK_RUNTIME checks=4076\r\nPASS_NETWORK_TLS checks=14592",
+        "network_speech_recovery": "PASS_NETWORK_SPEECH_RECOVERY checks=3914 interrupted binary CIPSEND resynchronizes before TLS retry",
+        "network_speech_passive": "PASS_NETWORK_SPEECH_PASSIVE checks=134994 52507 binary bytes, bounded receive priority, short SSL reads fully drain, rejected uploads and empty reads recover",
+        "network_speech_drain_first": "PASS_NETWORK_SPEECH_PASSIVE checks=91053 52507 binary bytes, bounded receive priority, short SSL reads fully drain, rejected uploads and empty reads recover",
+        "network_speech_no_length": "PASS_NETWORK_SPEECH_NO_LENGTH checks=89151 52507 exact bytes, short reads, transient/empty errors, lost notifications and close recovery; zero encrypted-length queries",
+        "network_tls_raw": "PASS_NETWORK_TLS_RAW verified single SSL, exact full duplex, close recovery and host quiesce",
+        "network_arm_tcp": "PASS_NETWORK_ARM_TCP no ESP SSL, exact full duplex, close recovery and host quiesce",
+        "network_arm_tcp_passive": "PASS_NETWORK_SPEECH_PASSIVE checks=131766 52507 binary bytes, bounded receive priority, short SSL reads fully drain, rejected uploads and empty reads recover",
+        "network_arm_tcp_active": "PASS_ARM_ACTIVE_TCP checks=155201 download=131672 upload=20481 no passive AT round trips",
+        "wifi_recover": "PASS_WIFI_RECOVER fast/slow peers, volatile reset, verified baud, silent/wrong-speed/stuck-TX failures bounded",
+        "wifi_recover_921600": "PASS_WIFI_RECOVER fast/slow peers, volatile reset, verified baud, silent/wrong-speed/stuck-TX failures bounded",
+        "wifi_recover_460800": "PASS_WIFI_RECOVER fast/slow peers, volatile reset, verified baud, silent/wrong-speed/stuck-TX failures bounded",
+        "wifi_recover_1m": "PASS_WIFI_RECOVER fast/slow peers, volatile reset, verified baud, silent/wrong-speed/stuck-TX failures bounded",
+        "wifi_recover_1666": "PASS_WIFI_RECOVER fast/slow peers, volatile reset, verified baud, silent/wrong-speed/stuck-TX failures bounded",
+        "network_framing_recovery": "PASS_NETWORK_FRAMING_RECOVERY latched error 1946, rebooted 115200 peer and corrupt AT line recover through verified serial/TLS reset"
+      },
+      "scope": "native real WebSocket/JSON/Base64 to simulated DAC, buffer pacing and full-duplex IPD/AT framing; not subjective speech quality",
+      "input_sha256": {
+        "output/subtitle_ui/ui_assets.c": "33b660fcd868c6b3ba1749272a41c28f552ec7c278c73cda4579171cccb586fd",
+        "software/network_ui/cloud_events.c": "633c2d457cdc14b2c8356b685e17e7441c08b3879e6d139afc086bbf7c12bec2",
+        "software/network_ui/cloud_events.h": "b8e2cfe81f903478b934d3cf69eccac26f314deb5d3f649b164e07e94f9bdfa9",
+        "software/network_ui/cloud_frame.c": "05d1d7a8f4bf018b2ca15c7cab34516104800b6058c135986ad11c1a9ec7d3f3",
+        "software/network_ui/cloud_wire.c": "afac46e2e724a1125a9fdd5039684e94ffd2fb9328b917698b0a0ff0be30e4e5",
+        "software/network_ui/network.c": "c903b92bb25acc1164b6e4ea157115c830af5ee63ef56e1a638bd9ca7fcf69ed",
+        "software/network_ui/protocol.c": "19b5f8d10382e963ee3eaccc42138f33bd9637b6e108d4943e3c9801db10c204",
+        "software/network_ui/speech_playback.c": "907c2085705af88d68ec98078a7b6b3d0c314a895caac10f936fb0285437e3ad",
+        "software/network_ui/speech_playback.h": "8fe4ea43ff6cd4ebaa31bb30cc5ac46d6cc7e1f88b1c4352806b4f6bd75f6eea",
+        "software/network_ui/wifi_recover.c": "6c22fa2942ca43e5e75dae3192675138e43ec7e59a96cb9711c9cb690b9f82ed",
+        "software/subtitle_ui/ui_model.c": "2dbd784d972ff0723afb1a87b7bcfbd1f195061b54cdd958acad0d667d100786",
+        "tests/cloud_wire_bulk_test.c": "33d7b5201b22b6b534bcddc62e38f60b610689b070a45365fedd739a3095a5f7",
+        "tests/network_arm_active_test.c": "94505a93380c815acebe2ad91284deb9f1fdadf546a6aa26a31e69d310003ba5",
+        "tests/network_duplex_test.c": "9c5f533219c81f6e3a3425ebe66581479bdb4750830081a066561f8b841ce3ef",
+        "tests/network_framing_recovery_test.c": "4ba95f80c1f77f90efaded4a0d522a21662af219a6809fa72c8c32b95a42b1c2",
+        "tests/network_speech_no_length_test.c": "80726c5356e611b59889bc768c5e9554dd64c67b25b2d9bff78e418407806cb7",
+        "tests/network_speech_passive_test.c": "b64f9801d2a35db90f99a2d85abe9b932a0c3bb9f753a4a6a156cf681b65a374",
+        "tests/network_speech_recovery_test.c": "212b9a89cce66b621d14f4269b03a57777cece8b6492c815dc465c5d271c3965",
+        "tests/network_tls_raw_test.c": "ea00a3607606f2d63881225ea79ea6bbf7e5626164a6723b4fb2c43c23b103a2",
+        "tests/network_tls_test.c": "97f12fc934ad97cedd8b863c641eb1793e4edd642696ba7871e1adef10c1c3ed",
+        "tests/speech_playback_test.c": "709adc0a50fb20235a57a44cf3d5987b2dde82d1de89057fdab7cdf8bbb31e69",
+        "tests/wifi_recover_test.c": "167019e3be1a8220a2feecd08a946f46457df4d8417a0053ad8ea9f7f51f1fb6"
+      }
+    }
+  },
+  "wheel_test": "PASS_REMOTE_WHEEL actual HTML handler via Node v24.15.0; pixel/line/page, accumulator, edge clamp, no wheel taps",
+  "arm_build": {
+    "status": "passed",
+    "compiler": "AMD 2026.1 ARM GCC 13.4.0",
+    "elf_sha256": "809d23e5995e99493a8df7ddbb3b8f6e11b9a3829b4e27c259a1f62b9471758d",
+    "mode": "zhen",
+    "remote_display": true,
+    "selftest": false,
+    "font_used_bytes": 2093843,
+    "font_reserved_bytes": 2097152,
+    "font_remaining_bytes": 3309,
+    "linker_warning": "libgcc variable-size enum warning; no enum ABI used by _udivmoddi4"
+  },
+  "source_sha256": {
+    "software/subtitle_ui/main.c": "9600e16a7d25d11227f8adfcc8d062badd7f5578e41a131b6e9f8fcc4bc2aab3",
+    "software/subtitle_ui/ui_model.c": "2dbd784d972ff0723afb1a87b7bcfbd1f195061b54cdd958acad0d667d100786",
+    "software/subtitle_ui/ui_model.h": "c4169dffdc0b116c071bb077f909eefbcdf455b76fff3d9e8a673f35b9f9d490",
+    "tests/remote_pointer_test.c": "862de6788d32fd658e01eff7fd1652c81959edea0823410cccbf53d35a489bc8",
+    "assets/remote_display.html": "74ee5adea34f23d3758b75cd701beb93ae73adff597e11057dee56ae5f4ce87b",
+    "tests/remote_wheel_test.js": "f174ecdf7005f592e67b07b85df5ad195192f571e5fbd6c26b7c180d0b2120eb"
+  },
+  "scope": {
+    "fresh_native_checks": true,
+    "fresh_arm_cpu0_build": true,
+    "fresh_audio_rtl_simulation": true,
+    "vivado_2018_3_rebuilt_here": false,
+    "cpu1_full_rebuilt_here": false,
+    "fpga_implementation_repeated_here": false,
+    "board_reprogrammed_or_tested_here": false,
+    "cloud_api_key_used": false,
+    "new_dependencies_installed": false
+  },
+  "notes": [
+    "2018.3 implementation, timing and physical evidence are teammate results bound to their original images; no new board release claimed.",
+    "Fresh ARM compile uses the existing verified, unchanged display header only; it does not create a new DDR/board verification.",
+    "Launch CMD defaults are for the teammate Administrator/2018.3 environment; use explicit local Python/tool options on another host."
+  ]
+}

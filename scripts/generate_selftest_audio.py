@@ -26,7 +26,7 @@ SENTENCES = [
 GAP_SECONDS = 0.8
 
 
-def synthesize(voice="Microsoft Huihui Desktop"):
+def synthesize(voice="Microsoft Huihui Desktop",rate=0):
     os.makedirs(TMP, exist_ok=True)
     paths = []
     for index, sentence in enumerate(SENTENCES, start=1):
@@ -35,11 +35,12 @@ def synthesize(voice="Microsoft Huihui Desktop"):
             "Add-Type -AssemblyName System.Speech;"
             "$s=New-Object System.Speech.Synthesis.SpeechSynthesizer;"
             "$s.SelectVoice('%s');"
+            "$s.Rate=%d;"
             "$f=New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000,"
             "[System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen,"
             "[System.Speech.AudioFormat.AudioChannel]::Mono);"
             "$s.SetOutputToWaveFile('%s',$f);"
-            "$s.Speak('%s');$s.Dispose()" % (voice, path, sentence)
+            "$s.Speak('%s');$s.Dispose()" % (voice, rate, path, sentence)
         )
         subprocess.run(["powershell", "-NoProfile", "-Command", script], check=True)
         paths.append(path)

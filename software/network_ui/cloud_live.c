@@ -61,12 +61,52 @@ static void text_log_record(const uint32_t *source) {
 }
 __attribute__((section(".cloud_mailbox"),used)) volatile struct cloud_status cloud_report;
 __attribute__((section(".cloud_final"),used)) volatile struct cloud_caption cloud_caption;
-__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t session_diag[6];
+/* [6] empty ASR finals; [7] explicitly empty final targets; [8] response.done
+   final text used without a separate transcript.done. Empty results never
+   become fabricated paired history. */
+__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t session_diag[9];
 /* Boot-lifetime counters survive a reconnect; no utterances or credentials. */
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t cloud_health[16];
 __attribute__((section(".cloud_runtime"),used)) static volatile char cloud_error_code[CLOUD_ID_BYTES];
 static uint32_t health_now;
 static int capture_enabled;
+#ifdef Z7_EVENT_ID_TRACE
+/* Optional event-order evidence: hashed identifiers and lengths, never text. */
+__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t cloud_id_trace[1+2048*8];
+static uint32_t id_hash(const char *s) {
+    if(!*s) return 0;
+    uint32_t h=2166136261u;while(*s) {h^=(uint8_t)*s++;h*=16777619u;}return h;
+}
+static void id_trace(const struct cloud_event *e,uint32_t parsed,const char *json,uint32_t bytes) {
+    if(!parsed && e->kind==CLOUD_IGNORE) return;
+#ifndef Z7_LATENCY_PROBE
+    if(!parsed && (e->kind==CLOUD_AUDIO_DELTA || e->kind==CLOUD_AUDIO_DONE)) return;
+#endif
+    uint32_t at=cloud_id_trace[0],base=1u+(at%2048u)*8u,n=0;
+    while(n<UI_MAX_TEXT && e->text[n]) ++n;
+    if(e->kind==CLOUD_AUDIO_DELTA) n=e->audio_bytes;
+    cloud_id_trace[base]=(uint32_t)e->kind|(e->cumulative<<8)|(e->completed<<9)|(e->output_final<<10)|(parsed<<16);
+    cloud_id_trace[base+1]=id_hash(e->item_id);cloud_id_trace[base+2]=id_hash(e->previous_id);
+    if(parsed && !e->kind) {
+        /* Identify a rejected event type without storing any payload text. */
+        for(uint32_t j=0;j+6u<bytes;++j) if(!memcmp(json+j,"\"type\"",6)) {
+            j+=6u;while(j<bytes && (json[j]==' ' || json[j]==':' || json[j]=='\t')) ++j;
+            if(j<bytes && json[j]=='\"') {
+                uint32_t h=2166136261u;for(++j;j<bytes && json[j]!='\"';++j) {h^=(uint8_t)json[j];h*=16777619u;}
+                cloud_id_trace[base+1]=h;
+            }
+            break;
+        }
+    }
+    cloud_id_trace[base+3]=id_hash(e->response_id);cloud_id_trace[base+4]=n;
+    cloud_id_trace[base+5]=cloud.live.phase;cloud_id_trace[base+6]=cloud.live.epoch;
+    cloud_id_trace[base+7]=health_now;cloud_id_trace[0]=at+1u;
+#ifdef Z7_MMU_CACHE
+    cache_clean_range((const void *)&cloud_id_trace[base],32);
+    cache_clean_range((const void *)cloud_id_trace,4);
+#endif
+}
+#endif
 void cloud_frame_debug(uint32_t *out);
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t first_wire_fault[8];
 static void health_clean(void) {
@@ -172,6 +212,10 @@ static void cloud_preview(void) {
     cloud.model->stage=UI_TRANSLATING;++cloud.model->change_sequence;
 }
 #endif
+static void cloud_remember(const char *source,const char *target,const char *response) {
+    struct cloud_recent *recent=cloud.recent+cloud.recent_cursor++%CLOUD_PAIRS;
+    cloud_id_copy(recent->source,source);cloud_id_copy(recent->target,target);cloud_id_copy(recent->response,response);
+}
 static void cloud_commit(void) {
     for(;;) {
         struct cloud_pair *p=0;
@@ -208,8 +252,7 @@ static void cloud_commit(void) {
         /* cloud_caption lives in cached DDR but is read back over JTAG. */
         cache_clean_range((const void *)&cloud_caption,(unsigned)sizeof(cloud_caption));
 #endif
-        struct cloud_recent *recent=cloud.recent+cloud.recent_cursor++%CLOUD_PAIRS;
-        cloud_id_copy(recent->response,p->response_id);cloud_id_copy(recent->source,p->source_id);cloud_id_copy(recent->target,p->target_id);
+        cloud_remember(p->source_id,p->target_id,p->response_id);
         ++cloud.live.committed;memset(p,0,sizeof(*p));
     }
 }
@@ -217,6 +260,9 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
     (void)user;
     struct cloud_event *e=&cloud.event;
     enum cloud_parse_code parsed=cloud_event_parse(json,size,e);
+#ifdef Z7_EVENT_ID_TRACE
+    id_trace(e,(uint32_t)parsed,json,size);
+#endif
     /* One unparsable or oversized event (for example a server error whose
        message is not ASCII) must not take down an otherwise healthy session. */
     if(parsed) {++cloud.live.ignored;++cloud_health[4];cloud_health[5]=(uint32_t)parsed;health_clean();return 0;}
@@ -244,6 +290,13 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
         return 0;
     }
     if(e->kind==CLOUD_SPEECH_STOPPED) {cloud_client_speech_stopped();return 0;}
+    /* Reject committed IDs before a preview can allocate an old sentence. */
+    for(uint32_t i=0;i<CLOUD_PAIRS;++i) {
+        const struct cloud_recent *recent=cloud.recent+i;
+        if((e->response_id[0] && cloud_same(e->response_id,recent->response)) ||
+            (e->item_id[0] && (cloud_same(e->item_id,recent->source) || cloud_same(e->item_id,recent->target))) ||
+            (e->kind==CLOUD_ITEM_LINK && e->previous_id[0] && cloud_same(e->previous_id,recent->source))) return 0;
+    }
     /* ASR previews are Chinese source; bilingual mode keeps them below the
        independent English translation, including before either final arrives. */
     if(e->kind==CLOUD_ASR_PARTIAL) {
@@ -251,6 +304,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
         if(!e->text[0]) return 0; /* Empty VAD previews must not reserve queue heads. */
 #endif
         struct cloud_pair *p=cloud_pair_find(e->item_id,0,1);
+        if(p && p->source_ready) return 0;
         if(p) {
             for(uint32_t i=0;i<UI_MAX_TEXT;++i) p->source[i]=e->text[i];
             p->source[UI_MAX_TEXT-1u]=0;
@@ -289,6 +343,7 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
             }
         }
         if(p) {
+            if(p->target_ready) return 0;
             if(e->response_id[0]) cloud_id_copy(p->response_id,e->response_id);
             if(e->cumulative) {
                 /* qwen3.5 response.text.text is the full text seen so far. */
@@ -315,11 +370,6 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
         for(uint32_t i=0;i<CLOUD_ID_BYTES;++i) cloud_error_code[i]=e->error_code[i];
         cloud_client_stop();cloud_fail(3);return 1;
     }
-    for(uint32_t i=0;i<CLOUD_PAIRS;++i) {
-        const struct cloud_recent *recent=cloud.recent+i;
-        if((e->response_id[0] && cloud_same(e->response_id,recent->response)) ||
-            (e->item_id[0] && (cloud_same(e->item_id,recent->source) || cloud_same(e->item_id,recent->target)))) return 0;
-    }
     if(e->kind==CLOUD_ITEM_LINK) {
         uint32_t slot=0;
         for(uint32_t i=0;i<CLOUD_LINKS;++i) if(!cloud.links[i].item[0] || cloud_same(cloud.links[i].item,e->item_id)) {slot=i;break;}
@@ -340,7 +390,14 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
 #ifdef Z7_BILINGUAL
         if(!e->text[0]) {
             p=cloud_pair_find(e->item_id,0,0);
-            if(p && !p->translated[0] && !p->response_id[0]) memset(p,0,sizeof(*p));
+            if(p && p->source_ready) return 0; /* Never replace a real final. */
+            ++session_diag[6];session_diag_clean();
+            /* Explicitly terminal, including translation-before-ASR ordering.
+               Preserve no speculative text as a fabricated source/history. */
+            cloud_remember(e->item_id,p?p->target_id:"",p?p->response_id:"");
+            for(uint32_t i=0;i<CLOUD_LINKS;++i)
+                if(cloud_same(cloud.links[i].previous,e->item_id) || cloud_same(cloud.links[i].item,e->item_id)) cloud.links[i].item[0]=0;
+            if(p) memset(p,0,sizeof(*p));
             cloud_commit();return 0;
         }
 #endif
@@ -388,6 +445,25 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
             cloud_client_response_done();
             return 0;
         }
+        if(e->output_final) {
+            if(!p) p=cloud_pair_find(e->item_id,1,0);
+            if(!p) for(uint32_t i=0;i<CLOUD_LINKS;++i) if(cloud_same(cloud.links[i].item,e->item_id)) {
+                p=cloud_pair_find(cloud.links[i].previous,0,1);
+                if(p) cloud_id_copy(p->target_id,e->item_id);
+                cloud.links[i].item[0]=0;break;
+            }
+            if(p && cloud_same(p->target_id,e->item_id) && !p->target_ready) {
+                cloud_id_copy(p->response_id,e->response_id);
+                if(e->text[0]) {
+                    memcpy(p->translated,e->text,sizeof(p->translated));p->target_ready=1;
+                    ++cloud.live.translations;++session_diag[8];session_diag_clean();cloud_client_translation(0);
+                } else {
+                    ++session_diag[7];session_diag_clean();
+                    cloud_remember(p->source_id,p->target_id,p->response_id);
+                    memset(p,0,sizeof(*p));cloud_client_response_done();cloud_commit();return 0;
+                }
+            }
+        }
         if(p) p->complete=1;
         cloud_client_response_done();
     }
@@ -397,6 +473,9 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
 static void cloud_receive(uint8_t byte) {++cloud.live.received;cloud_wire_byte(byte);}
 void cloud_live_init(struct ui_state *model) {
     capture_enabled=1;
+#ifdef Z7_EVENT_ID_TRACE
+    cloud_id_trace[0]=0;
+#endif
     memset(&cloud,0,sizeof(cloud));cloud.model=model;cloud.live.magic=0x31564c43u;
     memset((void *)cloud_health,0,sizeof(cloud_health));cloud_health[0]=0x31484c43u;
     memset((void *)cloud_error_code,0,sizeof(cloud_error_code));health_now=0;health_clean();
@@ -479,6 +558,9 @@ void cloud_live_begin(uint32_t now) {
         memcpy(model->translated,retained_translation,sizeof(retained_translation));
     } else
     {(void)ui_control(model,UI_CLEAR);(void)ui_control(model,UI_START);}
+#ifndef Z7_HISTORY_UI
+    /* Legacy profiles pin the live Chinese font. The settings product scales
+       the 28 px GB2312 subset and preserves the user's font/source choices. */
     /* Live Chinese uses the 28 px font, the only size carrying the GB2312
        level-1 extension, so real translations are not reduced to spaces. */
     if(!reconnect) {
@@ -490,6 +572,7 @@ void cloud_live_begin(uint32_t now) {
         if(model->show_source) (void)ui_control(model,UI_TOGGLE_SOURCE);
 #endif
     }
+#endif
     cloud.live.epoch=model->epoch;
 #ifdef Z7_ARM_TLS
     model->stage=UI_CONNECTING;

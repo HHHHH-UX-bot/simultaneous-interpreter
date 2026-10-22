@@ -31,7 +31,7 @@ def main():
         if result.returncode:
             raise RuntimeError(result.stderr)
         objects.append(str(obj))
-    for name, extra in [('normal', []), ('wrong_host', ['-DTLS_TEST_WRONG_HOST'])]:
+    for name, extra in [('normal', []), ('active', ['-DZ7_ARM_TCP_ACTIVE_RECV']), ('wrong_host', ['-DTLS_TEST_WRONG_HOST'])]:
         command = [*flags, *extra, str(ROOT / 'tests/arm_tls_host_test.c'),
                    str(ROOT / 'software/network_ui/arm_tls.c'), *objects,
                    '-Wl,--gc-sections', '-lws2_32', '-lbcrypt', '-o', str(out / (name + '.exe'))]
@@ -42,7 +42,7 @@ def main():
         if result.returncode:
             raise RuntimeError(result.stderr)
     cases = []
-    for exe, option in [('normal', ''), ('normal', 'full_record'), ('wrong_host', ''), ('normal', 'expired'),
+    for exe, option in [('normal', ''), ('normal', 'bulk'), ('active', 'bulk'), ('normal', 'full_record'), ('wrong_host', ''), ('normal', 'expired'),
                         ('normal', 'noseed'), ('normal', 'corrupt')]:
         result = subprocess.run([str(out / (exe + '.exe')), *([option] if option else [])],
                                 capture_output=True, text=True, timeout=40)

@@ -4,6 +4,7 @@ ENTRY(_start)
    addresses and are mapped Normal non-cacheable so JTAG always reads fresh
    values. The L1 section table is built at 0x01D00000 by start.S. */
 MEMORY {
+    REMOTE_DDR (rw) : ORIGIN = 0x03000000, LENGTH = 0x01000000
     OCM (rwx) : ORIGIN = 0x00010000, LENGTH = 0x10000
     APP_DDR (rwx) : ORIGIN = 0x02200000, LENGTH = 0x00200000
     STACK_DDR (rw) : ORIGIN = 0x01CE0000, LENGTH = 0x00020000
@@ -14,6 +15,7 @@ MEMORY {
     PLAYBACK_DDR (rw) : ORIGIN = 0x02000000, LENGTH = 0x100000
 }
 SECTIONS {
+    .remote_runtime (NOLOAD) : { *(.remote_runtime) } > REMOTE_DDR
     .vectors : { KEEP(*(.vectors)) } > OCM
     .boot : { KEEP(*(.boot)) } > OCM
     .text : { *(.text*) *(.rodata*) } > APP_DDR

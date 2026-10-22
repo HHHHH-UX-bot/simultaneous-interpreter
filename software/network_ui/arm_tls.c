@@ -35,6 +35,7 @@ static mbedtls_ctr_drbg_context rng;
 static uint8_t seed[64],plain[2048],out[8192];
 static uint32_t seed_used,head,tail,used,pending,phase,now_ms,started,epoch,seed_ms,initialized,diag_ms;
 static void (*consumer)(uint8_t);
+static void (*consumer_bytes)(const uint8_t *,uint32_t);
 static void clean(void) {cache_clean_range((const void *)arm_tls_diag,sizeof(arm_tls_diag));}
 mbedtls_ms_time_t mbedtls_ms_time(void) {return (mbedtls_ms_time_t)now_ms;}
 static time_t tls_time(time_t *p) {
@@ -112,7 +113,7 @@ static void failed(int code) {
     if(code==MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE)
         arm_tls_diag[23]=ssl.MBEDTLS_PRIVATE(in_msg)[1];
     arm_tls_diag[3]=mbedtls_ssl_get_verify_result(&ssl);
-    ++arm_tls_diag[10];phase=3;consumer=0;pending=0;cloud_client_stop();network_stream_failed();clean();
+    ++arm_tls_diag[10];phase=3;consumer=0;consumer_bytes=0;pending=0;cloud_client_stop();network_stream_failed();clean();
 }
 void arm_tls_init(void) {
     arm_tls_seed.magic=arm_tls_seed.epoch=0;
@@ -120,15 +121,16 @@ void arm_tls_init(void) {
     memset((void *)arm_tls_diag,0,sizeof(arm_tls_diag));arm_tls_diag[0]=0x31534c54u;
     memset((void *)arm_tls_fault,0,sizeof(arm_tls_fault));
     cache_clean_range((const void *)arm_tls_fault,sizeof(arm_tls_fault));
-    phase=initialized=used=head=tail=pending=0;consumer=0;clean();
+    phase=initialized=used=head=tail=pending=0;consumer=0;consumer_bytes=0;clean();
 #ifdef Z7_TLS_TRACE
     memset((void *)arm_tls_tx_trace,0,sizeof(arm_tls_tx_trace));trace_session=0;
     arm_tls_tx_identity[0]=arm_tls_tx_identity[1]=0;
 #endif
 }
-int arm_tls_ready(void) {return phase==2 && !consumer;}
+int arm_tls_ready(void) {return phase==2 && !consumer && !consumer_bytes;}
 int arm_tls_active(void) {return phase==1 || phase==2;}
-int arm_tls_attach(void (*p)(uint8_t)) {if(phase!=2 || !p || consumer) return 0;consumer=p;return 1;}
+int arm_tls_attach(void (*p)(uint8_t)) {if(phase!=2 || !p || consumer || consumer_bytes) return 0;consumer=p;return 1;}
+int arm_tls_attach_bytes(void (*p)(const uint8_t *,uint32_t)) {if(phase!=2 || !p || consumer || consumer_bytes) return 0;consumer_bytes=p;return 1;}
 int arm_tls_send(const uint8_t *p,uint32_t n) {
     if(phase!=2 || pending || !n || n>sizeof(plain)) return 0;
     if(p[0]==0x89u) {++arm_tls_diag[16];arm_tls_diag[18]=n;arm_tls_diag[22]=n>1?p[1]:0;}
@@ -162,7 +164,7 @@ static int setup(void) {
 void arm_tls_tick(uint32_t now) {
     now_ms=now;
     if(network_info.phase!=4 && network_info.phase!=8) {
-        if(phase) {mbedtls_ssl_free(&ssl);mbedtls_ssl_config_free(&config);phase=0;consumer=0;pending=used=head=tail=0;}
+        if(phase) {mbedtls_ssl_free(&ssl);mbedtls_ssl_config_free(&config);phase=0;consumer=0;consumer_bytes=0;pending=used=head=tail=0;}
     } else if(!phase && network_info.phase==8) {
 #ifdef Z7_TLS_TRACE
         if(!arm_tls_fault[0]) {
@@ -198,9 +200,21 @@ void arm_tls_tick(uint32_t now) {
             } else if(rc!=MBEDTLS_ERR_SSL_WANT_READ && rc!=MBEDTLS_ERR_SSL_WANT_WRITE) {failed(rc);return;}
             else {++arm_tls_diag[19];arm_tls_diag[20]=now;}
         }
-        for(uint32_t i=0;i<8;++i) {
-            int rc=mbedtls_ssl_read(&ssl,out,sizeof(out));
-            if(rc>0) {arm_tls_diag[13]+=(uint32_t)rc;if(consumer) for(int j=0;j<rc;++j) consumer(out[j]);}
+        /* Active UART receive can keep delivering while TLS plaintext is
+           parsed byte-by-byte. Yield after 4 KiB so the independent UART and
+           microphone FIFOs are serviced before a burst can fill them. */
+#ifdef Z7_ARM_TCP_ACTIVE_RECV
+        const uint32_t reads=2u,read_bytes=2048u;
+#else
+        const uint32_t reads=8u,read_bytes=sizeof(out);
+#endif
+        for(uint32_t i=0;i<reads;++i) {
+            int rc=mbedtls_ssl_read(&ssl,out,read_bytes);
+            if(rc>0) {
+                arm_tls_diag[13]+=(uint32_t)rc;
+                if(consumer_bytes) consumer_bytes(out,(uint32_t)rc);
+                else if(consumer) for(int j=0;j<rc;++j) consumer(out[j]);
+            }
             else {if(rc!=MBEDTLS_ERR_SSL_WANT_READ && rc!=MBEDTLS_ERR_SSL_WANT_WRITE) failed(rc?rc:-5);break;}
         }
     }
