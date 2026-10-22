@@ -43,11 +43,6 @@ __attribute__((section(".ui_mailbox"),used)) volatile struct ui_information ui_i
 __attribute__((section(".ui_command"),used)) volatile struct ui_command_mailbox ui_command;
 __attribute__((section(".ui_runtime"),used)) struct ui_snapshot snapshots[2];
 static struct ui_state state;
-#ifdef Z7_REMOTE_DISPLAY
-static uint32_t remote_context(void) {
-    return (state.epoch<<3)|(state.settings_page?1u:0u)|(state.history_page?2u:0u)|(state.language_menu?4u:0u);
-}
-#endif
 static struct ui_demo_clock demo;
 static uint64_t started_ticks;
 static uint32_t generation,last_render_ms,max_render_ms;
@@ -138,8 +133,8 @@ static void process_controls(void) {
         remote_display_history_publish(state.history,state.history_count,sizeof(state.history[0]),state.history_discarded,state.epoch,state.final_count);
     struct remote_pointer pointer;
     if(remote_display_input(&pointer)) {
-        uint32_t accepted=pointer.epoch==remote_context()?ui_touch_remote(&state,pointer.press_x,pointer.press_y,pointer.x,pointer.y):0;
-        remote_display_ack(accepted,remote_context());
+        uint32_t accepted=pointer.epoch==ui_view_context(&state)?ui_touch_remote(&state,pointer.press_x,pointer.press_y,pointer.x,pointer.y):0;
+        remote_display_ack(accepted,ui_view_context(&state));
 #ifdef UI_CONTROL_ACCEPTED
         if(accepted) UI_CONTROL_ACCEPTED((enum ui_command)(accepted-1u));
 #endif
@@ -180,7 +175,7 @@ static void draw(uint32_t index,uint32_t elapsed,uint32_t page) {
 }
 static void publish_ui(uint32_t active) {
 #ifdef Z7_REMOTE_DISPLAY
-    remote_display_present((const uint32_t *)(active?FB_BASE1:FB_BASE0),snapshots[active].generation,remote_context());
+    remote_display_present((const uint32_t *)(active?FB_BASE1:FB_BASE0),snapshots[active].generation,ui_view_context(&snapshots[active].state));
 #endif
     const struct ui_state *shown=&snapshots[active].state;
     ++ui_info.sequence;barrier();

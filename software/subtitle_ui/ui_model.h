@@ -84,6 +84,8 @@ void ui_init(struct ui_state *state);
 int ui_control(struct ui_state *state, enum ui_command command);
 int ui_apply_event(struct ui_state *state, const struct ui_event *event);
 #ifdef Z7_HISTORY_UI
+/* Bind remote input to the page/modal that was actually rendered. */
+uint32_t ui_view_context(const struct ui_state *state);
 /* Pixel scroll of the measured, fixed-size history view; never changes a session. */
 int ui_history_scroll(struct ui_state *state,int delta);
 #endif

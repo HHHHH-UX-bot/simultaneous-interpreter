@@ -113,6 +113,13 @@ int ui_history_scroll(struct ui_state *state,int delta) {
     increment(&state->change_sequence);return 1;
 }
 #endif
+#ifdef Z7_HISTORY_UI
+uint32_t ui_view_context(const struct ui_state *state)
+{
+    return (state->epoch<<4)|(state->settings_page?1u:0u)|(state->history_page?2u:0u)|
+           (state->language_menu?4u:0u)|(state->history_confirm?8u:0u);
+}
+#endif
 int ui_control(struct ui_state *state, enum ui_command command)
 {
     uint32_t next_epoch;
