@@ -83,8 +83,26 @@ static int reject(struct ui_state *state)
     return 0;
 }
 
-void ui_init(struct ui_state *state)
-{
+#ifdef Z7_HISTORY_UI
+void ui_wifi_identity(struct ui_state *state,uint32_t connected,const uint8_t name[33]) {
+    uint32_t text[33]={0},n=0,i=0;
+    if(connected)while(i<32u && name[i]) {
+        uint32_t cp=name[i++],need=0,min=0;
+        if(cp>=0xc2u && cp<=0xdfu){cp&=31u;need=1;min=0x80u;}
+        else if(cp>=0xe0u && cp<=0xefu){cp&=15u;need=2;min=0x800u;}
+        else if(cp>=0xf0u && cp<=0xf4u){cp&=7u;need=3;min=0x10000u;}
+        else if(cp>=128u){text[n++]='?';continue;}
+        uint32_t valid=1;
+        for(uint32_t j=0;j<need;++j){if(i>=32u || (name[i]&0xc0u)!=0x80u){valid=0;break;}cp=(cp<<6)|(name[i++]&63u);}
+        if(!valid || cp<min || cp>0x10ffffu || (cp>=0xd800u && cp<=0xdfffu) || cp<32u || cp==127u)cp='?';
+        text[n++]=cp;
+    }
+    uint32_t changed=state->wifi_connected!=(connected!=0);
+    for(uint32_t j=0;j<33u;++j){if(text[j]!=state->wifi_name[j])changed=1;state->wifi_name[j]=text[j];}
+    state->wifi_connected=connected!=0;if(changed)++state->change_sequence;
+}
+#endif
+void ui_init(struct ui_state *state) {
     if (state == 0) return;
     zero_bytes(state, (uint32_t)sizeof(*state));
     state->epoch = 1;
@@ -116,8 +134,13 @@ int ui_history_scroll(struct ui_state *state,int delta) {
 #ifdef Z7_HISTORY_UI
 uint32_t ui_view_context(const struct ui_state *state)
 {
+#ifdef Z7_LOCAL_AI
+    return (state->epoch<<5)|(state->settings_page?1u:0u)|(state->history_page?2u:0u)|
+           (state->language_menu?4u:0u)|(state->history_confirm?8u:0u)|(state->ai_page?16u:0u);
+#else
     return (state->epoch<<4)|(state->settings_page?1u:0u)|(state->history_page?2u:0u)|
            (state->language_menu?4u:0u)|(state->history_confirm?8u:0u);
+#endif
 }
 #endif
 int ui_control(struct ui_state *state, enum ui_command command)
@@ -152,6 +175,11 @@ int ui_control(struct ui_state *state, enum ui_command command)
 #ifdef Z7_HISTORY_UI
         uint32_t enabled=state->tts_enabled,volume=state->output_volume,muted=state->output_muted,rate=state->rate_index;
         uint32_t settings_page=state->settings_page;
+        uint32_t wifi_connected=state->wifi_connected,wifi_name[33];
+        for(uint32_t i=0;i<33u;++i)wifi_name[i]=state->wifi_name[i];
+#ifdef Z7_LOCAL_AI
+        uint32_t ai_page=state->ai_page,mode=state->model_mode,mask=state->speaker_mask;
+#endif
 #endif
         next_epoch = state->epoch + 1;
         font_index = state->font_index;
@@ -166,6 +194,11 @@ int ui_control(struct ui_state *state, enum ui_command command)
 #ifdef Z7_HISTORY_UI
         state->tts_enabled=enabled;state->output_volume=volume;state->output_muted=muted;state->rate_index=rate;
         state->settings_page=settings_page;
+        state->wifi_connected=wifi_connected;
+        for(uint32_t i=0;i<33u;++i)state->wifi_name[i]=wifi_name[i];
+#ifdef Z7_LOCAL_AI
+        state->ai_page=ai_page;state->model_mode=mode;state->speaker_mask=mask;
+#endif
 #endif
         state->change_sequence = next_sequence;
         break;
@@ -213,6 +246,39 @@ int ui_control(struct ui_state *state, enum ui_command command)
     }
 #endif
 #ifdef Z7_HISTORY_UI
+#ifdef Z7_LOCAL_AI
+    case UI_OPEN_AI:
+        state->ai_page=1;state->settings_page=state->history_page=state->language_menu=0;
+        break;
+    case UI_CLOSE_AI:
+        if(!state->ai_page)return 0;
+        state->ai_page=0;state->settings_page=1;
+        break;
+    case UI_AI_CLOUD:
+    case UI_AI_LOCAL: {
+        uint32_t mode=command==UI_AI_LOCAL;
+        if(mode==state->model_mode || state->epoch==UI_U32_MAX)return 0;
+        ++state->epoch;state->model_mode=mode;
+        state->processing_segment=state->source_revision=state->source_final=0;
+        state->translation_revision=state->last_final_segment=0;
+        state->source[0]=state->translated[0]=state->last_final_source[0]=0;
+        state->stage=UI_LISTENING;state->local_result=0;
+        break;
+    }
+    case UI_AI_ENROLL_1: case UI_AI_ENROLL_2: case UI_AI_ENROLL_3: case UI_AI_ENROLL_4:
+#ifndef Z7_SPEAKER_CNN
+        if(state->session!=UI_RUNNING)return 0;
+#endif
+        state->speaker_enroll=(uint32_t)command-UI_AI_ENROLL_1+1u;
+        break;
+    case UI_AI_CANCEL_ENROLL:
+        if(!state->speaker_enroll)return 0;
+        state->speaker_enroll=0;
+        break;
+    case UI_AI_ERASE:
+        if(!state->speaker_mask && !state->speaker_enroll)return 0;
+        break;
+#endif
     case UI_OPEN_HISTORY:
         state->settings_page=0;
         state->history_page=1;state->history_confirm=0;state->history_follow=1;state->language_menu=0;

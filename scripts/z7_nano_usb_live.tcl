@@ -6,10 +6,17 @@ set expected_generation [lindex $argv 4]
 if {$action ni {start sample stop}} {error "Expected start/sample/stop"}
 source [file join [file dirname [info script]] z7_nano_usb_stop.tcl]
 connect -url TCP:127.0.0.1:3121
-after 1000
+set target_deadline [expr {[clock milliseconds]+10000}]
 foreach core {0 1} {
-    set matches [targets -target-properties -filter "name =~ \"*Cortex-A9*#$core\""]
-    if {[llength $matches]!=1 || [dict get [lindex $matches 0] jtag_cable_serial] ne $serial} {error "Unexpected live Host target"}
+    while {1} {
+        set matches [targets -target-properties -filter "name =~ \"*Cortex-A9*#$core\""]
+        if {[llength $matches]==1 && [dict exists [lindex $matches 0] jtag_cable_serial]} {
+            if {[dict get [lindex $matches 0] jtag_cable_serial] ne $serial} {error "Unexpected live Host target"}
+            break
+        }
+        if {[clock milliseconds]>=$target_deadline} {error "Live Host cable identity unavailable"}
+        after 200
+    }
 }
 proc read32 {address} {return [mrd -force -value $address]}
 proc select_core {core} {targets -set -filter "name =~ \"*Cortex-A9*#$core\""}

@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FONT_SIZES = (14, 18, 28, 36, 44)
 LIVE_FONT_SIZE = 28
 MAX_TEXT_CODEPOINTS = 255
-ASSET_LIMIT = 2 * 1024 * 1024
+ASSET_LIMIT = 3 * 1024 * 1024
 REQUIRED_LABELS = {
     "brand", "language", "demo", "caption", "source", "session", "time",
     "count", "history", "input", "touch", "listening", "recognizing",
@@ -364,7 +364,7 @@ def generate(font_path: Path, input_path: Path, output: Path,
     padding_bound = 3 * (2 * len(FONT_SIZES) + 2 * len(labels) + 2 * len(samples) + 6)
     payload_bound = pixel_bytes + glyph_bytes + text_bytes + key_bytes + table_bytes + padding_bound
     if payload_bound > ASSET_LIMIT:
-        raise ValueError("Asset payload exceeds the reserved 2 MiB ARM DDR region")
+        raise ValueError("Asset payload exceeds the reserved 3 MiB ARM TLS DDR region")
     preview = output / "font_preview.png"
     make_preview(preview_font, preview)
     manifest = dict(

@@ -1,0 +1,12 @@
+{
+  "model_sha256": "1e52c250894dbe6297e5879d12013df66c95b38cb5337f26e2d0a556bf536f6b",
+  "bytes": 32768,
+  "used_words": 7076,
+  "model_id": "0xa3a5ae67",
+  "runtime_profiles_included": false,
+  "training_source": [
+    "https://www.openslr.org/31/",
+    "https://www.openslr.org/12/"
+  ],
+  "description": "Fixed public-audio trained CNN parameters for the deployed FPGA model; no microphone recordings or enrolled profiles."
+}

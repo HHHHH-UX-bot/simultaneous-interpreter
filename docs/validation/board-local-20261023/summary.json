@@ -1,0 +1,62 @@
+{
+  "scope": "Publication snapshot: native checks and SDK 2018.3 rebuild repeated here; deployed board evidence was collected before PR packaging. No new FPGA implementation or JTAG reload during publication.",
+  "fresh_elf_sha256": "d3e8250eb5ab73e774f69d6547bdcd1bca4280ee7c2a2fb933cad6a4a9ecfc8f",
+  "deployed_elf_sha256": "5b89f9e5c962dec83158857ddf0263637063cbc3bd1313b6e5416c42bbfa0a3a",
+  "all_build_input_hashes_identical": true,
+  "elf_load_segments_identical": true,
+  "bit_sha256": "910a6eff383b17d413f6a5ae85fcfdaf7ba80ef22177fd2ac4d572607f0021f3",
+  "selftest": false,
+  "cnn_model_sha256": "1e52c250894dbe6297e5879d12013df66c95b38cb5337f26e2d0a556bf536f6b",
+  "cnn_generated_C_matches_deployed": true,
+  "network": {
+    "8787": {
+      "connected": true,
+      "wifi_connected": true,
+      "wifi_name": "CYEA"
+    },
+    "8790": {
+      "connected": true,
+      "wifi_connected": true,
+      "wifi_name": "CYEA"
+    }
+  },
+  "board_render_missing_glyphs": 0,
+  "board_render_clipped_pixels": 0,
+  "cpu0_running": true,
+  "cpu1_running": true,
+  "usb_screen_power": true,
+  "controlled_history_export": {
+    "passed": true,
+    "record_count": 2,
+    "controlled_records": [
+      {
+        "source": "请把窗户关上。",
+        "translation": "Close the windows."
+      },
+      {
+        "source": "谢谢你的帮助。",
+        "translation": "Thank you for your help."
+      }
+    ],
+    "formats": {
+      "csv": 425,
+      "txt": 431,
+      "json": 768
+    },
+    "all_retained_records_combined": true,
+    "source_full_text_sha256": "3c577d2b9f2387e7d21b66cbe44ec5fee2caf03fbd87f4be3e6da2e7d595a013",
+    "translation_full_text_sha256": "1325ad4d5fd076625975000977b6bf21af4084953143c295c67ef437f104ae8b"
+  },
+  "voice_cloud_errors": 0,
+  "voice_dac_underruns": 0,
+  "checks": [
+    "SDK 2018.3 ARM application build",
+    "test_network_history.py (actual C parser/UI/RLE, export paragraphs and three formats, mocked native save dialog)",
+    "test_speaker_driver.py",
+    "test_speaker_llm_guard.py (real tokenizer, mocked model)",
+    "test_speaker_ui.py",
+    "tests/voice_llm/run_unit_tests.py (model/cloud/DAC mocked)",
+    "tests/remote_wheel_test.js",
+    "prepare_speaker_firmware.py (committed model -> exact deployed generated C/header)"
+  ]
+}

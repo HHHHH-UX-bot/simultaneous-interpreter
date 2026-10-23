@@ -38,3 +38,10 @@ xsim.dir/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Downloaded model assets; publish only provenance and license.
+/models/*
+!/models/source_manifest.json
+!/models/QWEN_LICENSE.txt
+!/models/README.md
+/torchinductor_*/

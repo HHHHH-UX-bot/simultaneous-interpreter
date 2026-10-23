@@ -5,6 +5,16 @@
 #include "cloud_live.h"
 #include "cloud_client.h"
 #include "speech_playback.h"
+#ifdef Z7_TINYQWEN
+#include "tiny_board_llm.h"
+#include "local_voice.h"
+static void llm_idle_tick(void);
+static uint32_t llm_restore_enabled;
+#define UI_IDLE_TICK llm_idle_tick
+#endif
+#ifdef Z7_LOCAL_AI
+#include "local_ai.h"
+#endif
 #include "wifi_recover.h"
 #ifdef Z7_REMOTE_DISPLAY
 #include "remote_display.h"
@@ -140,8 +150,14 @@ static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_
     arm_tls_init();
 #endif
     speech_playback_init();
+#ifdef Z7_LOCAL_AI
+    local_ai_init(s);
+#endif
 #ifdef Z7_REMOTE_DISPLAY
     remote_display_init(now);
+#endif
+#ifdef Z7_TINYQWEN
+    tbl_init();
 #endif
     service_ms=now-1u;network_upload_duration=upload_sequence=upload_ready=0;
 #ifdef Z7_LATENCY_PROBE
@@ -156,6 +172,9 @@ static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_
 static void network_background_tick(struct ui_state *s,uint32_t now) {
     if(now-service_ms<1u) return;
     service_ms=now;
+#ifdef Z7_LOCAL_AI
+    local_ai_tick(now);
+#endif
 #ifdef Z7_LATENCY_PROBE
     uint32_t perf_start=gt_ticks(),perf_stage=perf_start;
     uint32_t gap=perf_start-perf_last;perf_last=perf_start;
@@ -174,7 +193,11 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
     s->voice_latency_valid=voice.latency_valid;s->voice_buffer_ms=voice.buffer_ms;
 #endif
 #ifdef Z7_ARM_TLS
-    network_cloud_run(cloud_live_capture_enabled());
+    network_cloud_run(
+#ifdef Z7_TINYQWEN
+        s->model_mode?local_voice_network_run():
+#endif
+        cloud_live_capture_enabled());
 #endif
 #ifdef Z7_UART_921600
     if(wifi_info.phase==2u) uart_accepted=1;
@@ -185,18 +208,37 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
        audio so a dead link is visible instead of silently dropping frames. */
     if(network_info.phase==6u) cloud_client_stop();
 #endif
+#ifdef Z7_HISTORY_UI
+    uint8_t wifi_name[33];uint32_t wifi_connected=network_wifi_name(wifi_name);
+    ui_wifi_identity(s,wifi_connected,wifi_name);
+#endif
+#ifdef Z7_LOCAL_AI
+#ifndef Z7_TINYQWEN
+    if(!s->model_mode)
+#endif
+#endif
     cloud_live_tick(now);
 #ifdef Z7_LATENCY_PROBE
     service_measure(2u,perf_stage);perf_stage=gt_ticks();
 #endif
 #ifdef Z7_ARM_TLS
-    if(cloud_live_capture_enabled() || network_info.phase!=8u) arm_tls_tick(now);
-    if(cloud_live_capture_enabled() && arm_tls_ready()) cloud_client_start(now);
+    int cloud_run=
+#ifdef Z7_TINYQWEN
+        s->model_mode?local_voice_network_run():
+#endif
+        cloud_live_capture_enabled();
+    if(cloud_run || network_info.phase!=8u) arm_tls_tick(now);
+    if(cloud_run && arm_tls_ready()) cloud_client_start(now);
 #else
     if(network_info.phase==8u) cloud_client_start(now);
 #endif
 #ifdef Z7_LATENCY_PROBE
     service_measure(4u,perf_stage);perf_stage=gt_ticks();
+#endif
+#ifdef Z7_LOCAL_AI
+#ifndef Z7_TINYQWEN
+    if(!s->model_mode)
+#endif
 #endif
     cloud_client_tick(now);
 #ifdef Z7_LATENCY_PROBE
@@ -208,6 +250,9 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
 #endif
     #ifdef Z7_REMOTE_DISPLAY
     remote_display_tick(now);
+#ifdef Z7_TINYQWEN
+    if(llm_restore_enabled>=5u)remote_llm_restore_tick();
+#endif
 #endif
     if(stream_pilot.request || stream_pilot.phase) stream_pilot_tick(now);
     else if(!cloud_live_owns_ui()
@@ -241,7 +286,32 @@ static uint32_t cloud_latency_read(void) {
 #define ui_demo_tick network_demo_tick
 #define UI_BACKGROUND_TICK network_background_tick
 #ifdef Z7_ARM_TLS
+#ifdef Z7_LOCAL_AI
+#define UI_CONTROL_ACCEPTED local_ai_control
+#else
 #define UI_CONTROL_ACCEPTED cloud_live_control
+#endif
 #endif
 #include "../subtitle_ui/main.c"
 static void render_service(void) {network_background_tick(&state,now_ms());}
+#ifdef Z7_TINYQWEN
+static void llm_idle_tick(void) {
+    if(llm_restore_enabled<5u)++llm_restore_enabled;
+    uint32_t flags=remote_llm_asset_flags();
+    tbl_set_assets_ready((flags&1u)!=0u,(flags&2u)!=0u);tbl_tick();
+}
+void tbl_pump(void) {
+    static uint32_t pumping,last_sequence,last_draw;
+    if(pumping)return;
+    pumping=1;uint32_t now=now_ms();
+    check_video();process_controls();network_background_tick(&state,now);
+    if(state.change_sequence!=last_sequence && now-last_draw>=200u) {
+        uint32_t active=(rd(VDMA_BASE+0x28u)>>16)&1u,inactive=active^1u;
+        draw(inactive,now,0);wr(VDMA_BASE+0x28u,inactive);barrier();
+        wait_value(VDMA_BASE+0x28u,0x1f0000u,inactive<<16,1000u,6);
+        publish_ui(inactive);begin_report();report.current_buffer=inactive;++report.flips;update_stats();end_report();
+        last_sequence=state.change_sequence;last_draw=now_ms();
+    }
+    pumping=0;
+}
+#endif

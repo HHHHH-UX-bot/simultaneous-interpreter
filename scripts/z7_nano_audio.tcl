@@ -77,6 +77,7 @@ if {$action ne "diag"} {
     targets -set -filter {name == "xc7z010"}
     fpga -file $bitstream
     after 2000
+    if {[fpga -state] ne "FPGA is configured"} {error "FPGA configuration was not confirmed; no PL accesses allowed"}
     puts "PROGRAMMED $bitstream"
 }
 

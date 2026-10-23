@@ -32,6 +32,8 @@ extern volatile struct network_capability_status network_capability_report;
 void network_init(wifi_read_fn read,wifi_write_fn write);
 void network_tick(struct ui_state *state,uint32_t now);
 int network_owns_ui(void);
+/* Actual AT+CWJAP? association name, UTF8, at most 32 bytes plus NUL. */
+uint32_t network_wifi_name(uint8_t out[33]);
 /* Queue at most 2048 bytes; the caller may reuse its input after success. */
 int network_send(const uint8_t *data,uint32_t size);
 #ifdef Z7_TLS_TRACE

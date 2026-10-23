@@ -80,6 +80,15 @@ OPUS_EXCLUDE = ("/x86/", "/arm/", "/neon/", "/ne10/", "/float/", "/mips/", "/tes
 OPUS_SKIP = ("src/analysis.c", "src/mlp.c", "src/mlp_data.c", "celt/opus_custom_demo.c",
              "src/opus_demo.c", "src/opus_compare.c", "src/repacketizer_demo.c")
 
+TINYQWEN_SOURCES = [
+    "software/network_ui/tinyqwen.c",
+    "software/network_ui/tiny_tokenizer.c",
+    "software/network_ui/tiny_board_llm.c",
+    "software/network_ui/tiny_model_transport.c",
+    "software/network_ui/tiny_heap.c",
+    "software/network_ui/llm_ui_bridge.c",
+]
+
 
 def opus_sources():
     files = []
@@ -120,6 +129,10 @@ def main():
     parser.add_argument("--selftest-once",action="store_true",help="send the synthetic speech once, then continue streaming silence")
     parser.add_argument("--touch",action="store_true",help="enable the Z7-Nano CPU1 touch consumer")
     parser.add_argument("--remote-display",action="store_true",help="PL Ethernet framebuffer and mouse input; requires ARM TLS and touch profile")
+    local_model = parser.add_mutually_exclusive_group()
+    local_model.add_argument("--local-ai",action="store_true",help="integer phrase model and enrolled speaker comparison on Cortex-A9")
+    local_model.add_argument("--tinyqwen",action="store_true",help="on-board Qwen inference; requires --remote-display --touch --arm-tls")
+    parser.add_argument("--speaker-cnn",action="store_true",help="FPGA MFCC and CNN; requires the matching speaker platform and --tinyqwen")
     parser.add_argument("--speech", action="store_true",help="translated audio on lineout (requires playback PL; automatic for enzh)")
     parser.add_argument("--text-only-response", action="store_true", help="diagnostic: request text only while retaining the same audio upload/playback build")
     parser.add_argument("--output-dir", type=Path, help="separate build directory, including ELF, symbols and metadata")
@@ -138,6 +151,9 @@ def main():
     parser.add_argument("--ssl-read-until-empty", action="store_true", help="experimental SSL reads without encrypted-length queries")
     parser.add_argument("--uart-baud", type=int, choices=(460800,921600,1000000,1666666,2000000),default=2000000)
     args = parser.parse_args()
+    if args.speaker_cnn and not args.tinyqwen:parser.error('--speaker-cnn requires --tinyqwen')
+    if args.tinyqwen and not (args.remote_display and args.touch and args.arm_tls):
+        parser.error('--tinyqwen requires --remote-display --touch --arm-tls')
     if args.selftest_pcm and not args.selftest:parser.error('--selftest-pcm requires --selftest')
     if args.selftest_once and not args.selftest:parser.error('--selftest-once requires --selftest')
     if PROFILE and args.mode != PROFILE["mode"]:
@@ -229,6 +245,19 @@ def main():
     elif args.mode == "enen":
         flags += ["-DZ7_SOURCE_EN", "-DZ7_RECOGNIZE_EN"]
     sources = list(SOURCES)
+    if args.tinyqwen:
+        flags = ['-mfloat-abi=softfp' if f=='-mfloat-abi=soft' else f for f in flags]
+        flags += ['-mfpu=neon','-DZ7_TINYQWEN','-DZ7_LOCAL_AI']
+        sources += TINYQWEN_SOURCES
+        sources += ['software/network_ui/local_voice.c']
+    if args.speaker_cnn:
+        flags.append('-DZ7_SPEAKER_CNN')
+        sources += ['software/network_ui/speaker_local.c','output/speaker_cnn/model_weights.c']
+    if args.local_ai:
+        if not args.arm_tls or not args.touch or args.mode not in ('zhen','enzh'):parser.error('--local-ai requires bilingual --arm-tls --touch')
+        flags.append('-DZ7_LOCAL_AI')
+        if args.selftest:flags.append('-DZ7_LOCAL_SELFTEST')
+        sources += ['software/network_ui/local_ai.c','software/network_ui/tiny_features.c','output/local_ai/tiny_model.c']
     if args.remote_display:
         if not args.arm_tls or not args.touch or args.mode not in ("zhen","enzh"):parser.error("--remote-display requires --arm-tls --touch and a bilingual mode")
         flags.append("-DZ7_REMOTE_DISPLAY");sources.append("software/network_ui/remote_display.c")
@@ -284,8 +313,26 @@ def main():
             print("\n".join(opus_log))
             raise SystemExit("opus build failed: " + str(source))
     opus_list = sorted(str(p) for p in opus_objects.glob("*.o"))
+    tiny_objects = []
+    if args.tinyqwen:
+        tiny_dir = OUT / 'tinyqwen_obj'
+        tiny_dir.mkdir(exist_ok=True)
+        tiny_flags = [('-O3' if f=='-O2' else f) for f in flags if not f.startswith('-Wl,')]
+        at = tiny_flags.index('-T'); del tiny_flags[at:at+2]
+        for source in TINYQWEN_SOURCES:
+            obj = tiny_dir / (Path(source).stem+'.o')
+            arguments = [*tiny_flags,'-c',str(ROOT/source),'-o',str(obj)]
+            response = tiny_dir / 'compile.rsp'
+            response.write_text('\n'.join('"'+a.replace('\\','\\\\').replace('"','\\"')+'"' for a in arguments)+'\n',encoding='utf-8')
+            proc = subprocess.run([str(gcc),'@'+str(response)],cwd=str(ROOT),capture_output=True,text=True)
+            if proc.returncode:
+                (OUT/'tinyqwen_build.log').write_text(proc.stdout+proc.stderr,encoding='utf-8')
+                raise SystemExit(proc.stdout+proc.stderr)
+            tiny_objects.append(str(obj))
+    linked_sources = [s for s in sources if not args.tinyqwen or s not in TINYQWEN_SOURCES]
     elf_path = OUT / elf_name
-    cmd = [str(gcc), *flags, *[str(ROOT / s) for s in sources], *opus_list, *tls_objects, "-lgcc",
+    math_libs = ['-lm'] if args.tinyqwen else []
+    cmd = [str(gcc), *flags, *[str(ROOT / s) for s in linked_sources], *tiny_objects, *opus_list, *tls_objects, *math_libs, "-lgcc",
            "-o", str(elf_path)]
     response=OUT/"link.rsp"
     response.write_text("\n".join('"'+arg.replace('\\','\\\\').replace('"','\\"')+'"' for arg in cmd[1:])+"\n",encoding="utf-8")
@@ -319,6 +366,10 @@ def main():
         "OpusOptimization": "O2",
         "Touch": bool(args.touch),
         "RemoteDisplay":bool(args.remote_display),
+        "LocalAI":bool(args.local_ai),
+        "TinyQwen":bool(args.tinyqwen),
+        "SpeakerCNN":bool(args.speaker_cnn),
+        "TinyQwenOptimization":"O3" if args.tinyqwen else None,
         "Mode": args.mode,
         "Speech": bool(args.speech),
         "TextOnlyResponse": bool(args.text_only_response),

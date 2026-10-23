@@ -11,7 +11,8 @@
 # Usage: vivado -mode batch -source scripts/build_z7_nano_audio.tcl -tclargs build
 set root [file normalize [file join [file dirname [info script]] ..]]
 set action [lindex $argv 0]
-set remote_ui [expr {[lindex $argv 2] eq "remote-ui"}]
+set speaker_ui [expr {[lindex $argv 2] eq "speaker-ui"}]
+set remote_ui [expr {[lindex $argv 2] in {"remote-ui" "speaker-ui"}}]
 # Optional second argument: output directory. Used to build in a scratch tree
 # while the main project is open in the GUI.
 set out [expr {[llength $argv] > 1 ? [lindex $argv 1] : [file join $root output z7_nano audio]}]
@@ -29,6 +30,14 @@ add_files [file join $root rtl audio_playback.v]
 # sources must be in the project before create_bd_cell resolves them.
 foreach filename {ps_wifi_uart.v wifi_uart_axi.v wifi_uart_phy.v wifi_byte_fifo.v wifi_uart_tx_trace.v} {
     add_files [file join $root rtl $filename]
+}
+if {$speaker_ui} {
+    source [file join $out speaker_sources.tcl]
+    foreach filename {speaker_capture.v speaker_pipeline.v speaker_accel.v} {
+        add_files [file join $root rtl speaker_cnn $filename]
+    }
+    add_files [file join $root rtl speaker_cnn speaker_fir_rom.vh]
+    set_property include_dirs [list [file join $root rtl speaker_cnn]] [get_filesets sources_1]
 }
 
 # ---------------------------------------------------------------------------
@@ -59,7 +68,7 @@ set_property -dict [list CONFIG.c_include_s2mm {0} CONFIG.c_include_mm2s {1} \
     CONFIG.c_include_mm2s_dre {0}] $dma
 set video [create_bd_cell -type module -reference framebuffer_video video]
 set regs [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 regs]
-set_property CONFIG.NUM_MI [expr {$remote_ui ? 5 : 4}] $regs
+set_property CONFIG.NUM_MI [expr {$speaker_ui ? 6 : ($remote_ui ? 5 : 4)}] $regs
 set memory [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 memory]
 set_property CONFIG.NUM_MI 1 $memory
 set reset [create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 reset]
@@ -156,6 +165,16 @@ set uart_segment [get_bd_addr_segs -of_objects [get_bd_intf_pins uart/S_AXI]]
 if {[llength $uart_segment] != 1} {error "UART register segment missing"}
 create_bd_addr_seg -range 0x10000 -offset 0x43c30000 [get_bd_addr_spaces ps7/Data] $uart_segment SEG_UART
 if {$remote_ui} {source [file join $root scripts pl_ethernet_bd.tcl]}
+if {$speaker_ui} {
+    set speaker [create_bd_cell -type module -reference speaker_accel speaker]
+    connect_bd_intf_net [get_bd_intf_pins regs/M05_AXI] [get_bd_intf_pins speaker/S_AXI]
+    connect_bd_net $clk [get_bd_pins speaker/clk]
+    connect_bd_net [get_bd_pins reset/peripheral_aresetn] [get_bd_pins speaker/reset_n]
+    connect_bd_net [get_bd_pins aregs/sample_data] [get_bd_pins speaker/sample_data]
+    connect_bd_net [get_bd_pins aregs/sample_toggle] [get_bd_pins speaker/sample_toggle]
+    create_bd_addr_seg -range 0x10000 -offset 0x43c40000 [get_bd_addr_spaces ps7/Data] \
+        [get_bd_addr_segs -of_objects [get_bd_intf_pins speaker/S_AXI]] SEG_SPEAKER_CNN
+}
 assign_bd_address [get_bd_addr_segs ps7/S_AXI_HP0/HP0_DDR_LOWOCM]
 validate_bd_design
 if {[get_property CONFIG.c_prmry_is_aclk_async $dma] != 0} {error "VDMA did not infer the common clock"}
@@ -233,7 +252,7 @@ if {$remote_ui} {
 place_design
 phys_opt_design
 route_design
-set usr_access [expr {[lindex $argv 2] eq "tx-trace" ? 0x5a375458 : ($remote_ui ? 0x5a374e34 : 0x5a374e33)}]
+set usr_access [expr {$speaker_ui ? 0x5a374e35 : ([lindex $argv 2] eq "tx-trace" ? 0x5a375458 : ($remote_ui ? 0x5a374e34 : 0x5a374e33))}]
 set_property BITSTREAM.CONFIG.USR_ACCESS [format "0x%08x" $usr_access] [current_design]
 report_timing_summary -report_unconstrained -file [file join $out reports timing.rpt]
 set tap_skew_report [report_bus_skew -return_string]

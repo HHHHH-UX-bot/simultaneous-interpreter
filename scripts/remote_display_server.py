@@ -38,18 +38,45 @@ def decode_history(data):
         records.append(dict(number=i+1,direction='中译英' if words[0] else '英译中',epoch=words[2],segment_id=words[3],revision=words[4],source_revision=words[5],source=text(words[6:262]),translation=text(words[262:518])))
     return dict(exported_at=datetime.datetime.now().astimezone().isoformat(timespec='seconds'),count=count,discarded=discarded,epoch=epoch,final_count=final_count,records=records)
 
+def compose_history(records):
+    """Join retained sentences without rewriting; share bilingual paragraph breaks."""
+    paragraphs=[];group=[];length=0;previous=None
+    transitions=('另外','另一方面','接下来','最后','因此','next,','finally,','on the other hand,','in addition,')
+    def join(parts):
+        result=''
+        for part in parts:
+            if not part:continue
+            # Spaces separate Latin words; Han sentences already carry punctuation.
+            latin=result and result[-1].isascii() and part[0].isascii() and part[0] not in ',.!?:;)]}' and result[-1] not in '([{'
+            result+=(' ' if latin and not result[-1].isspace() and not part[0].isspace() else '')+part
+        return result
+    def flush():
+        if group:paragraphs.append({key:join([r[key] for r in group]) for key in ('source','translation')})
+    for record in records:
+        current=(record['epoch'],record['direction'])
+        topic=record['source'].lstrip().lower().startswith(transitions)
+        if group and (current!=previous or len(group)>=4 or length>=360 or (len(group)>=2 and topic)):
+            flush();group=[];length=0
+        group.append(record);length+=max(len(record['source']),len(record['translation']));previous=current
+    flush()
+    return {key:'\n\n'.join(p[key] for p in paragraphs if p[key]) for key in ('source','translation')}
+
 def history_file(history,kind):
-    if kind=='json':return (json.dumps(history,ensure_ascii=False,indent=2)+'\n').encode('utf-8'),'application/json; charset=utf-8'
+    full=compose_history(history['records'])
+    if kind=='json':return (json.dumps({**history,'full_text':full},ensure_ascii=False,indent=2)+'\n').encode('utf-8'),'application/json; charset=utf-8'
     if kind=='csv':
         out=io.StringIO(newline='');writer=csv.writer(out)
         writer.writerow(['序号','翻译方向','原文','译文','会话','片段','原文版本','译文版本','导出时间','更早已丢弃条数'])
         # Prevent spreadsheet formulas in recognized speech from executing on open.
         def cell(value):return "'"+value if value.lstrip().startswith(('=','+','-','@')) else value
         for r in history['records']:writer.writerow([r['number'],r['direction'],cell(r['source']),cell(r['translation']),r['epoch'],r['segment_id'],r['source_revision'],r['revision'],history['exported_at'],history['discarded']])
+        writer.writerow(['']*10)
+        writer.writerow(['完整文本','',cell(full['source']),cell(full['translation']),'','','','','',''])
         return out.getvalue().encode('utf-8-sig'),'text/csv; charset=utf-8'
     if kind=='txt':
         lines=['译声 · 已定稿翻译历史',f"导出时间：{history['exported_at']}",f"当前保留 {history['count']} 条；更早已丢弃 {history['discarded']} 条。",'']
         for r in history['records']:lines.extend([f"{r['number']}. {r['direction']}",'原文：'+r['source'],'译文：'+r['translation'],''])
+        lines.extend(['完整文本','', '完整原文：',full['source'],'','完整译文：',full['translation']])
         return ('\r\n'.join(lines)+'\r\n').encode('utf-8-sig'),'text/plain; charset=utf-8'
     raise ValueError('请选择 CSV、TXT 或 JSON')
 
@@ -71,7 +98,7 @@ class Board:
     def __init__(self,local,host):
         self.host=host;self.sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);self.sock.bind((local,0));self.sock.settimeout(.15)
         self.cookie=struct.unpack('<II',secrets.token_bytes(8));self.sequence=0;self.lock=threading.Lock();self.action=threading.Lock();self.control=threading.Event()
-        self.frame=0;self.epoch=0;self.png=None;self.rgb=None;self.snapshot=(0,0,None,None);self.last_seen=0;self.error='正在连接板子';self.controls=0;self.stop=False
+        self.frame=0;self.epoch=0;self.png=None;self.rgb=None;self.snapshot=(0,0,None,None);self.last_seen=0;self.error='正在连接板子';self.controls=0;self.stop=False;self.wifi_connected=False;self.wifi_name='';self.wifi_poll=0
     def request(self,op,frame=0,a=0,b=0,payload=b''):
         with self.lock:
             self.sequence=(self.sequence+1)&0x7fffffff or 1;seq=self.sequence
@@ -103,6 +130,10 @@ class Board:
                         raw.extend(data);time.sleep(.0005)
                     rgb=decode_frame(raw);output=io.BytesIO();Image.frombytes('RGB',(WIDTH,HEIGHT),rgb).save(output,format='PNG',compress_level=1)
                     self.rgb=rgb;self.png=output.getvalue();self.epoch=epoch;self.frame=frame;self.snapshot=(frame,epoch,self.png,rgb)
+                if time.monotonic()-self.wifi_poll>=1:
+                    r,name=self.request(6)
+                    if r[1]!=0x86 or r[5] not in (0,1) or r[6]!=len(name) or len(name)>32 or r[7]!=1:raise ValueError('Invalid network identity')
+                    self.wifi_connected=bool(r[5]);self.wifi_name=name.decode('utf-8',errors='replace') if r[5] else '';self.wifi_poll=time.monotonic()
                 self.error='';time.sleep(.05)
             except (OSError,ValueError,TimeoutError) as exc:self.error=str(exc);time.sleep(.15)
     def pointer(self,p):
@@ -127,7 +158,7 @@ class Board:
                     raw.extend(data)
                 return decode_history(raw)
             finally:self.control.clear()
-    def state(self):return dict(connected=time.monotonic()-self.last_seen<3,frame=self.snapshot[0],epoch=self.snapshot[1],error=self.error,controls=self.controls,board=self.host)
+    def state(self):return dict(connected=time.monotonic()-self.last_seen<3,frame=self.snapshot[0],epoch=self.snapshot[1],error=self.error,controls=self.controls,board=self.host,wifi_connected=self.wifi_connected,wifi_name=self.wifi_name)
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--local-ip',default='192.168.1.102');p.add_argument('--board-ip',default='192.168.1.50');p.add_argument('--port',type=int,default=8787);a=p.parse_args()
