@@ -12,6 +12,7 @@ void cloud_live_init(struct ui_state *model);
 /* Enter the live cloud session from the board's own TLS/WSS client: reset the
    event/pair state, start the model session and initialise the wire mapper. */
 void cloud_live_begin(uint32_t now);
+void cloud_live_quiesce(void);
 void cloud_live_tick(uint32_t now);
 /* Called only after an accepted user control, not network-generated pauses. */
 void cloud_live_control(enum ui_command command);

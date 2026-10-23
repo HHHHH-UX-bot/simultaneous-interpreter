@@ -42,7 +42,7 @@ while {[mrd -force -value 0x1e148]!=0} {
 stop
 set failed [catch {
  set ui [mrd -force -value 0x1e080 6]
- if {[lindex $ui 4]!=135804 || [lindex $ui 3]!=135868} {error "UI ABI mismatch"}
+ if {[lindex $ui 4]!=135940 || [lindex $ui 3]!=136004} {error "UI ABI mismatch"}
  set addr [expr {[lindex $ui 2]+[lindex $ui 5]*[lindex $ui 3]}]
  mrd -force -bin -file {FILE} $addr 33967
 } detail]

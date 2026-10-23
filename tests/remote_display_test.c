@@ -5,6 +5,8 @@
 static uint32_t regs[2048],sent;static uint8_t packet[1536];static uint32_t packet_size;
 static uint32_t mock_read(uint32_t o){return regs[o/4];}
 static void mock_write(uint32_t o,uint32_t v){regs[o/4]=v;if((o==0x7fc || o==0xffc) && (v&1)){uint32_t b=o-0x7fc;packet_size=regs[(b+0x7f4)/4];memcpy(packet,(uint8_t *)regs+b,packet_size);++sent;regs[o/4]=0;}}
+static uint32_t mock_wifi=1;
+uint32_t network_wifi_name(uint8_t out[33]) {memset(out,0,33);if(mock_wifi)memcpy(out,"CYEA",4);return mock_wifi;}
 #define REMOTE_READ mock_read
 #define REMOTE_WRITE mock_write
 #include "../software/network_ui/remote_display.c"
@@ -40,5 +42,7 @@ int main(int argc,char **argv) {
     request_packet(5,8,1,1400,1);handle_frame(74);CHECK(le32(packet+46)==0x85 && le32(packet+66)==1400 && !memcmp(packet+74,history+1400,704));
     before=sent;request_packet(5,9,2,0,1);handle_frame(74);CHECK(before==sent);
     request_packet(4,10,0,0,1);handle_frame(74);CHECK(remote_display_history_requested());remote_display_history_publish(record,0,sizeof(record),0,43,0);CHECK(history_bytes==32 && history_count==0 && history_id==2);
+    request_packet(6,11,0,0,1);handle_frame(74);CHECK(le32(packet+46)==0x86 && le32(packet+62)==1 && le32(packet+66)==4 && le32(packet+70)==1 && !memcmp(packet+74,"CYEA",4));
+    mock_wifi=0;request_packet(6,12,0,0,1);handle_frame(74);CHECK(le32(packet+62)==0 && le32(packet+66)==0 && packet_size==74);
     printf("PASS_REMOTE_DISPLAY checks=%u full RGB exact, long runs, packet bounds, IP checksum, cookie and duplicate input\n",checks);return 0;
 }

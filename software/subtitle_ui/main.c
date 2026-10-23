@@ -32,8 +32,13 @@ struct ui_snapshot {
 _Static_assert(sizeof(struct display_result)==64,"Display ABI");
 _Static_assert(sizeof(struct ui_information)==64,"UI ABI");
 #ifdef Z7_HISTORY_UI
-_Static_assert(sizeof(struct ui_state)==135804u,"History/settings model ABI");
-_Static_assert(sizeof(struct ui_snapshot)==135868u,"History/settings snapshot ABI");
+#ifdef Z7_LOCAL_AI
+_Static_assert(sizeof(struct ui_state)==135984u,"Local AI model ABI");
+_Static_assert(sizeof(struct ui_snapshot)==136048u,"Local AI snapshot ABI");
+#else
+_Static_assert(sizeof(struct ui_state)==135940u,"History/settings model ABI");
+_Static_assert(sizeof(struct ui_snapshot)==136004u,"History/settings snapshot ABI");
+#endif
 #else
 _Static_assert(sizeof(struct ui_state)==11392u,"ARM/native model ABI requires 32-bit enums");
 _Static_assert(sizeof(struct ui_snapshot)==11456u,"ARM/native snapshot ABI");
@@ -227,6 +232,9 @@ int main(void) {
     begin_report();report.phase=2;report.current_buffer=0;end_report();
     uint32_t active=0,page_mark=now_ms(),previous_sequence=state.change_sequence,page=0;
     for(;;) {
+#ifdef UI_IDLE_TICK
+        UI_IDLE_TICK();active=(rd(VDMA_BASE+0x28u)>>16)&1u;
+#endif
         check_video();process_controls();uint32_t elapsed=now_ms();ui_demo_tick(&demo,&state,elapsed);
         if(previous_sequence!=state.change_sequence) {previous_sequence=state.change_sequence;page_mark=elapsed;page=0;}
         if(state.session==UI_RUNNING) page=(elapsed-page_mark)/4000u;

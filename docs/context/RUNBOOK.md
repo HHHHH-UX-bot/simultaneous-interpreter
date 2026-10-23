@@ -6,7 +6,7 @@
 
 当前正式译音构建参数为 `--mode zhen --speech --arm-tls --arm-tls-packets --arm-tls-active-recv --low-latency-playback --touch --uart-baud 2000000 --remote-display --output-dir output/remote_display/microphone`，使用 SDK 2018.3 ARM GCC；`scripts/build_tts.ps1` 提供本机入口，`-RebuildFpga` 生成USR_ACCESS=0x5a374e34的PL网口平台。`scripts/load_tts.py --configure` 根据应用元数据核对并加载匹配位流、应用、CPU1触摸，再输入运行期配置。旧平台仍可显式指定其匹配应用。`--selftest` 才是固定样本，普通构建是麦克风；准备字库/显示头文件仍按既有入口，不能用命令列出当作已执行。D17语言菜单仅供ARM TLS双语构建。电脑画面、直连地址和历史另存为见[REMOTE_DISPLAY](../design/REMOTE_DISPLAY.md)。
 
-暖换 ELF 前必须受控关闭云连接、确认普通 AT/TCP 已关闭、停止匹配 CPU1 并确认 USB DMA Halt；匹配同一 PL 时复用视频/音频位流，不为 UI 改动重做 FPGA。操作前实际核对线缆/PL/CPU/ELF，不读取私有凭据区。新模型/快照大小必须与捕获和主机解析器共同更新，旧 ABI 拒绝混用。当前设置页模型/快照135804/135868；`z7_nano_capture.tcl` 抓当前页需显式传期望模型大小135804，默认仍是旧版11392；比较器以已验证的主机模型大小为依据，不能用当前DLL重建旧快照。
+暖换 ELF 前必须受控关闭云连接、确认普通 AT/TCP 已关闭、停止匹配 CPU1 并确认 USB DMA Halt；匹配同一 PL 时复用视频/音频位流，不为 UI 改动重做 FPGA。操作前实际核对线缆/PL/CPU/ELF，不读取私有凭据区。新模型/快照大小必须与捕获和主机解析器共同更新，旧 ABI 拒绝混用。当前声纹及网络名应用模型/快照为 135984/136048；不带本地 AI 的新版历史/设置模型为 135940/136004。`z7_nano_capture.tcl` 抓当前声纹页需显式传期望模型大小 135984，默认仍是旧版 11392；比较器以已验证的主机模型大小为依据，不能用当前DLL重建旧快照。
 
 历史页已实现，`python -B scripts/validate_history_ui.py --gcc <Windows-GCC>` 运行实际 C 模型/渲染/触摸回归；源码/截图输出在独立 tmp/output/history_ui_20261021。示例夹具只验证 UI，不能当作真实采音/云译。进入/返回不能暂停或重连；页内清空仅清历史，原 UI_CLEAR 的停止/epoch 重置语义仍供明确开发命令使用。板上正常识别不等于定稿/历史可靠。
 

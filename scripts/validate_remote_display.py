@@ -24,7 +24,7 @@ def main():
         history_bytes+=struct.pack('<518I',lang,100,42,lang+1,1,1,*words(source),*words(target))
     history=decode_history(history_bytes);assert history['count']==2 and history['discarded']==3
     encoded,mime=history_file(history,'csv');rows=list(csv.reader(io.StringIO(encoded.decode('utf-8-sig'))));assert rows[1][2]==history['records'][0]['source'] and rows[2][2]=="'=SUM(1,2)" and rows[2][3].endswith('第二行')
-    assert json.loads(history_file(history,'json')[0])==history
+    exported=json.loads(history_file(history,'json')[0]);assert exported['records']==history['records'] and exported['full_text']['source'].endswith('=SUM(1,2)')
     assert '原文：今天' in history_file(history,'txt')[0].decode('utf-8-sig')
     assert decode_history(struct.pack('<8I',0x31545348,0,2072,0,1,0,0,0))['records']==[]
     bad_language=bytearray(history_bytes);struct.pack_into('<I',bad_language,32,2)

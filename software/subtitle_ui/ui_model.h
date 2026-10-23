@@ -22,6 +22,9 @@ enum ui_command {
     UI_HISTORY_CONFIRM_CLEAR, UI_HISTORY_CANCEL_CLEAR, UI_HISTORY_OLDER, UI_HISTORY_NEWER,
     UI_OPEN_SETTINGS, UI_CLOSE_SETTINGS, UI_TOGGLE_TTS, UI_VOLUME_MINUS, UI_VOLUME_PLUS,
     UI_TOGGLE_MUTE, UI_RATE_MINUS, UI_RATE_PLUS,
+    UI_OPEN_AI, UI_CLOSE_AI, UI_AI_CLOUD, UI_AI_LOCAL,
+    UI_AI_ENROLL_1, UI_AI_ENROLL_2, UI_AI_ENROLL_3, UI_AI_ENROLL_4,
+    UI_AI_CANCEL_ENROLL, UI_AI_ERASE,
     UI_COMMAND_COUNT
 };
 enum ui_language { UI_EN_ZH, UI_ZH_EN };
@@ -77,6 +80,11 @@ struct ui_state {
     uint32_t history_page,history_scroll,history_limit,history_follow,history_confirm,history_discarded;
     uint32_t settings_page,tts_enabled,output_volume,output_muted,rate_index;
     uint32_t voice_status,voice_latency_ms,voice_latency_valid,voice_buffer_ms;
+    uint32_t wifi_connected,wifi_name[33];
+#ifdef Z7_LOCAL_AI
+    uint32_t ai_page,model_mode,speaker_id,speaker_score,speaker_mask,speaker_enroll,speaker_progress;
+    uint32_t speaker_status,local_result,local_phrase,local_cost;
+#endif
 #endif
 };
 
@@ -86,6 +94,7 @@ int ui_apply_event(struct ui_state *state, const struct ui_event *event);
 #ifdef Z7_HISTORY_UI
 /* Bind remote input to the page/modal that was actually rendered. */
 uint32_t ui_view_context(const struct ui_state *state);
+void ui_wifi_identity(struct ui_state *state,uint32_t connected,const uint8_t name[33]);
 /* Pixel scroll of the measured, fixed-size history view; never changes a session. */
 int ui_history_scroll(struct ui_state *state,int delta);
 #endif

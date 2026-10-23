@@ -21,8 +21,11 @@ def main():
     proof=platform/'build.json' if build.get('RemoteDisplay') else ROOT/'output/z7_nano/audio_loopback/build.json'
     pl=json.loads(proof.read_text());bit=platform/'z7_nano_audio_top.bit'
     if pl['Status']!='passed' or pl['BitstreamSHA256']!=sha(bit):raise RuntimeError('Verified bitstream required')
+    if bool(build.get('SpeakerCNN'))!=bool(pl.get('SpeakerCNN')):raise RuntimeError('Speaker firmware and PL platform must match')
+    if build.get('SpeakerCNN') and pl.get('usr_access')!=0x5a374e35:raise RuntimeError('Verified speaker platform identity required')
     if any(sha(ROOT/item['File'])!=item['SHA256'] for item in pl['LogicHashes']):raise RuntimeError('PL inputs changed: rebuild first')
     init=next(platform.rglob('ps7_init.tcl'))
+    if pl.get('PS7InitSHA256') and sha(init)!=pl['PS7InitSHA256']:raise RuntimeError('PS initialization hash mismatch')
     attempt=app/'loads'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ');attempt.mkdir(parents=True)
     result=attempt/'result.json'
     run=subprocess.run([str(a.xsct),str(ROOT/'scripts/z7_nano_audio.tcl'),'run','210241277120',str(bit),str(result),str(init),str(elf)],capture_output=True,cwd=ROOT)

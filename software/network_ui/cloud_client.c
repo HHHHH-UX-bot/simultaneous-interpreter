@@ -20,6 +20,9 @@
 #include "speech_playback.h"
 #ifdef Z7_OPUS
 #include "opus_codec.h"
+#ifdef Z7_LOCAL_AI
+#include "local_ai.h"
+#endif
 #include "../ps_bringup/cache.h"
 #include "ogg_opus.h"
 #endif
@@ -256,7 +259,51 @@ static int send_json(const char *json,uint32_t size) {
     return network_send(frame,used);
 }
 
+#ifdef Z7_TINYQWEN
+#include "local_voice.h"
+static uint32_t tts_event_begin(char *json,uint32_t capacity,const char *type) {
+    uint32_t n=0;append(json,&n,capacity,"{\"event_id\":\"z7_tts_");
+    append_decimal(json,&n,capacity,++client.event_sequence);
+    append(json,&n,capacity,"\",\"type\":\"");append(json,&n,capacity,type);append(json,&n,capacity,"\"");return n;
+}
+int cloud_client_tts_text(const char *text,uint32_t bytes) {
+    char json[1800];uint32_t n=0;
+    if(local_voice_role()!=2 || !cloud_client_ready() || bytes>240u)return 0;
+    n=tts_event_begin(json,sizeof(json),"input_text_buffer.append");append(json,&n,sizeof(json),",\"text\":\"");
+    for(uint32_t i=0;i<bytes;++i) {
+        uint8_t c=(uint8_t)text[i];
+        if(c=='"' || c=='\\'){json[n++]='\\';json[n++]=(char)c;}
+        else if(c<32u){static const char hex[]="0123456789abcdef";json[n++]='\\';json[n++]='u';json[n++]='0';json[n++]='0';json[n++]=hex[c>>4];json[n++]=hex[c&15u];}
+        else json[n++]=(char)c;
+    }
+    json[n++]='"';json[n++]='}';return send_json(json,n);
+}
+int cloud_client_tts_commit(void) {
+    char msg[128];uint32_t n=tts_event_begin(msg,sizeof(msg),"input_text_buffer.commit");msg[n++]='}';
+    return local_voice_role()==2 && cloud_client_ready() && send_json(msg,n);
+}
+int cloud_client_tts_finish(void) {
+    char msg[128];uint32_t n=tts_event_begin(msg,sizeof(msg),"session.finish");msg[n++]='}';
+    return local_voice_role()==2 && cloud_client_ready() && send_json(msg,n);
+}
+#endif
+
 static int send_session_config(void) {
+#ifdef Z7_TINYQWEN
+    if(local_voice_role()==2) {
+        char tts[320];uint32_t n=tts_event_begin(tts,sizeof(tts),"session.update");
+        append(tts,&n,sizeof(tts),",\"session\":{\"voice\":\"Cherry\",\"mode\":\"commit\",\"response_format\":\"pcm\",\"sample_rate\":24000,\"language_type\":\"");
+        append(tts,&n,sizeof(tts),cloud_live_language()==UI_ZH_EN?"English":"Chinese");append(tts,&n,sizeof(tts),"\"}}");
+        return send_json(tts,n);
+    }
+    if(local_voice_role()==1) {
+        char asr[420];uint32_t n=tts_event_begin(asr,sizeof(asr),"session.update");
+        append(asr,&n,sizeof(asr),",\"session\":{\"sample_rate\":16000,\"input_audio_format\":\"opus\",\"input_audio_transcription\":{\"language\":\"");
+        append(asr,&n,sizeof(asr),cloud_live_language()==UI_ZH_EN?"zh":"en");
+        append(asr,&n,sizeof(asr),"\"},\"turn_detection\":{\"type\":\"server_vad\",\"threshold\":0.12,\"silence_duration_ms\":400}}}");
+        return send_json(asr,n);
+    }
+#endif
 #if defined(Z7_OPUS) && defined(Z7_LANGUAGE_SWITCH)
     if(cloud_live_language()!=
 #ifdef Z7_TRANSLATE_EN
@@ -335,7 +382,11 @@ void cloud_client_stop(void) {
 static void send_handshake(void) {
     static char request[768];uint32_t used=0;
     append(request,&used,sizeof(request),"GET ");
+#ifdef Z7_TINYQWEN
+    append(request,&used,sizeof(request),local_voice_role()?local_voice_path():(const char *)cloud_client_config.path);
+#else
     append(request,&used,sizeof(request),(const char *)cloud_client_config.path);
+#endif
     append(request,&used,sizeof(request)," HTTP/1.1\r\nHost: ");
     append(request,&used,sizeof(request),(const char *)cloud_client_config.workspace);
     append(request,&used,sizeof(request),".cn-beijing.maas.aliyuncs.com\r\nAuthorization: Bearer ");
@@ -544,6 +595,9 @@ static int send_ogg_page(void) {
 
 #ifdef Z7_OPUS
 static void queue_opus_frame(const int16_t *samples) {
+#ifdef Z7_LOCAL_AI
+    local_ai_feed(samples,320u);
+#endif
     dump_pcm(samples,320u);
     for(uint32_t i=0;i<320u;++i) {int32_t v=samples[i];if(v<0) v=-v;if((uint32_t)v>diag_peak) diag_peak=(uint32_t)v;}
     uint8_t packet[128];
@@ -604,7 +658,11 @@ void cloud_client_tick(uint32_t now) {
             client.update_ms=now;
         }
     }
-    if(client.phase!=CLOUD_STREAMING) {
+    if(client.phase!=CLOUD_STREAMING
+#ifdef Z7_TINYQWEN
+       || local_voice_role()==2
+#endif
+    ) {
         /* Keep the hardware FIFO empty while paused/offline; discard locally,
            without encoding, queueing or sending microphone audio. */
         uint32_t discard=audio_regs32(AUDIO_FIFO_COUNT);

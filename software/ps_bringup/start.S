@@ -1,6 +1,9 @@
 .syntax unified
 .cpu cortex-a9
 .arm
+#ifdef Z7_TINYQWEN
+.fpu neon
+#endif
 
 /* Two boot variants share this file:
    - default: the historical OCM-only image used by the display/network/pilot
@@ -54,7 +57,9 @@ reset_entry:
     /* Invalidate D-cache lines for every DDR region the app touches
        (0x00F00000 guard bytes through 0x01E00000 page table/stack). */
     ldr r0, =0x00F00000
-#ifdef Z7_ARM_TLS
+#ifdef Z7_TINYQWEN
+    ldr r1, =0x1f800000  /* Weights, tokenizer, inference arena and bounded heap. */
+#elif defined(Z7_ARM_TLS)
     ldr r1, =0x02800000  /* Include the opt-in TLS code and static arena. */
 #elif defined(Z7_TRANSLATE_AUDIO)
     ldr r1, =0x02100000  /* Include the dedicated translated-audio ring. */
@@ -148,6 +153,18 @@ reset_entry:
     blo 10b
     dsb sy
     isb sy
+#ifdef Z7_TINYQWEN
+    /* Softfp keeps the existing integer calling convention while allowing
+       Cortex-A9 VFP/NEON arithmetic inside the local inference engine. */
+    mrc p15, 0, r0, c1, c0, 2          @ CPACR
+    orr r0, r0, #0x00f00000           @ Full access to CP10 and CP11
+    mcr p15, 0, r0, c1, c0, 2
+    isb sy
+    mov r0, #0x40000000
+    vmsr fpexc, r0
+    mov r0, #0
+    vmsr fpscr, r0
+#endif
     bl main
 
 exception_hang:

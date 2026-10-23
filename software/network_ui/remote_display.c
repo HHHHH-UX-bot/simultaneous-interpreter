@@ -1,7 +1,50 @@
 /* Direct cable remote framebuffer. Etherlite/PG160, IPv4 ARP/ICMP/UDP only.
    No private cloud/config memory is exposed; pointer requests are deduplicated. */
 #include "remote_display.h"
+#include "network.h"
 #include <string.h>
+#ifdef Z7_TINYQWEN
+#include "tiny_model_transport.h"
+#include "tiny_board_llm.h"
+static struct tiny_model_transport llm_model_transport,llm_tokenizer_transport;
+static const uint8_t llm_model_sha256[32]={0xe7,0xeb,0xb0,0xa8,0x43,0x5a,0xc9,0x01,0x73,0xef,0x9c,0xef,0xa7,0x53,0xad,0xc7,0xfe,0x2f,0x6a,0x5f,0xb8,0xfa,0x86,0x75,0x7a,0x98,0xf1,0x34,0x4d,0xcf,0x48,0x63};
+static const uint8_t llm_tokenizer_sha256[32]={
+    0xb6,0xaa,0x0f,0xa0,0x9e,0xc4,0x91,0x3e,0x88,0x92,0xcc,0x1f,0x25,0xc0,0xc7,0x6f,
+    0x24,0xa7,0x2d,0xbd,0x30,0x74,0x13,0x17,0x82,0xbe,0xa5,0x8b,0x6a,0x94,0x4a,0xea};
+int remote_llm_assets_ready(void) {
+    return tmt_is_ready(&llm_model_transport) && tmt_is_ready(&llm_tokenizer_transport);
+}
+uint32_t remote_llm_asset_flags(void) {
+    return (tmt_is_ready(&llm_model_transport)?1u:0u)|(tmt_is_ready(&llm_tokenizer_transport)?2u:0u);
+}
+void remote_llm_lock(int locked) {
+    tmt_set_locked(&llm_model_transport,locked);tmt_set_locked(&llm_tokenizer_transport,locked);
+}
+/* Warm CPU0 reload can retain DDR assets. Read every byte and require the
+   pinned SHA again; a matching header alone never grants readiness. Each
+   bounded step returns to the normal audio/UI/Ethernet service loop. */
+void remote_llm_restore_tick(void) {
+    static uint32_t index,offset,started;
+    if(index>=2u)return;
+    struct tiny_model_transport *t=index?&llm_tokenizer_transport:&llm_model_transport;
+    if(t->active || t->ready || !t->configured){++index;offset=started=0;return;}
+    if(!started) {
+        if((!index && memcmp(t->buffer,"TQW1",4)) || (index && memcmp(t->buffer,"QWTOK01\0",8)) ||
+           mbedtls_sha256_starts(&t->sha,0)){++index;offset=0;return;}
+        started=1;
+    }
+    uint32_t n=t->expected_bytes-offset;if(n>4096u)n=4096u;
+    if(mbedtls_sha256_update(&t->sha,t->buffer+offset,n)){++index;offset=started=0;return;}
+    offset+=n;
+    if(offset==t->expected_bytes) {
+        uint8_t hash[32];
+        if(!mbedtls_sha256_finish(&t->sha,hash) && !memcmp(hash,t->expected_sha256,32)) {
+            t->received=t->expected_bytes;t->ready=1;
+        }
+        ++index;offset=started=0;
+    }
+}
+#endif
 #ifdef Z7_MMU_CACHE
 #include "../ps_bringup/cache.h"
 #endif
@@ -67,9 +110,42 @@ static void handle_frame(uint32_t n) {
     if(p[9]==1u && total>=ihl+8u && p[ihl]==8u && sum16(p+ihl,total-ihl)==65535u) {
         ethernet(rx+6,0x800);ipv4(p+12,total-ihl,1);memcpy(tx+34,p+ihl,total-ihl);tx[34]=0;b16(tx+36,0);b16(tx+36,~sum16(tx+34,total-ihl));(void)send_frame(34u+total-ihl);return;
     }
-    if(p[9]!=17u || total<ihl+40u)return;
+    if(p[9]!=17u || total<ihl+8u)return;
     uint8_t *u=p+ihl;uint32_t un=be16(u+4);
-    if(be16(u+2)!=PORT || un<40u || un!=total-ihl)return;
+    if(un<8u || un!=total-ihl)return;
+#ifdef Z7_TINYQWEN
+    uint32_t destination_port=be16(u+2);
+    if(destination_port==4178u || destination_port==4179u) {
+        uint32_t source_ip=(uint32_t)p[12]<<24|(uint32_t)p[13]<<16|(uint32_t)p[14]<<8|p[15];
+        uint64_t owner=(uint64_t)be16(u)<<32|source_ip;
+        uint8_t model_reply[TMT_HEADER_BYTES];
+        struct tiny_model_transport *transport=destination_port==4178u?&llm_model_transport:&llm_tokenizer_transport;
+        size_t count=tmt_handle(transport,owner,u+8,un-8u,model_reply);
+        if(count) {
+            uint32_t source_port=be16(u);
+            ethernet(rx+6,0x800);ipv4(p+12,8u+(uint32_t)count,17);
+            uint8_t *v=tx+34;b16(v,destination_port);b16(v+2,source_port);
+            b16(v+4,8u+(uint32_t)count);b16(v+6,0);memcpy(v+8,model_reply,count);
+            (void)send_frame(42u+(uint32_t)count);
+        }
+        return;
+    }
+    if(destination_port==TBL_PORT) {
+        uint32_t source_ip=(uint32_t)p[12]<<24|(uint32_t)p[13]<<16|(uint32_t)p[14]<<8|p[15];
+        uint64_t owner=(uint64_t)be16(u)<<32|source_ip;
+        uint8_t llm_reply[1120];
+        size_t count=tbl_handle_packet(owner,u+8,un-8u,llm_reply,sizeof(llm_reply));
+        if(count) {
+            uint32_t source_port=be16(u);
+            ethernet(rx+6,0x800);ipv4(p+12,8u+(uint32_t)count,17);
+            uint8_t *v=tx+34;b16(v,TBL_PORT);b16(v+2,source_port);
+            b16(v+4,8u+(uint32_t)count);b16(v+6,0);memcpy(v+8,llm_reply,count);
+            (void)send_frame(42u+(uint32_t)count);
+        }
+        return;
+    }
+#endif
+    if(be16(u+2)!=PORT || un<40u)return;
     uint8_t *q=u+8;if(le32(q)!=MAGIC)return;
     uint32_t op=le32(q+4),lo=le32(q+8),hi=le32(q+12),seq=le32(q+16);
     if(op==1u && (!peer_port || now_ms-lease>5000u || (cookie[0]==lo && cookie[1]==hi && !memcmp(peer_ip,p+12,4)))) {
@@ -92,6 +168,10 @@ static void handle_frame(uint32_t n) {
         if(!history_bytes || le32(q+20)!=history_id || offset>=history_bytes || offset%CHUNK)return;
         uint32_t size=history_bytes-offset;if(size>CHUNK)size=CHUNK;
         response(0x85u,seq,history_id,offset,history_bytes,history+offset,size);
+    } else if(op==6u && un==40u) {
+        uint8_t name[33];uint32_t connected=network_wifi_name(name),size=0;
+        while(size<32u && name[size])++size;
+        response(0x86u,seq,connected,size,1u,name,size);
     } else if(op==3u && un==52u && seq) {
         if(seq==last_sequence){response(0x83u,seq,last_command,last_epoch,remote_diag[8],0,0);return;}
         if(pending || (int32_t)(seq-last_sequence)<=0)return;
@@ -107,6 +187,10 @@ static int mdio(uint32_t phy,uint32_t reg,uint32_t write,uint32_t *value) {
     return 0;
 }
 void remote_display_init(uint32_t now) {
+#ifdef Z7_TINYQWEN
+    (void)tmt_init(&llm_model_transport,(void *)0x04000000u,401637888u,401637888u,llm_model_sha256);
+    (void)tmt_init(&llm_tokenizer_transport,(void *)0x1c000000u,5277796u,5277796u,llm_tokenizer_sha256);
+#endif
     memset((void *)remote_diag,0,sizeof(remote_diag));remote_diag[0]=MAGIC;now_ms=now;phy_at=now+500u;
     for(unsigned i=0;i<2;++i){REMOTE_WRITE(0x17fcu+i*0x800u,0);REMOTE_WRITE(i*0x800u+0x7fcu,0);}
     memset(tx,0,64);memcpy(tx,mac,6);

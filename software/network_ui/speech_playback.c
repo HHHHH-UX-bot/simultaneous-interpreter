@@ -49,7 +49,7 @@ static uint32_t read_at,write_at,queued,finished,playing,available,report_ms;
    previous one has drained. Only the current response may enter the DAC FIFO. */
 static uint32_t stream_ends[128],stream_audio_ms[128],end_head,end_tail,stream_start;
 #ifdef Z7_LOW_LATENCY_PLAYBACK
-#define FAST_PREFILL_SAMPLES 30720u /* 1280 ms, still prime the physical FIFO. */
+#define FAST_PREFILL_SAMPLES 30720u /* 1280 ms covers measured cloud burst gaps. */
 static uint32_t stream_received[128],stream_first_size[128],stream_prefill[128],stream_rebuffer[128];
 #endif
 static int b64(unsigned c) {
@@ -91,6 +91,11 @@ void speech_playback_status(struct speech_status *status) {
     status->state=!available?4u:(!output_enabled?0u:(playing?3u:((queued||count)?2u:1u)));
     status->latency_ms=voice_ms;status->latency_valid=voice_valid;
     status->buffer_ms=(queued*100u/output_speed+count)/24u;
+}
+void speech_playback_counters(uint32_t out[3]) {
+    out[0]=speech_diag.samples;
+    out[1]=available?SPEECH_REG(0xac):0u;
+    out[2]=available?SPEECH_REG(0xa8):0u;
 }
 int speech_playback_audio(const char *s,uint32_t n) {
     if(!n) return 1;
@@ -163,6 +168,23 @@ static void finish_stream(void) {
     finished=1;
 }
 void speech_playback_done(void) {finish_stream();++speech_diag.done_events;speech_trace(2u,0u,queued+SPEECH_REG(0xa4));}
+int speech_playback_local(const int8_t *pcm,uint32_t n) {
+    if(!output_enabled)return 1;
+    if(!available || !n || n>SPEECH_SAMPLES-queued)return 0;
+    uint32_t stream=end_tail%128u;
+    stream_audio_ms[stream]=play_now;
+#ifdef Z7_LOW_LATENCY_PLAYBACK
+    stream_received[stream]=n;stream_first_size[stream]=n;
+    stream_prefill[stream]=PREFILL_SAMPLES;stream_rebuffer[stream]=0;
+#endif
+    for(uint32_t i=0;i<n;++i) {
+        speech_pcm[write_at]=(int16_t)((int32_t)pcm[i]*256);
+        if(++write_at==SPEECH_SAMPLES)write_at=0;
+    }
+    queued+=n;++speech_diag.chunks;speech_diag.samples+=n;
+    if(queued>speech_diag.queue_peak)speech_diag.queue_peak=queued;
+    finished=0;speech_playback_done();return 1;
+}
 void speech_playback_disconnect(void) {finish_stream();}
 /* A user stop discards both queues; the next session gets fresh playback
    counters. A network disconnect can still drain its completed phrase. */
@@ -223,6 +245,7 @@ void speech_playback_tick(uint32_t now) {
 #endif
 }
 #else
+int speech_playback_local(const int8_t *p,uint32_t n) {(void)p;(void)n;return 0;}
 void speech_playback_init(void) {}
 int speech_playback_audio(const char *s,uint32_t n) {(void)s;(void)n;return 1;}
 void speech_playback_done(void) {}
@@ -232,4 +255,5 @@ void speech_playback_tick(uint32_t now) {(void)now;}
 void speech_playback_settings(uint32_t e,uint32_t v,uint32_t s) {(void)e;(void)v;(void)s;}
 void speech_playback_utterance(void) {}
 void speech_playback_status(struct speech_status *s) {s->state=s->latency_ms=s->latency_valid=s->buffer_ms=0;}
+void speech_playback_counters(uint32_t out[3]) {out[0]=out[1]=out[2]=0;}
 #endif

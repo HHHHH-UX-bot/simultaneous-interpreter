@@ -32,6 +32,9 @@ enum { CLOUD_IDLE, CLOUD_HANDSHAKE, CLOUD_WAITING_SESSION, CLOUD_WAITING_UPDATE,
 
 void cloud_client_init(void);
 int cloud_client_ready(void);
+int cloud_client_tts_text(const char *text,uint32_t bytes);
+int cloud_client_tts_commit(void);
+int cloud_client_tts_finish(void);
 /* Receipt-to-final diagnostics; excludes server VAD's silence window/uplink. */
 void cloud_client_speech_stopped(void);
 void cloud_client_asr_final(void);
