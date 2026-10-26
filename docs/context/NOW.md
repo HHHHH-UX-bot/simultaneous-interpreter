@@ -1,6 +1,16 @@
 # 当前状态
 
-## 本轮：网络名称与完整历史文本（2026-10-23）
+## 本机：PR #7 合并后的 2026.1 重建与烧录（2026-10-26）
+
+队友 [PR #7](https://github.com/HHHHH-UX-bot/simultaneous-interpreter/pull/7) 已按用户指示合并为 `e38fbe6` 并推送，内容与 PR head `791da60` 相同；其中 15 个文件的 LF→CRLF 行尾改写原样保留，没有规范化。本机只装了 Vivado/Vitis 2026.1，按用户“如果冲突就用2026的”重建，范围见 [D24](DECISIONS.md#d24-合并-pr-7本机以-vivadovitis-20261-重建2026-10-26)。
+
+- 当前板载（JTAG 易失）：PL 为 `output/z7_nano/remote_display/`，Vivado 2026.1，USR_ACCESS `0x5a374e35`，位流 SHA256 `97ddda29282ba4189b3a1cfaa04aff3ba850e1a8f01899d27b52a6312a31fd80`，setup/hold 0.040/0.017 ns；应用为 `output/network_history/microphone/cloud_app.elf`，ARM GCC 13.4.0，SHA256 `78b7c93eb9863c7cab927bf8796aa5ba16601facdfb64be5a90f6050b6136cc9`，Selftest=false；CPU1 触摸主机在运行。下方 10-23 各节的哈希是队友机器上的 2018.3 构建，不是当前板态。
+- 已验证：完整加载与显示报告，屏幕 USB 供电且检测到触摸设备连接，声纹加速器模型校验和 MFCC/CNN 周期，Qwen 资产的板上 SHA 复核与引擎初始化，主界面 614,400 像素与本机渲染零差异；五项主机回归通过。
+- 未验证：板上 Qwen 推理、云端 ASR/TTS 与译音、实际 Wi-Fi 名称、触摸操作、声纹登记、电脑画面与历史导出。原因：没有输入运行期凭据，电脑有线网卡没有到 `192.168.1.50` 的链路，现场无人。
+- 这次 Qwen 资产经 JTAG 写入 DDR 再热重启 CPU0（约 23 分钟）；整板断电后需重新加载。网口链路恢复后应走 UDP 上传。
+- 结果与边界见[本轮验证](../validation/merge-pr7-2026-20261026/README.md)。
+
+## 前轮（队友机器，SDK 2018.3）：网络名称与完整历史文本（2026-10-23）
 
 已完成 SDK 2018.3 编译、JTAG 暖加载及实板检查。当前真实麦克风应用为 `output/network_history/microphone/`，Selftest=false，ELF SHA256 `5b89f9e5c962dec83158857ddf0263637063cbc3bd1313b6e5416c42bbfa0a3a`；保留声纹 PL `0x5a374e35` 与原板上 Qwen，模型和分词器均已校验。根目录三个本地 LLM/声纹启动入口已指向此应用，整板断电后仍需重新加载和输入运行期配置。
 
@@ -81,10 +91,10 @@ CSV/TXT/JSON 保留逐条定稿，并在末尾追加完整原文与完整译文�
 
 ## 使用入口
 
-- 根目录 `启动FPGA声纹.cmd`：重新 JTAG 加载当前声纹/网络名称固件并输入运行期 Wi-Fi 和百炼配置；整板断电后用 `断电后启动本地LLM.cmd`。当前屏幕 USB 供电已开。
+- 根目录 `启动FPGA声纹.cmd`：重新 JTAG 加载当前声纹/网络名称固件并输入运行期 Wi-Fi 和百炼配置；整板断电后用 `断电后启动本地LLM.cmd`。当前屏幕 USB 供电已开。这些入口默认调用 SDK 2018.3 的 xsct/hw_server；只有 2026.1 的机器需改用 `scripts/load_tts.py --xsct <Vitis 2026.1 xsdb>`，再用 `scripts/configure_cloud_runtime.py --xsdb <同一 xsdb>` 输入凭据，并先启动 2026.1 的 hw_server。
 - 根目录 `打开电脑画面.cmd`：启动本机服务并打开 `http://127.0.0.1:8787`，点击/拖动操作同步到板端；下方导出按钮可选CSV/TXT/JSON和保存位置。导出当前RAM保留最多64条定稿，文件在电脑独立保存。
 - `scripts/build_tts.ps1` 重建软件与CPU1；`-RebuildFpga` 先做音频仿真再运行Vivado实现。加载用 `scripts/load_tts.py --configure`。
 - 设置、历史、凭据与JTAG程序断电丢失；未写Flash/SD/ESP固件。源码、日志、工程备份不含密钥/无线密码或真人原始音频。
-- 新旧构建与符号不能混用；调试/换固件先查实际板态和加载身份。此前译音/长句源码已提交d91171d；用户进一步要求本次网口、电脑操作及历史导出源码一并提交，沿用[PR #6](https://github.com/HHHHH-UX-bot/simultaneous-interpreter/pull/6)，完整提交及远端head以该PR为准。未授权合并。
+- 新旧构建与符号不能混用；调试/换固件先查实际板态和加载身份。此前译音/长句源码已提交d91171d；用户进一步要求本次网口、电脑操作及历史导出源码一并提交，沿用[PR #6](https://github.com/HHHHH-UX-bot/simultaneous-interpreter/pull/6)；PR #6 已于 2026-10-22 合并为 `51c0349`，PR #7 已于 2026-10-26 合并为 `e38fbe6`。
 
 入口规则见[AGENTS](../../AGENTS.md)，工具/目录见[MAP](MAP.md)、[RUNBOOK](RUNBOOK.md)，代码路由见[PROJECT_INDEX](../../PROJECT_INDEX.md)。

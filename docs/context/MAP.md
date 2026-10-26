@@ -160,3 +160,5 @@ Linux 资料只做文件名定位：`02教程文档/LINUX篇/` 含 Ubuntu 虚拟
 [忽略规则](../../.gitignore)将 tmp/output、运行模型/构建产物、密钥/许可证及安装字体留在本地。文档中的这些路径及同级旧 HDMI 工程是本机证据/资料入口，Git 仓库不携带所有运行缓存。[字节规则](../../.gitattributes)保留现有行尾，避免改变绑定源码字节的验证哈希。TinyUSB 许可随裁剪源码保留；本项目未另行声明全部材料可开源再分发。
 
 2026-10-16 队友曾经 fork/解压副本提交 PR；“无 .git”仅属于当时交付副本。当前工作项目是带 Git 元数据的上游 main，origin 指向 HHHHH-UX-bot/simultaneous-interpreter；本轮核对已确认。历史 fork 可见性等仍不据此推断。
+
+协作方式（2026-10-26 GitHub API 核对）：队友账号 `max133777` 从 fork `max133777/simultaneous-interpreter` 的 `docs/*`、`checkpoint/*`、`codex/*` 分支向上游 `main` 提 PR；上游由 `HHHHH-UX-bot` 审核与合并，本仓库本地提交身份也是该账号（仓库级配置）。各 PR 的当前状态由 [NOW](NOW.md) 维护，审核方式见 [RUNBOOK](RUNBOOK.md#队友-pr-审核与合并)。

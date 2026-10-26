@@ -6,6 +6,7 @@
 
 | 任务或问题 | 权威入口 | 职责 |
 |---|---|---|
+| 在只有 Vivado/Vitis 2026.1 的机器上重建、烧录当前版本 | [本轮验证](docs/validation/merge-pr7-2026-20261026/README.md)、[D24](docs/context/DECISIONS.md#d24-合并-pr-7本机以-vivadovitis-20261-重建2026-10-26)、[NOW 使用入口](docs/context/NOW.md#使用入口) | 2026.1 适配点、JTAG 预置 Qwen 资产、实板检查与未验证范围 |
 | 声纹登记、云端/板上离线切换与 SpeechBrain 对照 | [LOCAL_AI](docs/design/LOCAL_AI.md)、[验证](docs/validation/local-ai-20261022/README.md) | Cortex-A9 整数 MFCC/DTW、12 个固定短句、四位内存声纹、实际触摸/电脑画面与独立 PC ECAPA |
 | PL网口电脑画面、鼠标控制、历史另存为 | [REMOTE_DISPLAY](docs/design/REMOTE_DISPLAY.md)、[本轮验证](docs/validation/remote-display-20261022/README.md) | 实际帧缓冲无损传输、共用触摸命中、CSV/TXT/JSON定稿导出、2018.3平台及实机证据 |
 | 优化连续长句的字幕/译音、上传与下行缓冲 | [长句验证](docs/validation/long-speech-20261022/README.md)、[前轮延迟验证](docs/validation/tts-latency-20261021/README.md)、[TTS_SETTINGS](docs/design/TTS_SETTINGS.md) | 六句自动实测、2Mbaud、IPD空行修复、Opus O2、计时取舍与真人长句验收边界 |
@@ -50,7 +51,7 @@
 | PS 通过 Wi-Fi 接收模拟字幕 | [NETWORK_UI](docs/design/NETWORK_UI.md)、[run_network_ui](scripts/run_network_ui.py) | 实际文本协议、易失配置、公共观察、LAN 测试及恢复边界 |
 | 运行或接续英语识别/中文翻译与电脑服务 | [MODEL_BACKEND](docs/design/MODEL_BACKEND.md) | 隔离运行环境、固定模型、真实文件证据、HTTP 接口、噪声修复及放行边界 |
 | 接入 DeepSeek 中文翻译 | [P5c-0](docs/design/MODEL_BACKEND.md#p5c-0-deepseek-独立文本翻译) | 官方接口、隐藏密钥输入、文本实测及尚未接通的环节 |
-| 维护 Git 与上传 GitHub | [MAP](docs/context/MAP.md#git-与-github)、[RUNBOOK](docs/context/RUNBOOK.md#git-维护) | 账号/仓库映射、分支、提交范围与远程核验 |
+| 维护 Git、上传 GitHub，审核或合并队友 PR | [MAP](docs/context/MAP.md#git-与-github)、[RUNBOOK](docs/context/RUNBOOK.md#git-维护)、[PR 审核](docs/context/RUNBOOK.md#队友-pr-审核与合并) | 账号/fork 映射、分支、提交范围、PR 审核与远程核验；各 PR 当前状态见 NOW |
 | 实现采样、网络、结果更新接口 | [INTERFACES](docs/design/INTERFACES.md) | 区分旧 LAN 草案与当前实际 C/Opus/WSS/UI 合同 |
 | 接续动态字幕与板端自主运行 | [RUNBOOK P2b](docs/context/RUNBOOK.md#p2b-ps-实时中文与模拟-ui后续)、[W4](docs/context/RUNBOOK.md#w4-板端自主网络与音频传输带宽后续) | 子阶段、依赖和放行条件；实际进度见 NOW |
 | 修改、启动或观察板上动态中文 UI | [DYNAMIC_UI](docs/design/DYNAMIC_UI.md)、[run_subtitle_ui](scripts/run_subtitle_ui.py) | 有界模型、字库、绘制、JTAG 控制和实际像素比对 |

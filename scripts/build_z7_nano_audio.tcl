@@ -227,7 +227,9 @@ synth_design -top z7_nano_audio_top -part $board_part
 opt_design
 if {$remote_ui} {
     # MII FFs now connect to the PG160 bridge, rather than directly to pads.
-    set_property IOB false [get_cells -hier -filter {NAME =~ *ethernet* && IOB == TRUE}]
+    # 2018.3 marks them IOB TRUE; 2026.1 synthesis leaves none marked.
+    set mii_iob [get_cells -hier -filter {NAME =~ *ethernet* && IOB == TRUE}]
+    if {[llength $mii_iob]} {set_property IOB false $mii_iob}
     # PG135 carrier-sense status enters an explicit two-FF AXI-clock synchronizer.
     # Exclude only its asynchronous first D pin; keep stage 1 -> stage 2 timed.
     set crs_first [get_cells -hier -filter {NAME =~ *ethernet*/EMAC_I/C_SENSE_SYNC_1}]

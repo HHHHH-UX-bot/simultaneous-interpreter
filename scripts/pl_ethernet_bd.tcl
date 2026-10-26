@@ -2,7 +2,8 @@
 # Etherlite owns bounded on-chip TX/RX buffers; PG160 handles RGMII DDR/clocks.
 set eth [create_bd_cell -type ip -vlnv xilinx.com:ip:axi_ethernetlite:3.0 ethernet]
 set_property -dict [list CONFIG.C_INCLUDE_GLOBAL_BUFFERS {0} CONFIG.C_DUPLEX {1} CONFIG.C_INCLUDE_MDIO {1}] $eth
-set bridge [create_bd_cell -type ip -vlnv xilinx.com:ip:gmii_to_rgmii:4.0 rgmii]
+# Vivado 2018.3 ships PG160 v4.0, 2026.1 ships v4.1; use the installed one.
+set bridge [create_bd_cell -type ip -vlnv [lindex [lsort -dictionary [get_ipdefs -all xilinx.com:ip:gmii_to_rgmii:*]] end] rgmii]
 set_property -dict [list CONFIG.SupportLevel {Include_Shared_Logic_in_Core} CONFIG.C_PHYADDR {8} CONFIG.RGMII_TXC_SKEW {0}] $bridge
 connect_bd_intf_net [get_bd_intf_pins regs/M04_AXI] [get_bd_intf_pins ethernet/S_AXI]
 connect_bd_net $clk [get_bd_pins ethernet/s_axi_aclk]
