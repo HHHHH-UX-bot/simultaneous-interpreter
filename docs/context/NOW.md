@@ -5,8 +5,9 @@
 队友 [PR #7](https://github.com/HHHHH-UX-bot/simultaneous-interpreter/pull/7) 已按用户指示合并为 `e38fbe6` 并推送，内容与 PR head `791da60` 相同；其中 15 个文件的 LF→CRLF 行尾改写原样保留，没有规范化。本机只装了 Vivado/Vitis 2026.1，按用户“如果冲突就用2026的”重建，范围见 [D24](DECISIONS.md#d24-合并-pr-7本机以-vivadovitis-20261-重建2026-10-26)。
 
 - 当前板载（JTAG 易失）：PL 为 `output/z7_nano/remote_display/`，Vivado 2026.1，USR_ACCESS `0x5a374e35`，位流 SHA256 `97ddda29282ba4189b3a1cfaa04aff3ba850e1a8f01899d27b52a6312a31fd80`，setup/hold 0.040/0.017 ns；应用为 `output/network_history/microphone/cloud_app.elf`，ARM GCC 13.4.0，SHA256 `78b7c93eb9863c7cab927bf8796aa5ba16601facdfb64be5a90f6050b6136cc9`，Selftest=false；CPU1 触摸主机在运行。下方 10-23 各节的哈希是队友机器上的 2018.3 构建，不是当前板态。
-- 已验证：完整加载与显示报告，屏幕 USB 供电且检测到触摸设备连接，声纹加速器模型校验和 MFCC/CNN 周期，Qwen 资产的板上 SHA 复核与引擎初始化，主界面 614,400 像素与本机渲染零差异；五项主机回归通过。
-- 未验证：板上 Qwen 推理、云端 ASR/TTS 与译音、实际 Wi-Fi 名称、触摸操作、声纹登记、电脑画面与历史导出。原因：没有输入运行期凭据，电脑有线网卡没有到 `192.168.1.50` 的链路，现场无人。
+- 自动检查：完整加载与显示报告，屏幕 USB 供电且检测到触摸设备连接，声纹加速器模型校验和 MFCC/CNN 周期，Qwen 资产的板上 SHA 复核与引擎初始化，主界面 614,400 像素与本机渲染零差异；五项主机回归通过。
+- 用户现场短验收（凭据由用户在终端输入，`CLOUD_READY`）：板屏显示 CYEA 并就绪；云端中译英、英译中均有字幕和译音；历史页、设置页及“模型与声纹”页触摸正常；云端 ASR → 板上 Qwen → 云端 TTS 有译文和语音；FPGA 声纹登记说话人 1 后能识别。均为单次短测。
+- 未验证：电脑画面、历史导出、网页文字翻译和网口 UDP 上传（网线/电脑 IP 未配置，用户选择跳过），以及逐档听感、声纹拒识、板上 Qwen 耗时和长期稳定性。
 - 这次 Qwen 资产经 JTAG 写入 DDR 再热重启 CPU0（约 23 分钟）；整板断电后需重新加载。网口链路恢复后应走 UDP 上传。
 - 结果与边界见[本轮验证](../validation/merge-pr7-2026-20261026/README.md)。
 
