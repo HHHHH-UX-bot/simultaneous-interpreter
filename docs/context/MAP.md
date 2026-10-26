@@ -1,5 +1,9 @@
 # 对象与位置映射
 
+## 2026-10-22 声纹与离线桌面副本
+
+新目录为桌面 `simultaneous-interpreter-local-speaker-20261022`。当前入口为 `scripts/build_local_ai.ps1` / `scripts/load_local_ai.py`，应用与证据在 `output/local_ai/`，PL 仍使用 `output/z7_nano/remote_display/`。CPU1 由同一 KD070V02 已捕获描述符重建，并在本轮实际启动。板载身份与状态见 [NOW](NOW.md)，使用与模型边界见 [LOCAL_AI](../design/LOCAL_AI.md)；下方 2026-10-21 条目只属前轮工程。
+
 ## 2026-10-21 桌面译音与设置工程
 
 本轮在桌面新建 `simultaneous-interpreter-tts-20261021`，从上游 `940e2a6` 克隆后修改，没有覆盖旧桌面工程。实际工具为 Vivado/SDK 2018.3；运行时使用本机已有的 Codex Python/Pillow，未另行安装依赖。

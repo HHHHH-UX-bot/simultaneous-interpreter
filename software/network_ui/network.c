@@ -1,4 +1,10 @@
 #include "network.h"
+#include "wifi_identity.h"
+static struct wifi_identity station;
+uint32_t network_wifi_name(uint8_t out[33]) {
+ for(uint32_t i=0;i<33u;++i)out[i]=station.name[i];
+ return station.connected;
+}
 #ifdef Z7_STREAM_TRANSPORT
 #include "../ps_bringup/cache.h"
 #include "wifi_recover.h"
@@ -660,6 +666,7 @@ static void configuration(void) {
     for(uint32_t i=0;i<100;++i) network_config.credentials[i]=0;
     network_config.ssid_bytes=network_config.password_bytes=0;fence();network_info.config_ack=request;
     if(!valid || request!=network_config.request_sequence) {fault(11);return;}
+    wifi_identity_clear(&station);
     peer=network_config.reserved;peer_port=network_config.port;
 #ifdef Z7_NETWORK_CAPABILITIES
     if(cloud_tls) {tls_mode=1u+network_config.reserved;tls_step=tls_wait_until=tls_connected=tls_closing=0;peer=0;}
@@ -699,6 +706,7 @@ static void commit_frame(void) {
     net_ack(ack,frame,code,model);send_size=32;ack_pending=1;frame_used=frame_ready=0;
 }
 static void line_event(void) {
+    if(same(line,"WIFI DISCONNECT") || same(line,"ready"))wifi_identity_clear(&station);
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
     if(passive_enabled && starts(line,"+IPD,0,")) {
         uint32_t n=7,count=0;
@@ -1043,6 +1051,7 @@ static void command_tick(void) {
     }
     if(setup_step==SETUP_JOIN) wipe(join_command,sizeof(join_command));
     if(setup_step==SETUP_SIGNAL) {
+        if(failure)wifi_identity_clear(&station);else (void)wifi_identity_parse(&station,reply);
         link_quality[0]=0x31514c57u;link_quality[1]=2;
         const char *p=reply,*last=0;
         while(*p) {if(*p=='"') last=p;++p;}
@@ -1091,7 +1100,7 @@ static void raw_cleanup(void) {
     }
 }
 void network_init(wifi_read_fn r,wifi_write_fn w) {
-    read_reg=r;write_reg=w;
+    read_reg=r;write_reg=w;wifi_identity_clear(&station);
 #ifdef Z7_LATENCY_PROBE
     for(uint32_t i=0;i<16u;++i) transport_perf[i]=0;
     perf_rx_ms=perf_rx_bytes=perf_tx_ms=perf_report_ms=0;

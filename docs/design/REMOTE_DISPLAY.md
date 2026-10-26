@@ -25,6 +25,14 @@
 
 导出通过协议op4/5读取板上独立冻结的定稿历史，按最旧到最新排列；包含原文、译文、方向，JSON还保留会话/片段/修订和丢弃计数。快照在同一UI循环中复制，下载期间继续采音和翻译；不导出预览文本。最多保存当前RAM保留的64条，已经滚出或断电丢失的历史无法追溯。CSV使用UTF-8 BOM，兼容Excel，公式起始字符加文本前缀；TXT、JSON保留原文。导出后的文件独立保存在电脑上。
 
+## 网络名称及完整文本（2026-10-23）
+
+当前声纹平台的板屏四个页面在标题下显示“当前网络名称：…”，8787 镜像网页和 8790 文字网页也有独立文字提示。名称由 `network.c` 从成功的 `AT+CWJAP?` 响应解析，WIFI DISCONNECT/模块重启时清除，重新关联后更新；不使用配置密码或电脑 Wi-Fi 名称。镜像协议 op6 返回关联标志、至多 32 字节 SSID 和版本 1；文字协议 op10 通过公开的 8 字节头及 SSID 返回同一状态。未连接显示“未连接 Wi-Fi”，电脑失联显示等待板卡连接。板屏未内置的网络名字形显示问号，网页保留 UTF8 名称。
+
+三种导出均保留原逐条记录，并追加按原顺序合并的完整原文和完整译文。TXT 在末尾增加“完整文本/完整原文/完整译文”，CSV 增加空行与“完整文本”尾行，仍是 10 列并正确引用段落换行；JSON 最后增加 `full_text.source` / `full_text.translation`。分段根据会话或方向变化、适当的转折词及四句/段落长度阈值完成，不推测主题、不改写或去重原句。只合并当前保留的定稿；丢弃条数继续明确导出。
+
+使用 SDK 2018.3 构建 `output/network_history/microphone/`，根目录声纹/本地 LLM 启动入口已指向本目录。复测运行 `python -B scripts/test_network_history.py --gcc <Windows-GCC>`；实际 C 解析器/四页渲染、协议、分段与三格式/另存为检查和实板 CYEA/两个网页/受控翻译导出证据保存在 `output/network_history/`。JTAG/RAM 易失行为沿用原设计。
+
 ## 构建与运行
 
 准备字体、显示头及音频仿真沿用原入口；`scripts/build_tts.ps1 -RebuildFpga` 生成本配置及ARM/CPU1。单独平台入口为 `scripts/build_remote_display.py`；ARM增加 `--remote-display --touch --arm-tls`，模式为zhen或enzh。加载器根据应用元数据选择匹配平台并核对来源、ELF/位流/初始化及JTAG身份。

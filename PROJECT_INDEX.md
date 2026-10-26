@@ -6,6 +6,7 @@
 
 | 任务或问题 | 权威入口 | 职责 |
 |---|---|---|
+| 声纹登记、云端/板上离线切换与 SpeechBrain 对照 | [LOCAL_AI](docs/design/LOCAL_AI.md)、[验证](docs/validation/local-ai-20261022/README.md) | Cortex-A9 整数 MFCC/DTW、12 个固定短句、四位内存声纹、实际触摸/电脑画面与独立 PC ECAPA |
 | PL网口电脑画面、鼠标控制、历史另存为 | [REMOTE_DISPLAY](docs/design/REMOTE_DISPLAY.md)、[本轮验证](docs/validation/remote-display-20261022/README.md) | 实际帧缓冲无损传输、共用触摸命中、CSV/TXT/JSON定稿导出、2018.3平台及实机证据 |
 | 优化连续长句的字幕/译音、上传与下行缓冲 | [长句验证](docs/validation/long-speech-20261022/README.md)、[前轮延迟验证](docs/validation/tts-latency-20261021/README.md)、[TTS_SETTINGS](docs/design/TTS_SETTINGS.md) | 六句自动实测、2Mbaud、IPD空行修复、Opus O2、计时取舍与真人长句验收边界 |
 | 修改设置页、译音、真实输出音量及 T2 | [译音与设置](docs/design/TTS_SETTINGS.md)、[设置页规范](docs/design/UI_SPEC.md#板端设置页2026-10-21)、[NOW](docs/context/NOW.md) | 当前设置、DAC 增益/静音/速度、云端文本与译音、延迟定义、构建与证据边界 |

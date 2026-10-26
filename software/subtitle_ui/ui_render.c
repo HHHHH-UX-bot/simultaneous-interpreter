@@ -288,6 +288,58 @@ void ui_render_latency(uint32_t *pixels,uint32_t readings,struct ui_render_stats
     }
 }
 #ifdef Z7_HISTORY_UI
+#ifdef Z7_LOCAL_AI
+static void speaker_badge(struct paint *p,const struct ui_state *s,int x,int y,int width) {
+#ifdef Z7_SPEAKER_CNN
+    const char *key="ai_unknown";
+    static const char *people[]={"ai_unknown","ai_person1","ai_person2","ai_person3","ai_person4"};
+    if(s->speaker_status==7u)key="ai_wait_local";
+    else if(s->speaker_status==8u)key="ai_hw_error";
+    else if(s->speaker_status==9u)key="ai_duplicate";
+    else if(s->speaker_status==10u)key="ai_playing";
+    else if(s->speaker_enroll)key="ai_enrolling";
+    else if(s->speaker_id<=4u && s->speaker_id)key=people[s->speaker_id];
+    else if(s->speaker_status==5u)key="ai_too_short";
+    else if(s->speaker_status==6u)key="ai_timeout";
+#else
+    const char *key=s->speaker_enroll?"ai_enrolling":(s->speaker_status==4u?"ai_speaking":
+        (s->speaker_status==5u?"ai_too_short":(s->speaker_status==6u?"ai_timeout":
+        (s->speaker_id==1u?"ai_person1":(s->speaker_id==2u?"ai_person2":
+        (s->speaker_id==3u?"ai_person3":(s->speaker_id==4u?"ai_person4":"ai_unknown")))))));
+#endif
+    one_line(p,label(key),14,x,y,width,ACTION);
+}
+static void ai_view(struct paint *p,const struct ui_state *s) {
+    one_line(p,label("ai_title"),28,24,14,850,INK);
+    round_rect(p,24,84,976,168,12,PAPER);round_rect(p,24,264,976,224,12,PAPER);
+    one_line(p,label("ai_engine"),18,44,102,800,INK);
+    button_at(p,44,140,210,label("ai_cloud"),!s->model_mode);
+    button_at(p,276,140,260,label("ai_local"),s->model_mode);
+    one_line(p,label("ai_local_hint"),14,44,218,910,MUTED);
+    one_line(p,label("ai_speaker_title"),18,44,278,700,INK);
+#if defined(Z7_TINYQWEN) && !defined(Z7_SPEAKER_CNN)
+    one_line(p,label("ai_text_input"),18,44,328,900,INK);
+    one_line(p,label("ai_text_local"),18,44,370,900,INK);
+    one_line(p,label("ai_text_voice"),18,44,412,900,MUTED);
+    one_line(p,label("ai_enroll_hint"),14,44,454,900,MUTED);
+#else
+    speaker_badge(p,s,44,313,650);
+    uint32_t number[20];decimal(s->speaker_progress,number);
+    one_line(p,number,18,780,313,72,ACTION);static const uint32_t pct[]={'%',0};one_line(p,pct,14,850,316,25,MUTED);
+#ifdef Z7_SPEAKER_CNN
+    one_line(p,label(s->speaker_enroll?"ai_progress":"ai_similarity"),14,650,316,120,MUTED);
+    if(!s->speaker_enroll){decimal(s->speaker_score,number);rect(p,780,313,72,26,PAPER);one_line(p,number,18,780,313,72,ACTION);}
+#endif
+    static const char *names[]={"ai_register1","ai_register2","ai_register3","ai_register4"};
+    for(uint32_t i=0;i<4u;++i)button_at(p,44+(int)i*240,350,216,label(names[i]),!!(s->speaker_mask&(1u<<i)));
+    button_at(p,44,430,216,label("ai_cancel"),0);button_at(p,284,430,216,label("ai_erase"),0);
+    one_line(p,label("ai_enroll_hint"),14,532,446,444,MUTED);
+#endif
+    rect(p,0,508,UI_WIDTH,92,PAPER);rect(p,0,508,UI_WIDTH,1,LINE);
+    button(p,24,176,label("history_back"),1);
+    one_line(p,label("ai_experimental"),14,232,550,752,MUTED);
+}
+#endif
 static void settings_view(struct paint *p,const struct ui_state *s) {
     one_line(p,label("settings"),28,24,14,300,INK);
     round_rect(p,24,84,476,404,12,PAPER);round_rect(p,520,84,480,404,12,PAPER);
@@ -312,7 +364,11 @@ static void settings_view(struct paint *p,const struct ui_state *s) {
     one_line(p,label("settings_language"),18,540,306,400,INK);
     button_at(p,540,360,204,language_directions[0],s->language==UI_EN_ZH);
     button_at(p,764,360,212,language_directions[1],s->language==UI_ZH_EN);
+#ifdef Z7_LOCAL_AI
+    button_at(p,540,432,436,label("ai_title"),0);
+#else
     one_line(p,label("settings_reconnect"),14,540,444,420,MUTED);
+#endif
     rect(p,0,508,UI_WIDTH,92,PAPER);rect(p,0,508,UI_WIDTH,1,LINE);
     button(p,24,176,label("history_back"),1);
     one_line(p,label("settings_session_only"),14,232,550,752,MUTED);
@@ -412,12 +468,26 @@ static void history_view(struct paint *p,const struct ui_state *s) {
 }
 #endif
 
+#ifdef Z7_HISTORY_UI
+static void network_strip(struct paint *p,const struct ui_state *s) {
+    uint32_t text[64]={0},at=0;const uint32_t *prefix=label("network_name");
+    while(*prefix && at<30u)text[at++]=*prefix++;
+    if(s->wifi_connected) {
+        for(uint32_t i=0;i<32u && s->wifi_name[i];++i){uint32_t cp=s->wifi_name[i];text[at++]=glyph(font(14),cp)?cp:'?';}
+    } else {const uint32_t *name=label("network_disconnected");while(*name && at<63u)text[at++]=*name++;}
+    one_line(p,text,14,24,65,976,MUTED);
+}
+#endif
 void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
                uint32_t requested_page,struct ui_render_stats *stats) {
     uint32_t *words=(uint32_t *)stats;for(uint32_t i=0;i<sizeof(*stats)/4u;++i) words[i]=0;
     struct paint p={pixels,stats,0};
     rect(&p,0,0,UI_WIDTH,UI_HEIGHT,CANVAS);rect(&p,0,0,UI_WIDTH,64,PAPER);rect(&p,0,63,UI_WIDTH,1,LINE);
 #ifdef Z7_HISTORY_UI
+    network_strip(&p,s);
+#ifdef Z7_LOCAL_AI
+    if(s->ai_page) {ai_view(&p,s);return;}
+#endif
     if(s->settings_page) {settings_view(&p,s);return;}
     if(s->history_page) {history_view(&p,s);return;}
 #endif
@@ -476,7 +546,10 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
 #endif
     round_rect(&p,566,97,134,28,14,TINT);
 #ifdef Z7_UI_ENGLISH
-    uint32_t status_text[64],note_text[64];
+    uint32_t status_text[64];
+#ifndef Z7_LOCAL_AI
+    uint32_t note_text[64];
+#endif
     english_text(status_text,stage_key(s));
     const uint32_t *stage=status_text;uint32_t sw=text_width(font(14),stage);
     if(sw>118u) english_text(status_text,"Listening");
@@ -494,9 +567,13 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     stats->caption_lines=paragraph(&p,caption,size,(struct clip){44,148,656,198},INK,requested_page,
                                   &stats->caption_pages,&stats->caption_page);
 #ifdef Z7_UI_ENGLISH
+#ifdef Z7_LOCAL_AI
+    speaker_badge(&p,s,44,360,440);
+#else
     english_text(note_text,!s->translated[0]?"":(s->session==UI_PAUSED?"Paused":
         (s->stage==UI_FINAL?"Final":(s->stage==UI_TRANSLATING?"Translating":"Previous subtitle retained"))));
     one_line(&p,note_text,14,44,360,440,MUTED);
+#endif
 #else
     one_line(&p,label(s->session==UI_PAUSED?"paused":(s->stage==UI_FINAL?"final":"retained")),14,44,360,440,MUTED);
 #endif
@@ -515,7 +592,12 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     one_line(&p,number,elapsed_ms>=3600000u?20:24,760,166,120,INK);
     one_line(&p,label("count"),14,898,143,70,MUTED);decimal(s->final_count,number);
     one_line(&p,number,24,898,166,80,INK);
-    rect(&p,760,207,220,1,LINE);one_line(&p,label("input"),14,760,218,146,MUTED);
+    rect(&p,760,207,220,1,LINE);
+#ifdef Z7_LOCAL_AI
+    one_line(&p,label(s->model_mode?"ai_local":"ai_cloud"),14,760,218,220,MUTED);
+#else
+    one_line(&p,label("input"),14,760,218,146,MUTED);
+#endif
 #ifdef Z7_HISTORY_UI
     const char *voice_key=!s->tts_enabled?"tts_off":(s->output_muted || !s->output_volume?"tts_muted":
         (s->voice_status==3u?"tts_playing":(s->voice_status==2u?"tts_buffering":(s->voice_status==4u?"tts_unavailable":"tts_ready"))));
@@ -531,6 +613,9 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     const char *connection=s->stage==UI_CONNECTING?"connection_wait":
         (s->stage==UI_OFFLINE?"connection_offline":(s->session==UI_IDLE?"connection_start":
         (s->session==UI_PAUSED?"connection_paused":"connection_ready")));
+#ifdef Z7_LOCAL_AI
+    if(s->model_mode)connection=s->local_result==2u?"ai_unrecognized":"ai_local_ready";
+#endif
     paragraph(&p,label(connection),14,(struct clip){760,274,220,25},MUTED,0,0,0);
 #elif defined(Z7_UI_ENGLISH)
     static const uint32_t bilingual_hint[]={'L','i','v','e',' ','s','u','b','t','i','t','l','e','s',0};

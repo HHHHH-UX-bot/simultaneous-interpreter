@@ -13,7 +13,25 @@ static int inside(uint32_t x,int left,int width) {return x>=(uint32_t)left && x<
 #endif
 static int button(uint32_t x,uint32_t y,const struct ui_state *state) {
 #ifdef Z7_HISTORY_UI
+#ifdef Z7_LOCAL_AI
+    if(state->ai_page) {
+        if(y>=530u && y<586u && inside(x,24,176))return 24;
+        if(y>=140u && y<196u) {
+            if(inside(x,44,210))return 25;
+            if(inside(x,276,260))return 26;
+        }
+        if(y>=350u && y<406u)for(uint32_t i=0;i<4u;++i)if(inside(x,44+(int)i*240,216))return 27+(int)i;
+        if(y>=430u && y<486u) {
+            if(inside(x,44,216))return 31;
+            if(inside(x,284,216))return 32;
+        }
+        return -1;
+    }
+#endif
     if(state->settings_page) {
+#ifdef Z7_LOCAL_AI
+        if(y>=432u && y<488u && inside(x,540,436))return 23;
+#endif
         if(y>=530u && y<586u && inside(x,24,176)) return 16;
         if(y>=142u && y<198u) {
             if(inside(x,328,148)) return 17;
@@ -85,7 +103,10 @@ static int pointer_command(const struct touch_tap *tap,const struct ui_state *st
                 UI_CLOSE_HISTORY,UI_HISTORY_CLEAR,UI_HISTORY_OLDER,UI_HISTORY_NEWER,
                 UI_HISTORY_CANCEL_CLEAR,UI_HISTORY_CONFIRM_CLEAR,
                 UI_OPEN_SETTINGS,UI_CLOSE_SETTINGS,UI_TOGGLE_TTS,UI_VOLUME_MINUS,UI_VOLUME_PLUS,
-                UI_TOGGLE_MUTE,UI_RATE_MINUS,UI_RATE_PLUS};
+                UI_TOGGLE_MUTE,UI_RATE_MINUS,UI_RATE_PLUS,
+                UI_OPEN_AI,UI_CLOSE_AI,UI_AI_CLOUD,UI_AI_LOCAL,
+                UI_AI_ENROLL_1,UI_AI_ENROLL_2,UI_AI_ENROLL_3,UI_AI_ENROLL_4,
+                UI_AI_CANCEL_ENROLL,UI_AI_ERASE};
             command=controls[pressed];
             if((command==UI_SELECT_EN_ZH && state->language==UI_EN_ZH) ||
                (command==UI_SELECT_ZH_EN && state->language==UI_ZH_EN)) {

@@ -1,6 +1,46 @@
 # 当前状态
 
-## 桌面译音、设置与连续长句优化（2026-10-22）
+## 本轮：网络名称与完整历史文本（2026-10-23）
+
+已完成 SDK 2018.3 编译、JTAG 暖加载及实板检查。当前真实麦克风应用为 `output/network_history/microphone/`，Selftest=false，ELF SHA256 `5b89f9e5c962dec83158857ddf0263637063cbc3bd1313b6e5416c42bbfa0a3a`；保留声纹 PL `0x5a374e35` 与原板上 Qwen，模型和分词器均已校验。根目录三个本地 LLM/声纹启动入口已指向此应用，整板断电后仍需重新加载和输入运行期配置。
+
+板屏主界面、设置、声纹及历史页，以及电脑 8787/8790 两个网页均显示当前 Wi-Fi 名称。名称取自 ESP 实际 `AT+CWJAP?` 关联响应，断开时清除；不读取密码用于显示。实际 CYEA、未连接状态、四页零缺字/零裁剪、两个 CPU 和 USB 屏幕供电均已检查。
+
+CSV/TXT/JSON 保留逐条定稿，并在末尾追加完整原文与完整译文；按会话、翻译方向、转折词及段落长度分段，不调用模型改写原句。原生渲染/协议、三格式与另存为测试通过；另用两句受控文字完成真实板上翻译及导出逐字核对。最多合并当前 RAM 保留的 64 条，旧记录存储范围不变。最终证据见 `output/network_history/native_validation.json`、`network_display_validation.json`、`history_export_validation.json`；实现与复测入口由 [REMOTE_DISPLAY](../design/REMOTE_DISPLAY.md) 维护。
+
+## 前轮：FPGA MFCC + CNN 本地声纹（2026-10-23）
+
+已完成并下载运行。声纹 MFCC 与 CNN 均在 PL，四位 RAM 模板及匹配在 ARM；板屏与电脑镜像共用登记和识别状态。Vivado 2018.3 实现/时序、最终训练权重、全部 2,048 MFCC 和 64 维嵌入的实板逐值检查、纯公开语音的登记/同声/异声/清除、活跃云连接下登记关闭上传均通过。登记时真实 TCP/TLS 关闭，八秒观察中上传页与 TLS 发送均未增加，取消后恢复连接。早期布局映射失败和测试夹具先混入实麦前缀的记录已保留，不作为最终受控证据。
+
+该轮验收的真实麦克风固件为 `output/speaker_cnn/microphone_udp_test/`，Selftest=false；ELF SHA256 `50417d2902655a42cd874aa482ae985754b7e8b33fcb96987be197560b431123`，PL SHA256 `910a6eff383b17d413f6a5ae85fcfdaf7ba80ef22177fd2ac4d572607f0021f3`、USR_ACCESS `0x5a374e35`。Qwen 全权重与分词器已重新校验、CPU1 触摸运行。新固件受控文字“请把窗户关上。”得到板上译文“Close the windows.”，23.81 秒模型完成、27.13 秒全部播完，23,040 PCM 收放一致、零欠载。最终就绪状态由 `output/speaker_cnn/final_ready.json` 维护；用户真人声纹准确率、噪声及主观听感仍需实际使用检验。入口、模型测试限制和全部阶段证据由 [LOCAL_SPEAKER_CNN](../design/LOCAL_SPEAKER_CNN.md) 维护。
+
+## 前轮：STT、板上 Qwen 与 TTS（2026-10-23）
+
+已恢复正式实麦固件 output/voice_local/microphone/cloud_app.elf，Selftest=false；当前 build/load/touch_live 身份匹配，USB 屏幕供电、CPU1 心跳和电脑云端/本地点击 ACK 已复核。链路为百炼 ASR → 板上 Qwen Q6 翻译 → 百炼 TTS → WM8731；电脑不执行模型。
+
+现行固件连续 12 / 12 轮文字 → 板上模型 → TTS → DAC 播完，覆盖换句与长句，逐轮 PCM 收放一致、零欠载。双语受控音频也完成识别、板上翻译与播放。TTS 等待 response.done 后再发送 finish，并恢复 1.28 秒起播缓冲；旧版无首包及 320 毫秒缓冲欠载记录保留，不作通过依据。
+
+中文识别定稿到起播，首轮 43.48 秒、重复同句 15.83 秒。新文字提交到模型完成 22.56 秒、全部播完 27.48 秒。已做精确前缀 KV 缓存、四 token 批量预填充、短提示和 TTS 准备重叠。仍不是实时同传，译文可能不自然，语音依赖云端。完整证据与限制由 [LOCAL_VOICE_LLM](../design/LOCAL_VOICE_LLM.md) 维护。
+
+## 前轮：板上 Qwen 文本基线（历史）
+
+用户明确要求停止以固定短句代替本地模型，先部署能处理新文本的真实 LLM。本轮采用 Qwen2.5-0.5B-Instruct 全矩阵 Q6，在 Cortex-A9 裸机运行，电脑只负责输入/显示。SDK 2018.3 构建、FPGA/CPU0 加载及 CPU1 触摸已通过；401,637,888 字节权重及分词器已传入 DDR 并校验。三次新文本实板推理和一次网页服务提交均完成，约 65–77 秒/条；英译中测试存在位置关系误译，且与原始 BF16 参考一致。当前已实现真实文本 LLM 部署，尚未接入离线 STT/TTS，也不具备实时同传速度。现场结果见 `output/tinyqwen/microphone/board_validation/deployment_summary.json`。新入口、限制和证据路径见 [BOARD_LLM](../design/BOARD_LLM.md)。
+
+## 前轮：声纹与板上离线原型（历史，2026-10-22）
+
+用户授权在桌面新建工程，适配 Vivado 2018.3，加入说话人声纹、板端与电脑共同的云端/本地切换，并自动编译和 JTAG 下载。本轮副本 `simultaneous-interpreter-local-speaker-20261022` 从上游 `51c0349` 克隆，未覆盖前轮桌面工程。以下前轮章节仅保留历史范围，不代表当前板载身份。
+
+- 新入口为 `scripts/build_local_ai.ps1`、`scripts/load_local_ai.py`；正式应用、匹配 build/load/touch_live 和现场检查在 `output/local_ai/microphone/`。PL 平台为 `output/z7_nano/remote_display/`，仍为 2018.3、xc7z010clg400-1、USR_ACCESS=0x5a374e34。
+- **设置 → 模型与声纹** 可切云端自由对话或本地 12 短句；实体触摸与电脑鼠标共用 C 状态。四个登记位、3 秒有效语音进度、超时/过短/未知状态已实现。声纹只在内存，与已登记声音作实验性相似度比较，不宣称真人身份准确率或认证能力。
+- 板上本地采用整数 MFCC 与 DTW 声学模板、固定英中对应及 24 kHz 短句音库，模型为 38,916 个 int16 模板值。它不识别任意句子，也不执行开放式机器翻译或通用 TTS。切本地后停止云上传；模式、方向与会话变化隔离未完成音频。
+- 音频仿真、2018.3 实现/时序、ARM 与 CPU1 构建、本机实际 C 推理与 UI 回归已通过；72 个模板样本、48 个未入模板的语速样本识别正确，8 个库外合成句拒绝。声纹的同声/异声/重复登记歧义、取消、超时和云重连后登记回归通过。这些不是真人准确率数据。
+- 实际 JTAG 下载、本地 ARM 推理、DAC 短句播放计数、两页各 614400 像素零差异及电脑鼠标切换均有本轮证据。最终恢复真实麦克风/云端。最新身份和分项结果以本轮 `output/local_ai/board_validation/summary.json`、正式应用 `build.json`/`load.json` 与最后就绪记录为准；公开摘要见[本轮验证](../validation/local-ai-20261022/README.md)。
+- SpeechBrain 1.1.2 / ECAPA 已在项目隔离的电脑 CPU 环境运行，固定权重修订和哈希保存在 `output/local_ai/speechbrain/model/manifest.json`；同一/不同合成声音得分约 0.979/0.235。它是独立的电脑文件对照，不承担板端实时声纹推理。
+- 程序、配置、声纹和历史仍为 JTAG/RAM 易失状态，未制作独立启动镜像。真人登记、房间噪声、自由说话时的离线短句可用率、长时间云端并发和听感仍待用户实际试用；不借合成样本或像素比对宣布这些通过。
+
+完整实现与使用方法由 [LOCAL_AI](../design/LOCAL_AI.md) 维护。
+
+## 前轮：桌面译音、设置与连续长句优化（历史）
 
 用户本轮要求桌面新建工程，适配Vivado 2018.3，完成设置、中英双向译文TTS、保持UI风格并显示延迟，自动编译和JTAG烧录。新目录为桌面 `simultaneous-interpreter-tts-20261021`，从上游 `940e2a6` 开始，旧桌面工程未覆盖。本轮授权替代原D19仅交接/本地回环范围，见[D20](DECISIONS.md#d20-桌面译音与设置工程2026-10-21)。
 
@@ -9,7 +49,7 @@
 
 连续较长多句的字幕/译音卡顿已按用户新指令继续优化并自动测试，范围见[D22](DECISIONS.md#d22-连续六句的字幕与译音优化2026-10-22)。
 
-## 当前实际板载产品
+## 前轮板载版本（已由本轮替换）
 
 2026-10-22合并前复核：远程点击/快照上下文及小幅滚轮的三处P2已修正，独立复核和原生/ARM/音频仿真通过，见[PR #6复核](../validation/pr6-review-20261022/README.md)。本次未重新烧录；下列板载指纹和实屏结果仍是队友修正前的原阶段记录，不能当作新源码已在板验收。下一次加载须重新构建并按实际身份恢复，不改旧产物哈希求通过。
 
@@ -41,7 +81,7 @@
 
 ## 使用入口
 
-- 根目录 `启动译声.cmd`：重新JTAG加载并交互输入Wi-Fi和百炼密钥；默认工作空间/模型路径可直接回车。当前屏幕USB供电已开。
+- 根目录 `启动FPGA声纹.cmd`：重新 JTAG 加载当前声纹/网络名称固件并输入运行期 Wi-Fi 和百炼配置；整板断电后用 `断电后启动本地LLM.cmd`。当前屏幕 USB 供电已开。
 - 根目录 `打开电脑画面.cmd`：启动本机服务并打开 `http://127.0.0.1:8787`，点击/拖动操作同步到板端；下方导出按钮可选CSV/TXT/JSON和保存位置。导出当前RAM保留最多64条定稿，文件在电脑独立保存。
 - `scripts/build_tts.ps1` 重建软件与CPU1；`-RebuildFpga` 先做音频仿真再运行Vivado实现。加载用 `scripts/load_tts.py --configure`。
 - 设置、历史、凭据与JTAG程序断电丢失；未写Flash/SD/ESP固件。源码、日志、工程备份不含密钥/无线密码或真人原始音频。

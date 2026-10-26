@@ -1,5 +1,8 @@
 #include "language_profile.h"
 #include "cloud_live.h"
+#ifdef Z7_TINYQWEN
+#include "local_voice.h"
+#endif
 #ifdef Z7_ARM_TLS
 #include "arm_tls.h"
 #define network_send arm_tls_send
@@ -268,6 +271,9 @@ int cloud_live_message(const char *json,uint32_t size,void *user) {
     if(parsed) {++cloud.live.ignored;++cloud_health[4];cloud_health[5]=(uint32_t)parsed;health_clean();return 0;}
     ++cloud_health[2];cloud_health[3]=(uint32_t)e->kind;
     ++cloud.live.messages;
+#ifdef Z7_TINYQWEN
+    if(local_voice_role()){(void)local_voice_event(e);return 0;}
+#endif
     if(cloud.live.phase!=1) return 0;
     if(e->kind==CLOUD_AUDIO_DELTA) {(void)speech_playback_audio(e->audio,e->audio_bytes);return 0;}
     if(e->kind==CLOUD_AUDIO_DONE) {speech_playback_done();return 0;}
@@ -499,6 +505,9 @@ void cloud_live_init(struct ui_state *model) {
 int cloud_live_capture_enabled(void) {return capture_enabled;}
 enum ui_language cloud_live_language(void) {return cloud.model->language;}
 void cloud_live_connection(int ready) {
+#ifdef Z7_TINYQWEN
+    if(cloud.model->model_mode)return;
+#endif
     if(!capture_enabled) return;
     struct ui_state *model=cloud.model;
     enum ui_stage next;
@@ -542,6 +551,13 @@ void cloud_live_control(enum ui_command command) {
 void cloud_live_begin(uint32_t now) {
     health_now=now;++cloud_health[1];health_clean();
     struct ui_state *model=cloud.model;
+#ifdef Z7_TINYQWEN
+    if(local_voice_role()) {
+        memset(&cloud,0,sizeof(cloud));cloud.model=model;cloud.live.magic=0x31564c43u;
+        cloud.live.phase=1;cloud.live.ack=1;cloud.live.epoch=model->epoch;cloud.report_ms=now-200u;
+        cloud_wire_init(cloud_live_message,0);return;
+    }
+#endif
     uint32_t retained_source[UI_MAX_TEXT],retained_translation[UI_MAX_TEXT];
     int reconnect=cloud.live.ack==1u && (model->session==UI_RUNNING || model->session==UI_PAUSED);
     if(reconnect) {
@@ -610,3 +626,4 @@ void cloud_live_tick(uint32_t now) {
     cloud_fence();++cloud_report.sequence;cloud_fence();
 }
 int cloud_live_owns_ui(void) {return cloud.live.phase!=0;}
+void cloud_live_quiesce(void) {cloud.live.phase=0;cloud_client_stop();}

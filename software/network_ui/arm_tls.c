@@ -20,6 +20,11 @@ __attribute__((section(".tls_runtime"),used)) static uint8_t arena[524288],rx[RX
 __attribute__((section(".cloud_runtime"),used)) volatile uint32_t arm_tls_diag[24];
 /* First failure metadata only; no seed, plaintext, ciphertext or TLS keys. */
 __attribute__((section(".cloud_runtime"),used)) volatile uint32_t arm_tls_fault[12];
+#ifdef Z7_TINYQWEN
+/* Accepted/completed masked application frames: lengths and fingerprints
+   only. HTTP Authorization, payload text, PCM, seeds and keys are excluded. */
+__attribute__((section(".cloud_runtime"),used)) volatile uint32_t arm_tls_app_tx[2u+64u*6u];
+#endif
 #ifdef Z7_TLS_TRACE
 #include "tls_tx_trace.h"
 /* Diagnostic fingerprints of 256-byte ciphertext blocks, never payloads. */
@@ -37,6 +42,19 @@ static uint32_t seed_used,head,tail,used,pending,phase,now_ms,started,epoch,seed
 static void (*consumer)(uint8_t);
 static void (*consumer_bytes)(const uint8_t *,uint32_t);
 static void clean(void) {cache_clean_range((const void *)arm_tls_diag,sizeof(arm_tls_diag));}
+static void app_trace(uint32_t kind,const uint8_t *p,uint32_t n,int rc) {
+#ifdef Z7_TINYQWEN
+    if(!n || p[0]!=0x81u)return;
+    uint32_t hash=2166136261u;for(uint32_t i=0;i<n;++i)hash=(hash^p[i])*16777619u;
+    uint32_t at=2u+(arm_tls_app_tx[1]%64u)*6u;
+    arm_tls_app_tx[at]=kind;arm_tls_app_tx[at+1u]=now_ms;arm_tls_app_tx[at+2u]=n;
+    arm_tls_app_tx[at+3u]=hash;arm_tls_app_tx[at+4u]=(uint32_t)rc;
+    arm_tls_app_tx[at+5u]=(uint32_t)ssl.MBEDTLS_PRIVATE(out_left);++arm_tls_app_tx[1];
+    cache_clean_range((const void *)arm_tls_app_tx,sizeof(arm_tls_app_tx));
+#else
+    (void)kind;(void)p;(void)n;(void)rc;
+#endif
+}
 mbedtls_ms_time_t mbedtls_ms_time(void) {return (mbedtls_ms_time_t)now_ms;}
 static time_t tls_time(time_t *p) {
     time_t t=(time_t)epoch+(uint32_t)(now_ms-seed_ms)/1000u;
@@ -120,6 +138,10 @@ void arm_tls_init(void) {
     for(uint32_t i=0;i<64;++i) arm_tls_seed.bytes[i]=0;
     memset((void *)arm_tls_diag,0,sizeof(arm_tls_diag));arm_tls_diag[0]=0x31534c54u;
     memset((void *)arm_tls_fault,0,sizeof(arm_tls_fault));
+#ifdef Z7_TINYQWEN
+    memset((void *)arm_tls_app_tx,0,sizeof(arm_tls_app_tx));arm_tls_app_tx[0]=0x31585041u;
+    cache_clean_range((const void *)arm_tls_app_tx,sizeof(arm_tls_app_tx));
+#endif
     cache_clean_range((const void *)arm_tls_fault,sizeof(arm_tls_fault));
     phase=initialized=used=head=tail=pending=0;consumer=0;consumer_bytes=0;clean();
 #ifdef Z7_TLS_TRACE
@@ -133,8 +155,11 @@ int arm_tls_attach(void (*p)(uint8_t)) {if(phase!=2 || !p || consumer || consume
 int arm_tls_attach_bytes(void (*p)(const uint8_t *,uint32_t)) {if(phase!=2 || !p || consumer || consumer_bytes) return 0;consumer_bytes=p;return 1;}
 int arm_tls_send(const uint8_t *p,uint32_t n) {
     if(phase!=2 || pending || !n || n>sizeof(plain)) return 0;
+    /* A read may own pending TLS control output. Flush that operation before
+       accepting an application write; ssl_write retries must own out_left. */
+    if(ssl.MBEDTLS_PRIVATE(out_left))return 0;
     if(p[0]==0x89u) {++arm_tls_diag[16];arm_tls_diag[18]=n;arm_tls_diag[22]=n>1?p[1]:0;}
-    memcpy(plain,p,n);pending=n;return 1;
+    memcpy(plain,p,n);pending=n;app_trace(1u,plain,n,0);return 1;
 }
 static int setup(void) {
     if(!initialized) {
@@ -194,6 +219,7 @@ void arm_tls_tick(uint32_t now) {
         if(pending) {
             int rc=mbedtls_ssl_write(&ssl,plain,pending);
             if(rc>0) {
+                app_trace(2u,plain,pending,rc);
                 if(plain[0]==0x89u) {++arm_tls_diag[17];arm_tls_diag[21]=now;}
                 arm_tls_diag[12]+=(uint32_t)rc;pending-=(uint32_t)rc;
                 if(pending) memmove(plain,plain+rc,pending);
@@ -208,7 +234,9 @@ void arm_tls_tick(uint32_t now) {
 #else
         const uint32_t reads=8u,read_bytes=sizeof(out);
 #endif
-        for(uint32_t i=0;i<reads;++i) {
+        /* Preserve the nonblocking write's exact buffer and TLS output state
+           until completion. ssl_read must not flush a write behind its retry. */
+        for(uint32_t i=0;!pending && i<reads;++i) {
             int rc=mbedtls_ssl_read(&ssl,out,read_bytes);
             if(rc>0) {
                 arm_tls_diag[13]+=(uint32_t)rc;
