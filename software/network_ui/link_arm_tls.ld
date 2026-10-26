@@ -54,7 +54,7 @@ SECTIONS {
     .cloud_final 0x01A60000 (NOLOAD) : { KEEP(*(.cloud_final)) } > CLOUD_DDR
     ASSERT(SIZEOF(.cloud_final) == 2052, "Cloud caption ABI changed")
     .cloud_masks 0x01A40000 (NOLOAD) : { KEEP(*(.cloud_masks)) } > CLOUD_DDR
-    .ui_runtime (NOLOAD) : { __ui_runtime_start = .; KEEP(*(.ui_runtime)) __ui_runtime_end = .; } > SNAPSHOT_DDR
+    .ui_runtime (NOLOAD) : { __ui_runtime_start = .; KEEP(*(.ui_runtime)) *(.ui_runtime.history) __ui_runtime_end = .; } > SNAPSHOT_DDR
     ASSERT(SIZEOF(.ui_assets) <= 0x300000, "Font subset exceeds asset reserve")
     ASSERT(SIZEOF(.ui_runtime) <= 0x80000, "Snapshots exceed dedicated DDR reserve")
     __stack_top = 0x01CFFFF0;

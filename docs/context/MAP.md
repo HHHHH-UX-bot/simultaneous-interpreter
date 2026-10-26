@@ -55,7 +55,7 @@
 | `output/enzh/tls_packets/`、`output/enzh/tls_packets_selftest/`、`output/enzh/tls_packets_recv_probe/`、`output/enzh/tls_packets_restored/`、`output/tls_packets_20261021/` | 2026-10-21 的分块 TLS 短测、单次接收诊断、默认麦克风重建及板测产物 | 每个应用自己的 build/load/touch_live 绑定 ELF 与现场；运行状态和验收由[当前专题](ENGLISH.md#分块-tls-实机验证2026-10-21)及[公开证据](../validation/arm-packets-20261021/README.md)维护，不能从目录名推断板上所有者 |
 | `output/enzh/text_response_selftest/`、`output/enzh/text_response_microphone/`、`output/speech_flow_20261021/` | 字幕优先固定样本对照、修正 DAC 选择后的真实麦克风及独立证据 | 两个源码阶段分别绑定 build/load/touch_live；范围见[字幕优先专题](ENGLISH.md#字幕优先与本地回环2026-10-21)，公开指纹见[本轮验证](../validation/text-response-20261021/README.md) |
 | `output/enzh/language_picker/`、`output/language_switch_20261021/` | 初始两项语言菜单版 | 历史模型/快照 11392/11456；证据见[双向菜单](../validation/language-picker-20261021/README.md)，不是当前历史页版本 |
-| `software/subtitle_ui/ui_model.*`、`ui_layout.h`、`ui_touch.c`、`ui_render.c`；`output/enzh/history_ui/` | 当前 ARM TLS 双语历史页与正常麦克风产品候选 | 64 条、135768 字节模型、135832 字节快照；两份快照271664 B，独立预留512KiB；CPU1链接256 B/反馈64 B不变，原非ARM/独立ASR仍保持旧大小 |
+| `software/subtitle_ui/ui_model.*`、`ui_layout.h`、`ui_touch.c`、`ui_render.c`；`output/enzh/history_ui/` | 当前 ARM TLS 双语历史页与正常麦克风产品候选 | 64 条；当前 ARM 构建 135984 字节模型（主机测试 135940）、136048 字节快照；两份快照 272096 B 加历史成段暂存 12348 B（`.ui_runtime.history`），独立预留512KiB；CPU1链接256 B/反馈64 B不变，原非ARM/独立ASR仍保持旧大小 |
 | `output/history_ui_20261021/fixture_app/`、`docs/validation/history-ui-20261021/` | 离线实屏 UI 夹具与阶段证据 | 20条公开示例，无云任务或采音；实际所有者必须按 NOW 区分夹具与正常产品，不按 cloud_app.elf 文件名猜测 |
 | `output/mic_retest_20261021/`、`docs/validation/mic-retest-20261021/` | 真实麦克风复测、队列阻塞与 ASR 故障 | 本机原始状态和可共享公开证据分开，当前任务优先级由 NOW 维护 |
 | `hardware/z7_nano/`、`output/z7_nano/` | 新板权威配置、独立构建/下载与 PS 验证产物 | 2026-10-13 建立；方法见 BOARD_MIGRATION，当前验收见 NOW |

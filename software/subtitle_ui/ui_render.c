@@ -142,28 +142,34 @@ static int closing(uint32_t cp) {
            cp==0xff1bu || cp==0xff1au || cp==0x3001u || cp==0xff09u || cp==0x300bu;
 }
 static int opening(uint32_t cp) {return cp==0xff08u || cp==0x300au || cp==0x201cu;}
-static void wrap(const uint32_t *text,const struct ui_font *f,uint32_t width,struct text_lines *out) {
-    uint32_t pos=0;out->count=0;
-    while(pos<UI_MAX_TEXT && text[pos] && out->count<UI_MAX_TEXT) {
-        while(pos<UI_MAX_TEXT && text[pos]==' ') ++pos;
-        if(pos>=UI_MAX_TEXT || !text[pos]) break;
+/* Wrap at most limit code points into at most capacity lines. */
+static uint32_t wrap_span(const uint32_t *text,uint32_t limit,const struct ui_font *f,uint32_t width,
+                          uint16_t *begin,uint16_t *finish,uint32_t capacity) {
+    uint32_t pos=0,count=0;
+    while(pos<limit && text[pos] && count<capacity) {
+        while(pos<limit && text[pos]==' ') ++pos;
+        if(pos>=limit || !text[pos]) break;
         uint32_t start=pos,end=pos,used=0,word_break=start;
-        while(end<UI_MAX_TEXT && text[end] && text[end]!='\n') {
+        while(end<limit && text[end] && text[end]!='\n') {
             uint32_t step=advance(f,text[end]);
             if(used+step>width && end>start) break;
             used+=step;if(text[end]==' ') word_break=end;
             ++end;
         }
         uint32_t next=end;
-        if(end<UI_MAX_TEXT && text[end] && text[end]!='\n') {
+        if(end<limit && text[end] && text[end]!='\n') {
             if(text[end]<128u && word_break>start) {end=word_break;next=end+1u;}
             else if(end-start>1u && (closing(text[end]) || opening(text[end-1u]))) {--end;next=end;}
-        } else if(end<UI_MAX_TEXT && text[end]=='\n') {next=end+1u;}
+        } else if(end<limit && text[end]=='\n') {next=end+1u;}
         if(end==start) {end=start+1u;next=end;}
         while(end>start && text[end-1u]==' ') --end;
-        out->begin[out->count]=(uint16_t)start;out->end[out->count]=(uint16_t)end;++out->count;
+        begin[count]=(uint16_t)start;finish[count]=(uint16_t)end;++count;
         pos=next;
     }
+    return count;
+}
+static void wrap(const uint32_t *text,const struct ui_font *f,uint32_t width,struct text_lines *out) {
+    out->count=wrap_span(text,UI_MAX_TEXT,f,width,out->begin,out->end,UI_MAX_TEXT);
 }
 static uint32_t paragraph(struct paint *p,const uint32_t *text,uint32_t size,struct clip c,
                           uint32_t color,uint32_t page,uint32_t *pages,uint32_t *actual_page) {
@@ -377,34 +383,114 @@ static const uint32_t *history_text(const struct ui_history_entry *entry,int eng
     int source_is_english=entry->language==UI_EN_ZH;
     return english==source_is_english?entry->source:entry->translated;
 }
-static uint32_t history_height(const struct ui_history_entry *entry) {
-    struct text_lines lines;uint32_t count=0;
+/* Consecutive finals become one paragraph, with the same breaks as the PC
+   export (scripts/remote_display_server.py compose_history): a new session or
+   direction, four sentences, 360 code points, or a topic word starting a
+   third or later sentence. Sentences are joined without rewriting. */
+#define HISTORY_GROUP_SENTENCES 4u
+#define HISTORY_GROUP_TEXT (HISTORY_GROUP_SENTENCES*(UI_MAX_TEXT+1u))
+struct history_lines {uint16_t begin[HISTORY_GROUP_TEXT],end[HISTORY_GROUP_TEXT];uint32_t count;};
+/* Paragraph scratch lives after the UI snapshots (link_arm_tls.ld), whose
+   address the JTAG tools pin; CLOUD_DDR has no room left behind .bss. */
+#if defined(__arm__)
+#define HISTORY_SCRATCH __attribute__((section(".ui_runtime.history")))
+#else
+#define HISTORY_SCRATCH
+#endif
+static HISTORY_SCRATCH uint32_t history_left[HISTORY_GROUP_TEXT+1u],history_right[HISTORY_GROUP_TEXT+1u];
+static HISTORY_SCRATCH struct history_lines history_wrapped;
+static uint32_t text_length(const uint32_t *text) {uint32_t n=0;while(n<UI_MAX_TEXT && text[n]) ++n;return n;}
+static uint32_t history_weight(const struct ui_history_entry *entry) {
+    uint32_t a=text_length(entry->source),b=text_length(entry->translated);return a>b?a:b;
+}
+static int history_topic(const uint32_t *text) {
+    static const char *const latin[]={"next,","finally,","on the other hand,","in addition,"};
+    static const uint32_t han[][5]={{0x53e6,0x5916},{0x53e6,0x4e00,0x65b9,0x9762},{0x63a5,0x4e0b,0x6765},
+                                   {0x6700,0x540e},{0x56e0,0x6b64}};
+    uint32_t start=0;while(start<UI_MAX_TEXT && text[start]==' ') ++start;
+    for(uint32_t i=0;i<sizeof(han)/sizeof(han[0]);++i) {
+        uint32_t k=0;while(k<5u && han[i][k] && start+k<UI_MAX_TEXT && text[start+k]==han[i][k]) ++k;
+        if(k==5u || !han[i][k]) return 1;
+    }
+    for(uint32_t i=0;i<sizeof(latin)/sizeof(latin[0]);++i) {
+        uint32_t k=0;
+        while(latin[i][k] && start+k<UI_MAX_TEXT) {
+            uint32_t c=text[start+k];if(c>='A' && c<='Z') c+=32u;
+            if(c!=(uint32_t)(unsigned char)latin[i][k]) break;
+            ++k;
+        }
+        if(!latin[i][k]) return 1;
+    }
+    return 0;
+}
+static uint32_t history_group(const struct ui_state *s,uint32_t first) {
+    uint32_t n=1,length=history_weight(s->history+first);
+    while(first+n<s->history_count) {
+        const struct ui_history_entry *a=s->history+first,*b=s->history+first+n;
+        if(a->epoch!=b->epoch || a->language!=b->language || n>=HISTORY_GROUP_SENTENCES || length>=360u ||
+           (n>=2u && history_topic(b->source))) break;
+        length+=history_weight(b);++n;
+    }
+    return n;
+}
+static uint32_t history_join(const struct ui_state *s,uint32_t first,uint32_t n,int english,uint32_t *out) {
+    uint32_t used=0;
+    for(uint32_t i=0;i<n;++i) {
+        const uint32_t *part=history_text(s->history+first+i,english);
+        if(!part[0]) continue;
+        if(used) {
+            uint32_t last=out[used-1u],next=part[0];
+            int latin=last<128u && next<128u && !(next==',' || next=='.' || next=='!' || next=='?' || next==':' ||
+                      next==';' || next==')' || next==']' || next=='}') && !(last=='(' || last=='[' || last=='{');
+            if(latin && last!=' ' && next!=' ') out[used++]=' ';
+        }
+        for(uint32_t k=0;k<UI_MAX_TEXT && part[k];++k) out[used++]=part[k];
+    }
+    out[used]=0;return used;
+}
+static uint32_t history_group_height(const struct ui_state *s,uint32_t first,uint32_t n) {
+    struct history_lines *lines=&history_wrapped;uint32_t count=0;
     for(int english=0;english<2;++english) {
-        wrap(history_text(entry,english),font(28),UI_HISTORY_TEXT_WIDTH,&lines);
-        if(lines.count>count) count=lines.count;
+        uint32_t used=history_join(s,first,n,english,history_left);
+        lines->count=wrap_span(history_left,used,font(28),UI_HISTORY_TEXT_WIDTH,lines->begin,lines->end,HISTORY_GROUP_TEXT);
+        if(lines->count>count) count=lines->count;
     }
     uint32_t height=count*41u+40u;return height<92u?92u:height;
 }
 void ui_history_prepare(struct ui_state *state) {
-    uint32_t total=0;
-    for(uint32_t i=0;i<state->history_count;++i) {
-        struct ui_history_entry *entry=state->history+i;
-        if(!entry->pixel_height) entry->pixel_height=history_height(entry);
-        total+=entry->pixel_height;
+    uint32_t total=0,measured=1;
+    for(uint32_t i=0;i<state->history_count;++i) if(!state->history[i].pixel_height) measured=0;
+    for(uint32_t first=0;first<state->history_count;) {
+        uint32_t n=history_group(state,first),height=0;
+        if(measured) for(uint32_t i=0;i<n;++i) height+=state->history[first+i].pixel_height;
+        else {
+            /* Share the paragraph height by sentence length, so dropping the
+               oldest final keeps ui_model's scroll correction proportional. */
+            height=history_group_height(state,first,n);
+            uint32_t weights=0,left=height;
+            for(uint32_t i=0;i<n;++i) weights+=history_weight(state->history+first+i)+1u;
+            for(uint32_t i=0;i+1u<n;++i) {   /* every share >= 1; height >= 92 > n */
+                uint32_t share=1u+(height-n)*(history_weight(state->history+first+i)+1u)/weights;
+                state->history[first+i].pixel_height=share;left-=share;
+            }
+            state->history[first+n-1u].pixel_height=left;
+        }
+        total+=height;first+=n;
     }
     state->history_limit=total>UI_HISTORY_BODY_HEIGHT?total-UI_HISTORY_BODY_HEIGHT:0;
     if(state->history_follow || state->history_scroll>state->history_limit)
         state->history_scroll=state->history_limit;
 }
-static void history_paragraph(struct paint *p,const uint32_t *text,int x,int y) {
-    struct text_lines lines;wrap(text,font(28),UI_HISTORY_TEXT_WIDTH,&lines);
+static void history_paragraph(struct paint *p,const uint32_t *text,uint32_t length,int x,int y) {
+    struct history_lines *lines=&history_wrapped;
+    lines->count=wrap_span(text,length,font(28),UI_HISTORY_TEXT_WIDTH,lines->begin,lines->end,HISTORY_GROUP_TEXT);
     struct clip c={x-4,UI_HISTORY_BODY_Y,UI_HISTORY_TEXT_WIDTH+12,UI_HISTORY_BODY_HEIGHT};
-    for(uint32_t row=0;row<lines.count;++row) {
+    for(uint32_t row=0;row<lines->count;++row) {
         int at=y+(int)row*41;
         if(at+44<UI_HISTORY_BODY_Y || at>=UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT) continue;
-        draw_line(p,font(28),text,lines.begin[row],lines.end[row],x,at,INK,c);
+        draw_line(p,font(28),text,lines->begin[row],lines->end[row],x,at,INK,c);
     }
-    p->stats->history_lines+=lines.count;
+    p->stats->history_lines+=lines->count;
 }
 static void history_view(struct paint *p,const struct ui_state *s) {
     round_rect(p,24,13,36,36,8,ACTION);
@@ -427,23 +513,22 @@ static void history_view(struct paint *p,const struct ui_state *s) {
         one_line(p,text,28,(1024-(int)text_width(font(28),text))/2,284,380,INK);
         text=label("history_hint");one_line(p,text,18,(1024-(int)text_width(font(18),text))/2,334,420,MUTED);
     } else {
+        /* One paragraph per group, separated by space only; the number is its
+           first final's position in this power-on session. */
         int y=UI_HISTORY_BODY_Y-(int)s->history_scroll;p->viewport_clip=1;
-        for(uint32_t i=0;i<s->history_count;++i) {
-            const struct ui_history_entry *entry=s->history+i;
-            int h=(int)(entry->pixel_height?entry->pixel_height:history_height(entry));
+        for(uint32_t first=0;first<s->history_count;) {
+            uint32_t members=history_group(s,first),height=0,known=1;
+            for(uint32_t i=0;i<members;++i) {height+=s->history[first+i].pixel_height;if(!s->history[first+i].pixel_height) known=0;}
+            int h=(int)(known?height:history_group_height(s,first,members));
             if(y+h>UI_HISTORY_BODY_Y && y<UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT) {
-                int top=y<UI_HISTORY_BODY_Y?UI_HISTORY_BODY_Y:y;
-                int bottom=y+h>UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT?UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT:y+h;
-                if(i&1u) rect(p,40,top,932,bottom-top,0xf6f9fau);
-                decimal(s->final_count-s->history_count+i+1u,number);uint32_t len=0;while(number[len])++len;
+                decimal(s->final_count-s->history_count+first+1u,number);uint32_t len=0;while(number[len])++len;
                 draw_line(p,font(14),number,0,len,44,y+16,MUTED,
                           (struct clip){40,UI_HISTORY_BODY_Y,32,UI_HISTORY_BODY_HEIGHT});
-                history_paragraph(p,history_text(entry,1),UI_HISTORY_LEFT_X,y+18);
-                history_paragraph(p,history_text(entry,0),UI_HISTORY_RIGHT_X,y+18);
-                if(y+h-1>=UI_HISTORY_BODY_Y && y+h-1<UI_HISTORY_BODY_Y+UI_HISTORY_BODY_HEIGHT)
-                    rect(p,40,y+h-1,932,1,LINE);
+                uint32_t left=history_join(s,first,members,1,history_left),right=history_join(s,first,members,0,history_right);
+                history_paragraph(p,history_left,left,UI_HISTORY_LEFT_X,y+18);
+                history_paragraph(p,history_right,right,UI_HISTORY_RIGHT_X,y+18);
             }
-            y+=h;
+            y+=h;first+=members;
         }
         p->viewport_clip=0;rect(p,511,140,1,348,LINE);
         int track=UI_HISTORY_BODY_HEIGHT,thumb=(int)((uint32_t)track*track/(s->history_limit+track));

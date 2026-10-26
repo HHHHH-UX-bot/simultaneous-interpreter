@@ -4,8 +4,9 @@
 
 用户要求从实用性出发做“脱离电脑独立启动”，范围见 [D25](DECISIONS.md#d25-sd-卡独立启动2026-10-26)，设计见 [SD_BOOT](../design/SD_BOOT.md)。
 
-- 板载：TF 卡 `BOOT.BIN` SHA256 `4c21987ff925ca7bd1b70f0b2595c60159e27da3fc9cdf61ea637d0176624f68`（FSBL、PL 位流 `97ddda29…`、跳板、CPU0/CPU1 装载包、Qwen 权重与分词器），另有用户生成的 `z7cfg.bin`。CPU0 应用带 `--sd-boot`，ELF SHA256 `21d6f0903790850a193ec9d3db352e6b157868fa218bd159f8edd144cfbe23e8`，JTAG 下行为不变。J1 跳线在 SD。
+- 板载：TF 卡 `BOOT.BIN` SHA256 `a6c8374415eeba7a2d3c035461cc6f8c31db0eff11603a89a44be999f73197ed`（FSBL、PL 位流 `97ddda29…`、跳板、CPU0/CPU1 装载包、Qwen 权重与分词器），另有用户生成的 `z7cfg.bin`。CPU0 应用带 `--sd-boot`，ELF SHA256 `0614143715f59fa58c403d241aa138386f704818bc49fe95aed3aedd57b9063d`，JTAG 下行为不变。J1 跳线在 SD。
 - 第 3 次冷启动：屏幕自己亮，用户确认触摸和识别正常；只读检查联网、2048 个麦克风采样混入随机数、触摸报告、声纹加速器和板上 Qwen 复核/初始化均正常。前两次失败的原因与修正见[验证](../validation/sd-boot-20261026/README.md)。
+- 之后历史页改为连续定稿自动合并成大段，按上面的身份重建并换卡；用户上电确认启动正常、历史页成段显示正常。见[成段验证](../validation/history-paragraph-20261026/README.md)。
 - 仍是 RAM：设置、历史和声纹登记断电丢失。凭据明文在卡上；TLS 时间以配置文件生成时刻为基准。见 [R34](RISKS.md)。
 - 回到 JTAG 开发：J1 跳线放回 JTAG，再按下方入口加载。
 
@@ -27,7 +28,7 @@
 | --- | --- | --- |
 | 云端实时同传 | 麦克风 → PL I2S → Opus/Ogg → ARM TLS → ESP8266 → 百炼 LiveTranslate → 双语字幕与 DAC 译音；中英双向菜单；L1/T1/T2 延迟卡片 | [CLOUD_SPEECH](../design/CLOUD_SPEECH.md)、[长句验证](../validation/long-speech-20261022/README.md) |
 | 设置页 | 播报开关、数字音量/静音、0.8/1.0/1.2x 语速、字号、显示原文、翻译方向；偏好只存 RAM | [TTS_SETTINGS](../design/TTS_SETTINGS.md) |
-| 历史记录 | 最多 64 条定稿，左原文右译文，可滑动和页内清空；断电丢失 | [UI_SPEC](../design/UI_SPEC.md#板端历史记录页2026-10-21) |
+| 历史记录 | 最多 64 条定稿，连续定稿自动合并成段，左英文右中文，可滑动和页内清空；断电丢失 | [UI_SPEC](../design/UI_SPEC.md#板端历史记录页2026-10-21) |
 | 板上 Qwen 翻译 | 云端 ASR → 板上 Qwen2.5-0.5B Q6 → 云端 TTS；队友记录单句模型完成约 22–24 秒，不是实时同传 | [LOCAL_VOICE_LLM](../design/LOCAL_VOICE_LLM.md)、[BOARD_LLM](../design/BOARD_LLM.md) |
 | FPGA 声纹 | PL 内 MFCC + CNN，四个 RAM 登记位，实验性识别，不能用于身份认证；登记时暂停翻译并关闭上传 | [LOCAL_SPEAKER_CNN](../design/LOCAL_SPEAKER_CNN.md) |
 | 离线短句原型 | 12 个固定短句的整数 MFCC/DTW 与短句音库，不做开放翻译 | [LOCAL_AI](../design/LOCAL_AI.md) |

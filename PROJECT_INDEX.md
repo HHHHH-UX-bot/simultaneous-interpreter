@@ -12,7 +12,7 @@
 | PL网口电脑画面、鼠标控制、历史另存为 | [REMOTE_DISPLAY](docs/design/REMOTE_DISPLAY.md)、[本轮验证](docs/validation/remote-display-20261022/README.md) | 实际帧缓冲无损传输、共用触摸命中、CSV/TXT/JSON定稿导出、2018.3平台及实机证据 |
 | 优化连续长句的字幕/译音、上传与下行缓冲 | [长句验证](docs/validation/long-speech-20261022/README.md)、[前轮延迟验证](docs/validation/tts-latency-20261021/README.md)、[TTS_SETTINGS](docs/design/TTS_SETTINGS.md) | 六句自动实测、2Mbaud、IPD空行修复、Opus O2、计时取舍与真人长句验收边界 |
 | 修改设置页、译音、真实输出音量及 T2 | [译音与设置](docs/design/TTS_SETTINGS.md)、[设置页规范](docs/design/UI_SPEC.md#板端设置页2026-10-21)、[NOW](docs/context/NOW.md) | 当前设置、DAC 增益/静音/速度、云端文本与译音、延迟定义、构建与证据边界 |
-| 开发或验收独立历史记录页、英中对照与滑动 | [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)、[验证](docs/validation/history-ui-20261021/README.md)、[NOW](docs/context/NOW.md) | 64条英中对照、真实C滚动/手势、清空语义、内存及分项板测范围 |
+| 开发或验收独立历史记录页、英中对照与滑动 | [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)、[验证](docs/validation/history-ui-20261021/README.md)、[成段](docs/validation/history-paragraph-20261026/README.md)、[NOW](docs/context/NOW.md) | 64条英中对照与自动成段、真实C滚动/手势、清空语义、内存及分项板测范围 |
 | 核对真实麦克风异常及局部修正 | [本轮译音验证](docs/validation/tts-settings-20261021/README.md)、[历史版复测](docs/validation/history-mic-20261021/README.md)、[RISKS](docs/context/RISKS.md) | 迟到预览、空定稿和response.done最终译文的修正证据；原故障、局部修复与长期可靠性分开 |
 | 使用顶部英中双向翻译菜单或修改其生命周期 | [UI_SPEC](docs/design/UI_SPEC.md#板端翻译方向切换2026-10-21)、[验证](docs/validation/language-picker-20261021/README.md) | 两项菜单、实际语言切换、旧会话隔离及验收边界 |
 | 接续英译中、英译英，核对桌面候选和当前板测 | [ENGLISH](docs/context/ENGLISH.md) | 共享模式、修正、真实验证与未放行项 |
