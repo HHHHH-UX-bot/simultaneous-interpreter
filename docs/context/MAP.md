@@ -84,7 +84,7 @@ DDR 显示的配置、地址和运行入口由 [FRAMEBUFFER](../design/FRAMEBUFF
 | USB 数据口 | 原理图 P3 连接 USB3320 ULPI PHY，并有 `USBCP_EN` 控制 VBUS；CC1/CC2 接到 `USB_ID` | 第 10 页，[所读页](../../tmp/schematic-page-10.png)；这不证明任意 Type-C 线能进入 Host 模式 |
 | 触摸线 | 新板 USB Host → 屏幕 TOUCH，单 Host 数据/供电；POWER USB 不接电脑；枚举、坐标和按钮已有分项实测 | [USB_TOUCH](../design/USB_TOUCH.md)，本轮实际状态仍需按当前 ELF/CPU1 generation 核对 |
 | 网口 | 原理图有 PS、PL 两套 RTL8211E 千兆网口电路；方案优先 PS 网口 | 原理图第 7 页文字定位；实物对应接口、链路、驱动与地址未验收 |
-| 启动存储 | 原理图含 W25Q128 QSPI 和 SD 接口 | 第 8 页文字定位；可用 SD 卡、内容、启动开关和启动模式待核实 |
+| 启动存储 | 原理图第 2 页：W25Q128 QSPI（16 MB）；第 10 页：microSD 卡座接 MIO40–45（经 TXS02612 电平转换）。J1 四针启动跳线，丝印 JTAG/QSPI/SD，SD 为 MIO[5:4]=11 | 2026-10-26 实测：JTAG 位置时 BOOT_MODE=0，跳线帽放最右 SD 时 BOOT_MODE=5 并从 32 GB FAT32 卡启动成功，见 [SD_BOOT](../design/SD_BOOT.md)。QSPI 未使用 |
 | 调试与供电 | JTAG 数据口接电脑；用户后续增加 UART 口接充电宝供电；线缆/PL/CPU 每次操作前实际核对 | 上次身份由 NOW 和阶段快照绑定，旧 RevB probe 不作新板证据 |
 | 开发电脑 | 原局域网模型试验已有记录；最终产品使用时不依赖电脑 | 电脑试验证据见 MODEL_BACKEND；最终云语音方向见 DECISIONS D13 |
 

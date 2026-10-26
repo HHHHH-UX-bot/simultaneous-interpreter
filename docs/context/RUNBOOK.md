@@ -323,6 +323,19 @@ python -B scripts/run_z7_nano_usb_live.py stop
 
 浏览器原型入口仍是 `output/ui/index.html`。静态板卡入口为 `scripts/run_static_ui.ps1`，只负责 P2a；Wi-Fi 阶段入口与已验证运行方法见 W 和 WIFI_LINK。最小 PS/DDR 与可更新显示分别由 PS_BRINGUP、FRAMEBUFFER 路由；各命令仅负责对应阶段，尚无统一产品启动命令。实际授权以当前用户指令为准，阶段结果以 NOW 和对应证据为准。
 
+## SD 卡独立启动
+
+设计与边界见 [SD_BOOT](../design/SD_BOOT.md)。以下步骤 2026-10-26 在只有 Vivado/Vitis 2026.1 的机器上实际执行过；写卡和上电仍须当次授权。
+
+1. PS 平台（只在 PS 配置变化时重做）：在 `output/z7_nano/sd_boot/` 中运行 `vivado -mode batch -source ../../../scripts/build_sd_boot_platform.tcl -tclargs .`，得到 `sd_boot_ps.xsa`。
+2. FSBL：`cmd /c "chcp 65001 >nul && vitis -s scripts\build_sd_boot_fsbl.py output\z7_nano\sd_boot"`。不切 UTF-8 代码页时，中文 Windows 上 Vitis 接口会因服务输出的 GBK 文字崩溃。
+3. 应用：按当前产品参数加 `--sd-boot` 构建到 `output/network_history/microphone`；PL 平台与 CPU1 沿用已验证产物。
+4. 打包：`python -B scripts/build_sd_boot.py`，生成 `output/z7_nano/sd_boot/BOOT.BIN` 与记录各输入哈希的 `sd_boot.json`。Qwen 资产须已按 model_tools 放在 `models/`。
+5. 写卡：把 `BOOT.BIN` 复制到 FAT32 卡根目录（卡没有盘符时可用卷路径 `\\?\Volume{…}\`），回读核对 SHA256 并刷新写缓存。
+6. 配置：用户在终端运行 `python -B scripts/make_sd_config.py <卡根目录>`，亲自输入 Wi-Fi 与百炼 Key，工作空间与模型路径直接回车用默认值。不要加 `-I`（脚本要导入同目录模块）。
+7. 上电：J1 跳到 SD，确认音频模块插好且 5 V 接好，完全断电后上电。可用 JTAG 只读检查 BOOT_MODE=5、OCM `0x2F000` 启动信息、`sd_boot_diag`、网络阶段、CPU1 报告与 Qwen 复核状态，不要停核或写内存。
+8. 回到 JTAG 开发：J1 放回 JTAG，再按“当前产品构建与运行范围”加载。
+
 ## Git 维护
 
 仓库、分支及忽略边界见 [MAP](MAP.md#git-与-github)，用户上传授权见 D12。提交前核对待提交文件与本阶段验证；只暂存相关源码和文档，保留已有用户修改。源码字节规则不得被行尾转换覆盖；验证产物仍按其原范围留在本地。

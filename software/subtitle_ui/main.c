@@ -212,6 +212,9 @@ int main(void) {
     wr(0xf8f00208u,1);barrier();started_ticks=timer();
     for(volatile uint32_t i=0;i<1000u;++i) {}
     if(timer()==started_ticks) fail(2);
+#ifdef Z7_SD_BOOT
+    sd_boot_power_screen();   /* JTAG flow powers the screen before the display starts */
+#endif
     if(rd(VIDEO_BASE)!=0x46564231u || rd(VIDEO_BASE+0x24u)!=FB_HEIGHT*65536u+FB_WIDTH) fail(3);
     if(ui_font_count!=5u || !ui_demo_sample_count) fail(31);
     static const uint32_t sizes[]={14,18,28,36,44};
@@ -243,6 +246,9 @@ int main(void) {
         wait_value(VDMA_BASE+0x28u,0x1f0000u,inactive<<16,1000u,6);active=inactive;
         publish_ui(active);begin_report();report.current_buffer=active;++report.flips;update_stats();
         if(report.flips>=4u) {report.phase=3;report.state=0x600d600du;}end_report();check_video();
+#ifdef Z7_SD_BOOT
+        if(report.flips>=4u) sd_boot_display_ready();   /* JTAG flow starts CPU1 at this point */
+#endif
         if(report.last_frame_pixels!=FB_WIDTH*FB_HEIGHT) fail(7);
         uint32_t pause=now_ms();while(now_ms()-pause<500u) {
             check_video();process_controls();

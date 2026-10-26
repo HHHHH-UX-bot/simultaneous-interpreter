@@ -1,10 +1,19 @@
 # 当前状态
 
-## 当前板载与验收（2026-10-26）
+## 当前：SD 卡独立启动（2026-10-26）
+
+用户要求从实用性出发做“脱离电脑独立启动”，范围见 [D25](DECISIONS.md#d25-sd-卡独立启动2026-10-26)，设计见 [SD_BOOT](../design/SD_BOOT.md)。
+
+- 板载：TF 卡 `BOOT.BIN` SHA256 `4c21987ff925ca7bd1b70f0b2595c60159e27da3fc9cdf61ea637d0176624f68`（FSBL、PL 位流 `97ddda29…`、跳板、CPU0/CPU1 装载包、Qwen 权重与分词器），另有用户生成的 `z7cfg.bin`。CPU0 应用带 `--sd-boot`，ELF SHA256 `21d6f0903790850a193ec9d3db352e6b157868fa218bd159f8edd144cfbe23e8`，JTAG 下行为不变。J1 跳线在 SD。
+- 第 3 次冷启动：屏幕自己亮，用户确认触摸和识别正常；只读检查联网、2048 个麦克风采样混入随机数、触摸报告、声纹加速器和板上 Qwen 复核/初始化均正常。前两次失败的原因与修正见[验证](../validation/sd-boot-20261026/README.md)。
+- 仍是 RAM：设置、历史和声纹登记断电丢失。凭据明文在卡上；TLS 时间以配置文件生成时刻为基准。见 [R34](RISKS.md)。
+- 回到 JTAG 开发：J1 跳线放回 JTAG，再按下方入口加载。
+
+## 前轮：PR #7 合并与 2026.1 重建（2026-10-26）
 
 队友 [PR #7](https://github.com/HHHHH-UX-bot/simultaneous-interpreter/pull/7) 已按用户指示合并为 `e38fbe6`，内容与 PR head `791da60` 相同；其中 15 个文件的 LF→CRLF 行尾改写原样保留。本机只装了 Vivado/Vitis 2026.1，按用户“如果冲突就用2026的”重建，范围见 [D24](DECISIONS.md#d24-合并-pr-7本机以-vivadovitis-20261-重建2026-10-26)。
 
-- 板载（JTAG 易失）：PL 为 `output/z7_nano/remote_display/`，Vivado 2026.1，USR_ACCESS `0x5a374e35`，位流 SHA256 `97ddda29282ba4189b3a1cfaa04aff3ba850e1a8f01899d27b52a6312a31fd80`，setup/hold 0.040/0.017 ns。运行中的应用 ELF SHA256 `78b7c93eb9863c7cab927bf8796aa5ba16601facdfb64be5a90f6050b6136cc9`（ARM GCC 13.4.0，Selftest=false），CPU1 触摸主机在运行。
+- 当时板载（JTAG 易失，已由上节 SD 启动替换）：PL 为 `output/z7_nano/remote_display/`，Vivado 2026.1，USR_ACCESS `0x5a374e35`，位流 SHA256 `97ddda29282ba4189b3a1cfaa04aff3ba850e1a8f01899d27b52a6312a31fd80`，setup/hold 0.040/0.017 ns。运行中的应用 ELF SHA256 `78b7c93eb9863c7cab927bf8796aa5ba16601facdfb64be5a90f6050b6136cc9`（ARM GCC 13.4.0，Selftest=false），CPU1 触摸主机在运行。
 - 构建目录 `output/network_history/microphone/` 已在仓库卫生改动后重建，11 个装载段与运行中的 ELF 逐字节相同，只有调试信息不同；原部署 ELF 留在本机 `output/merge_pr7_20261026/deployed_app/`。
 - 自动检查：完整加载与显示报告，屏幕 USB 供电且检测到触摸设备连接，声纹加速器模型校验和 MFCC/CNN 周期，Qwen 资产的板上 SHA 复核与引擎初始化，主界面 614,400 像素与本机渲染零差异；五项主机回归和 48→16 kHz 抽取仿真通过。
 - 用户现场短验收（凭据由用户在终端输入）：板屏显示 CYEA 并就绪；云端中译英、英译中均有字幕和译音；历史页、设置页及“模型与声纹”页触摸正常；云端 ASR → 板上 Qwen → 云端 TTS 有译文和语音；FPGA 声纹登记说话人 1 后能识别。均为单次短测。
@@ -27,11 +36,12 @@
 ## 未解决与边界
 
 - 真人麦克风的定稿队列阻塞（R28）和云端 `UNEXPECTED_ASR_ERROR`（R29）只做过局部修正，不宣称长期可靠；PR #1 审查遗留项见 R32，2026.1 与 2018.3 构建分叉见 R33。全部见 [RISKS](RISKS.md)。
-- 程序、凭据、设置、历史和声纹登记都在 JTAG/RAM，断电丢失；没有独立启动镜像，未写 Flash/SD/ESP 固件。
+- 可从 TF 卡独立启动（程序、Qwen 资产与凭据都在卡上）；设置、历史和声纹登记仍在 RAM，断电丢失。未写 QSPI Flash 或 ESP 固件。
 - 10-21 至 10-23 各轮的详细过程、当时的板载身份和测量数据已归档到[历史记录](history/progress-20261021-20261023.md)。
 
 ## 使用入口
 
+- 独立使用：TF 卡放 `BOOT.BIN` 与 `z7cfg.bin`，J1 跳到 SD，接好音频模块后上电。生成与更新卡内容见 [RUNBOOK](RUNBOOK.md#sd-卡独立启动)。
 - 根目录 `启动FPGA声纹.cmd`：重新 JTAG 加载当前声纹/网络名称固件并输入运行期 Wi-Fi 和百炼配置；整板断电后用 `断电后启动本地LLM.cmd`。这些入口默认调用 SDK 2018.3 的 xsct/hw_server；只有 2026.1 的机器需改用 `scripts/load_tts.py --xsct <Vitis 2026.1 xsdb>`，再用 `scripts/configure_cloud_runtime.py --xsdb <同一 xsdb>` 输入凭据，并先启动 2026.1 的 hw_server。
 - 根目录 `打开电脑画面.cmd`：启动本机服务并打开 `http://127.0.0.1:8787`，点击/拖动操作同步到板端；下方导出按钮可选 CSV/TXT/JSON 和保存位置。该文件写死了队友电脑的 Python 路径，本机需改用 `machine` 环境运行 `scripts/start_remote_display.py`。
 - 构建：`scripts/build_cloud_app.py` 现在由 `hardware/z7_nano/source.json` 直接生成显示头文件，干净克隆不再需要手工拷贝 `output/display/framebuffer_hw.h`；声纹 PL 平台与仿真参数见 [LOCAL_SPEAKER_CNN](../design/LOCAL_SPEAKER_CNN.md)，2026.1 下的做法见[本轮验证](../validation/merge-pr7-2026-20261026/README.md)。

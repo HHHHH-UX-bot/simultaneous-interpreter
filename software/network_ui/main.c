@@ -25,6 +25,9 @@ static uint32_t llm_restore_enabled;
 #ifdef Z7_ARM_TLS
 #include "arm_tls.h"
 #endif
+#ifdef Z7_SD_BOOT
+#include "sd_boot_runtime.h"
+#endif
 #include "../subtitle_ui/ui_demo.h"
 #include "../subtitle_ui/ui_render.h"
 static void render_service(void);
@@ -172,6 +175,9 @@ static void network_demo_init(struct ui_demo_clock *c,struct ui_state *s,uint32_
 static void network_background_tick(struct ui_state *s,uint32_t now) {
     if(now-service_ms<1u) return;
     service_ms=now;
+#ifdef Z7_SD_BOOT
+    sd_boot_tick();
+#endif
 #ifdef Z7_LOCAL_AI
     local_ai_tick(now);
 #endif

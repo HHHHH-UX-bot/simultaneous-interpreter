@@ -161,6 +161,15 @@ int arm_tls_send(const uint8_t *p,uint32_t n) {
     if(p[0]==0x89u) {++arm_tls_diag[16];arm_tls_diag[18]=n;arm_tls_diag[22]=n>1?p[1]:0;}
     memcpy(plain,p,n);pending=n;app_trace(1u,plain,n,0);return 1;
 }
+#ifdef Z7_SD_BOOT
+#include "sd_boot_runtime.h"
+/* An SD-booted board has no clock source: its time starts at the config
+   file's creation, so a certificate issued after that looks "not yet valid".
+   Ignore only that flag; chain, name and expiry checks stay in force. */
+static int sd_boot_verify(void *context,mbedtls_x509_crt *crt,int depth,uint32_t *flags) {
+    (void)context;(void)crt;(void)depth;*flags&=~(uint32_t)MBEDTLS_X509_BADCERT_FUTURE;return 0;
+}
+#endif
 static int setup(void) {
     if(!initialized) {
         if(arm_tls_seed.magic!=0x31444553u || arm_tls_seed.epoch<1767225600u) return -1;
@@ -180,6 +189,9 @@ static int setup(void) {
     static const int suites[]={MBEDTLS_TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,0};
     mbedtls_ssl_conf_ciphersuites(&config,suites);
     mbedtls_ssl_conf_authmode(&config,MBEDTLS_SSL_VERIFY_REQUIRED);
+#ifdef Z7_SD_BOOT
+    if(sd_boot_active()) mbedtls_ssl_conf_verify(&config,sd_boot_verify,0);
+#endif
     mbedtls_ssl_conf_rng(&config,mbedtls_ctr_drbg_random,&rng);mbedtls_ssl_conf_ca_chain(&config,&ca,0);
     rc=mbedtls_ssl_setup(&ssl,&config);if(rc) return rc;
     rc=mbedtls_ssl_set_hostname(&ssl,HOST);

@@ -4,7 +4,7 @@
 
 在 **设置 → 模型与本地声纹** 登记说话人 1–4，连续说话约 4–6 秒，进度完成后识别编号或显示未知。MFCC 和 CNN 前向计算在 FPGA，模板匹配在板上 ARM，声纹不调用云 API；登记期间关闭翻译云连接，完成后恢复。普通翻译的 STT/TTS 仍使用云端，本地模式的翻译使用板上 Qwen。当前使用真实麦克风固件 `output/network_history/microphone/`，Selftest=false，测试注入默认关闭。旧短句/SpeechBrain 对照仅保留历史，不是本副本当前运行能力；旧 `启动离线短句.cmd`、`启动译声.cmd` 等入口不适用本声纹平台。
 
-目标是连接 Wi-Fi 后独立进行语音识别、英中翻译、HDMI 显示和 USB 触摸操作。现阶段为 Z7-Nano 7010 的 JTAG 易失原型，仍需要电脑完成下载、运行期凭据与开发调试，尚未实现独立上电启动。
+目标是连接 Wi-Fi 后独立进行语音识别、英中翻译、HDMI 显示和 USB 触摸操作。现阶段为 Z7-Nano 7010 原型：可从 TF 卡独立上电启动并自动联网（见 [SD_BOOT](docs/design/SD_BOOT.md)），开发调试仍用 JTAG。
 
 真实链路为 AN831/WM8731 麦克风 → PL I2S/16 kHz PCM → Cortex-A9 Opus/Ogg → ARM 可信 TLS → ESP8266 TCP/Wi-Fi → 百炼 → 双语字幕与译文合成语音 → WM8731 DAC。CPU0 绘制 DDR 双缓冲，CPU1 执行 USB Host；采用裸机 C，未迁移 Linux/LVGL。硬件及接线见 [MAP](docs/context/MAP.md)，接口分工见 [CLOUD_SPEECH](docs/design/CLOUD_SPEECH.md)。
 
@@ -15,7 +15,7 @@
 - 仅字幕固定样本通过 30 分钟观察；真实麦克风仍存在**定稿队列阻塞**与 `UNEXPECTED_ASR_ERROR`。两句能显示不等于历史已正常，不宣布长期可靠。[历史版真实麦克风复测](docs/validation/history-mic-20261021/README.md)已确认两句预览正常但未入历史，暂停/继续后新增真实记录；旧版复现分别保留。
 - 原阶段已完成**独立历史记录页：左英文、右中文、滑动和页内清空**，取得其离线、整帧比对及真实USB滑动/翻页/返回证据。新译音阶段局部修正迟到预览、空定稿和response.done最终输出处理；[本轮验证](docs/validation/tts-settings-20261021/README.md)列明实际范围，长期可靠性仍单独验证。行为见 [UI_SPEC](docs/design/UI_SPEC.md#板端历史记录页2026-10-21)，运行身份由 [NOW](docs/context/NOW.md)维护。
 - 独立设置页已提供播报、数字音量/静音、播放速度、字号、原文与方向控制；见[译音与设置专题](docs/design/TTS_SETTINGS.md)。桌面工程可使用 `启动译声.cmd` 重新加载，运行期凭据仍需重新输入。
-- 断电会丢失应用和运行期配置；持久历史、启动镜像、可信上电时间/熵、长期稳定性及代表性语音质量未放行。未写 Flash/SD 或 ESP 固件。
+- TF 卡独立启动已有一次完整冷启动的用户验收；卡上配置文件明文保存 Wi-Fi 与百炼 Key。设置、历史和声纹登记仍断电丢失；可信时间、长期稳定性及代表性语音质量未放行。未写 QSPI Flash 或 ESP 固件。
 
 连续长句已做6句、每句25–29字的两轮真实云链路自动测试，并修复IPD空行累积故障；当前采用2Mbaud和Opus O2，完整数字及保留限制见[长句验证](docs/validation/long-speech-20261022/README.md)。
 

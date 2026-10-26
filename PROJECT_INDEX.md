@@ -6,6 +6,7 @@
 
 | 任务或问题 | 权威入口 | 职责 |
 |---|---|---|
+| 脱离电脑从 TF 卡启动、更新卡内容或排查自启问题 | [SD_BOOT](docs/design/SD_BOOT.md)、[操作](docs/context/RUNBOOK.md#sd-卡独立启动)、[验证](docs/validation/sd-boot-20261026/README.md) | 启动链路、FSBL 钩子与跳板、固件补做的 USB 预上电/CPU1/配置、卡内容生成与安全取舍 |
 | 在只有 Vivado/Vitis 2026.1 的机器上重建、烧录当前版本 | [本轮验证](docs/validation/merge-pr7-2026-20261026/README.md)、[D24](docs/context/DECISIONS.md#d24-合并-pr-7本机以-vivadovitis-20261-重建2026-10-26)、[NOW 使用入口](docs/context/NOW.md#使用入口) | 2026.1 适配点、JTAG 预置 Qwen 资产、实板检查与未验证范围 |
 | 声纹登记、云端/板上离线切换与 SpeechBrain 对照 | [LOCAL_AI](docs/design/LOCAL_AI.md)、[验证](docs/validation/local-ai-20261022/README.md) | Cortex-A9 整数 MFCC/DTW、12 个固定短句、四位内存声纹、实际触摸/电脑画面与独立 PC ECAPA |
 | PL网口电脑画面、鼠标控制、历史另存为 | [REMOTE_DISPLAY](docs/design/REMOTE_DISPLAY.md)、[本轮验证](docs/validation/remote-display-20261022/README.md) | 实际帧缓冲无损传输、共用触摸命中、CSV/TXT/JSON定稿导出、2018.3平台及实机证据 |
