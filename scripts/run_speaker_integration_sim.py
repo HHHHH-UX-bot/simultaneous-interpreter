@@ -7,7 +7,8 @@ sys.path.insert(0,str(ROOT/'tmp/speaker_cnn/deps'))
 import soundfile as sf
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def main():
- p=argparse.ArgumentParser();p.add_argument('--model',type=Path,default=ROOT/'output/speaker_cnn/pilot/export/model.bin');a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--model',type=Path,default=ROOT/'output/speaker_cnn/pilot/export/model.bin')
+ p.add_argument('--xsim-bin',type=Path,default=Path('C:/Xilinx/Vivado/2018.3/bin'),help='directory holding xvlog/xelab/xsim .bat');a=p.parse_args()
  work=ROOT/'tmp/speaker_cnn/integration_sim';work.mkdir(exist_ok=True)
  words=np.frombuffer(a.model.read_bytes(),'<u4').copy();assert len(words)==8192 and words[2]==7076
  lib=ct.CDLL(str(ROOT/'tmp/speaker_cnn/mfcc_reference.dll'));fn=lib.speaker_mfcc_frames
@@ -34,7 +35,7 @@ def main():
    if f.suffix=='.v':generated.append(f)
    if f.suffix=='.dat':shutil.copy2(f,work/f.name)
  sources=generated+[ROOT/'rtl/speaker_cnn'/n for n in ('speaker_capture.v','speaker_pipeline.v','speaker_accel.v')]+[ROOT/'tests/speaker_cnn/speaker_accel_tb.v']
- tools=Path('C:/Xilinx/Vivado/2018.3/bin')
+ tools=a.xsim_bin
  tool_temp=work/'tool_tmp';tool_temp.mkdir(exist_ok=True)
  tool_env=os.environ.copy();tool_env['TEMP']=str(tool_temp);tool_env['TMP']=str(tool_temp)
  def run(name,cmd,marker=None):

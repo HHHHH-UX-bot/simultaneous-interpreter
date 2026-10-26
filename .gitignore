@@ -43,5 +43,4 @@ desktop.ini
 /models/*
 !/models/source_manifest.json
 !/models/QWEN_LICENSE.txt
-!/models/README.md
 /torchinductor_*/

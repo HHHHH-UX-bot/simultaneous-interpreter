@@ -15,7 +15,11 @@
 | Qwen 资产 | 按固定修订下载并逐文件核对 SHA256；导出的 Q6（401,637,888 字节）与分词器（5,277,796 字节）SHA256 与固件固定值一致 |
 | 主机回归 | `test_network_history.py`、`test_speaker_driver.py`、`test_speaker_ui.py`、`test_speaker_llm_guard.py`、`tests/voice_llm/run_unit_tests.py` 全部通过（MinGW GCC 8.1） |
 
-未在本机重做：HLS C/RTL 联合仿真、声纹集成与 48→16 kHz 抽取 xsim（需要 Vivado HLS 2018.3、LibriSpeech 夹具与参考 DLL），沿用队友记录。
+随后在仓库卫生改动中补做：`generate_speaker_fir.py` 重新生成的 FIR ROM 与仓库中的逐字节一致；`run_speaker_capture_sim.py --xsim-bin <2026.1>` 通过，2049 个 48 kHz 输入得到 683 个 16 kHz 输出，与独立整数卷积 0 差异，1 kHz/10 kHz 增益 0.998/0.001。
+
+未在本机重做：HLS C/RTL 联合仿真和声纹集成 xsim（需要 Vivado HLS 2018.3、LibriSpeech 夹具与参考 DLL），沿用队友记录。
+
+仓库卫生改动后，应用在原目录重新构建：11 个装载段与运行中的 ELF（`78b7c93e…`）逐字节相同，只有调试信息不同（新 ELF `6b2cef23…`），板子无需重新烧录。
 
 ## 实板（JTAG，线缆 210241277120）
 

@@ -58,7 +58,7 @@ Host start 前必须完成匹配 CPU0 的实际加载，应用目录中保留 `b
 
 ## 中译中共享 TLS（2026-10-20）
 
-行为和验证范围见 [ZHZH](ZHZH.md)。本轮已有 Python 可用，`machine` 环境不可用；使用现有 SDK 2018.3 和 Windows GCC，无依赖安装。准备输入的方法沿用下方中译英章节的 `output/display/framebuffer_hw.h`、`output/subtitle_ui/ui_assets.c`，自测另需 `output/cloud_app/selftest_pcm.c`。桌面完整保存版包含其已加载副本的匹配输入。
+行为和验证范围见 [ZHZH](ZHZH.md)。本轮已有 Python 可用，`machine` 环境不可用；使用现有 SDK 2018.3 和 Windows GCC，无依赖安装。准备输入的方法沿用下方中译英章节（字库 `output/subtitle_ui/ui_assets.c`；显示头文件现由构建脚本生成），自测另需 `output/cloud_app/selftest_pcm.c`。桌面完整保存版包含其已加载副本的匹配输入。
 
 ```text
 python -B scripts/build_cloud_app.py --mode zhzh --arm-tls --uart-baud 1000000 --output-dir output/zhzh/microphone
@@ -79,7 +79,7 @@ python -B scripts/validate_asr_accuracy.py --gcc <Windows-native-GCC> --mode zhz
 
 对应范围和证据先按需读取 [ZHEN](ZHEN.md)。使用已有 Vivado/SDK 2018.3、原生 GCC 和可用 Python；`machine` 环境在本轮设备不可用，实际使用已有 Python 运行时，没有安装依赖。
 
-新检出先准备 `output/display/framebuffer_hw.h` 和 `output/subtitle_ui/ui_assets.c`；分别来自已有显示/字库资产生成流程；字库命令为 `python -B scripts/generate_subtitle_assets.py --font <已有中文字体>`。Z7-Nano 显示准备脚本在完成 DDR 核验后生成 `output/z7_nano/display/framebuffer_hw.h`，供当前云应用使用时应复制到 `output/display/framebuffer_hw.h`。桌面完整保存版附带了本轮已使用的生成输入。自测音频可由 `scripts/generate_selftest_audio.py` 使用 Windows 中文 TTS 生成；不同声音版本不保证生成相同的 PCM 或 ELF 哈希。普通麦克风构建不需要自测 PCM。
+新检出先准备 `output/subtitle_ui/ui_assets.c`，字库命令为 `python -B scripts/generate_subtitle_assets.py --font <已有中文字体>`。显示头文件 `framebuffer_hw.h` 自 2026-10-26 起由 `build_cloud_app.py` 按 `hardware/z7_nano/source.json` 生成到应用输出目录，常量与 `prepare_z7_nano_display.py` 的输出相同，不再需要拷贝到 `output/display/`；更早的构建记录仍写着原路径。自测音频可由 `scripts/generate_selftest_audio.py` 使用 Windows 中文 TTS 生成；不同声音版本不保证生成相同的 PCM 或 ELF 哈希。普通麦克风构建不需要自测 PCM。
 
 ```text
 python -B scripts/build_cloud_app.py --gcc <ARM-GCC> --mode zhen --speech --arm-tls --uart-baud 1000000 --output-dir output/repair/microphone

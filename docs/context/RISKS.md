@@ -22,8 +22,8 @@
 | R16 调试事务错误 | 既往 DAP/AHB 错误曾需完整断电恢复，根因未定 | 操作前核对实体目标与所有权，CPU 不可见不绕过保护 |
 | R26 视频启动异常 | 旧阶段出现间歇横向错位；近期清晰短验收不证明根因已消失 | 区分像素内容、视频时序、供电和屏幕锁定，按 RUNBOOK 恢复，不把重新下载称为修复 |
 | R27 ESP AT/故障恢复 | 历史 AT/TLS 超时、自恢复与硬失效都有记录 | 使用已有流程并记录实际结果，本轮不增加经验性重试或复位 GPIO |
-| R32 PR #1 审查遗留项 | 2026-10-18 [PR #1 审查](https://github.com/HHHHH-UX-bot/simultaneous-interpreter/pull/1#pullrequestreview-5561880030)提 8 条，按用户指示未修即合并。2026-10-26 对照代码：PCM FIFO 10 位回绕、云应用触摸构建、Ogg granule 按 48 kHz 已修改；暂停/继续改为重建会话，之后有新记录写入的实测。仍存在：`build_cloud_app.py` 包含 `output/display`，仓库未跟踪其生成步骤；WebSocket 升级应答只认 `101` 和空行，不校验 Upgrade/Sec-WebSocket-Accept | 停会话后网络所有权的释放、握手/Ogg 头 CIPSEND 被拒后的处理是否已改，待核实。干净克隆构建前先补生成步骤或改路径，不把这些条目当作已修复 |
-| R33 2026.1 与 2018.3 构建分叉 | 2026-10-26 本机用 Vivado 2026.1 重建声纹平台，setup/hold 余量仅 0.040/0.017 ns（队友 2018.3 为 0.212/0.033 ns）；HLS C/RTL 联合仿真及声纹集成/抽取 xsim 未在本机重做，沿用队友记录；ARM GCC 13.4 链接 libm 时报告 enum 尺寸不一致警告。两台机器的位流和 ELF 身份不同 | 板上已核对模型校验、MFCC/CNN 周期与 HLS 一致；任何一侧改 RTL 或约束后都要重看时序。不混用两侧产物和哈希，证据见[本轮验证](../validation/merge-pr7-2026-20261026/README.md) |
+| R32 PR #1 审查遗留项 | 2026-10-18 [PR #1 审查](https://github.com/HHHHH-UX-bot/simultaneous-interpreter/pull/1#pullrequestreview-5561880030)提 8 条，按用户指示未修即合并。2026-10-26 对照代码：PCM FIFO 10 位回绕、云应用触摸构建、Ogg granule 按 48 kHz 已修改；暂停/继续改为重建会话，之后有新记录写入的实测；同日 `build_cloud_app.py` 改为由板级配置生成显示头文件，不再依赖未跟踪的 `output/display`。仍存在：WebSocket 升级应答只认 `101` 和空行，不校验 Upgrade/Sec-WebSocket-Accept | 停会话后网络所有权的释放、握手/Ogg 头 CIPSEND 被拒后的处理是否已改，待核实；未修条目不当作已修复 |
+| R33 2026.1 与 2018.3 构建分叉 | 2026-10-26 本机用 Vivado 2026.1 重建声纹平台，setup/hold 余量仅 0.040/0.017 ns（队友 2018.3 为 0.212/0.033 ns）；48→16 kHz 抽取 xsim 已在 2026.1 重做通过，HLS C/RTL 联合仿真和声纹集成 xsim 未在本机重做（缺 Vivado HLS 2018.3 与 LibriSpeech 夹具），沿用队友记录；ARM GCC 13.4 链接 libm 时报告 enum 尺寸不一致警告。两台机器的位流和 ELF 身份不同 | 板上已核对模型校验、MFCC/CNN 周期与 HLS 一致；任何一侧改 RTL 或约束后都要重看时序。不混用两侧产物和哈希，证据见[本轮验证](../validation/merge-pr7-2026-20261026/README.md) |
 
 ## 已核清或已完成，但保留边界
 
