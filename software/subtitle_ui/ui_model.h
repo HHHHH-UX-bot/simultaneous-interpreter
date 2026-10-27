@@ -28,6 +28,10 @@ enum ui_command {
     UI_COMMAND_COUNT
 };
 enum ui_language { UI_EN_ZH, UI_ZH_EN };
+/* model_load: board Qwen assets as the model page shows them. IDLE means not
+   tracked by the TF card loader (JTAG flow before an upload). */
+enum ui_model_load { UI_MODEL_IDLE, UI_MODEL_WAITING, UI_MODEL_LOADING, UI_MODEL_READY,
+                     UI_MODEL_MISSING, UI_MODEL_READ_ERROR, UI_MODEL_BAD_DIGEST, UI_MODEL_INIT_ERROR };
 enum ui_event_type {
     UI_ASR_PARTIAL, UI_ASR_FINAL, UI_TRANSLATING_EVENT, UI_TRANSLATION_FINAL
 };
@@ -84,6 +88,11 @@ struct ui_state {
 #ifdef Z7_LOCAL_AI
     uint32_t ai_page,model_mode,speaker_id,speaker_score,speaker_mask,speaker_enroll,speaker_progress;
     uint32_t speaker_status,local_result,local_phrase,local_cost;
+#ifdef Z7_TINYQWEN
+    /* Written by firmware each service tick; model_notice is the few-second
+       "model ready" toast drawn over any page. */
+    uint32_t model_load,model_percent,model_notice;
+#endif
 #endif
 #endif
 };

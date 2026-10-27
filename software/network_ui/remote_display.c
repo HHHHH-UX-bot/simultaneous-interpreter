@@ -20,6 +20,17 @@ uint32_t remote_llm_asset_flags(void) {
 void remote_llm_lock(int locked) {
     tmt_set_locked(&llm_model_transport,locked);tmt_set_locked(&llm_tokenizer_transport,locked);
 }
+/* SD boot: sd_model.c fills a window from the TF card and hashes it itself;
+   readiness still needs the pinned digest held here. */
+uint8_t *remote_llm_window(uint32_t index,uint32_t *bytes) {
+    struct tiny_model_transport *t=index?&llm_tokenizer_transport:&llm_model_transport;
+    *bytes=t->expected_bytes;return t->buffer;
+}
+int remote_llm_window_verified(uint32_t index,const uint8_t sha256[32]) {
+    struct tiny_model_transport *t=index?&llm_tokenizer_transport:&llm_model_transport;
+    if(t->active || memcmp(sha256,t->expected_sha256,32))return 0;
+    t->received=t->expected_bytes;t->ready=1;return 1;
+}
 /* Warm CPU0 reload can retain DDR assets. Read every byte and require the
    pinned SHA again; a matching header alone never grants readiness. Each
    bounded step returns to the normal audio/UI/Ethernet service loop. */

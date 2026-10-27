@@ -14,5 +14,8 @@ int remote_llm_assets_ready(void);
 uint32_t remote_llm_asset_flags(void); /* bit 0: model, bit 1: tokenizer */
 void remote_llm_lock(int locked);
 void remote_llm_restore_tick(void);
+/* index 0: model, 1: tokenizer. */
+uint8_t *remote_llm_window(uint32_t index,uint32_t *bytes);
+int remote_llm_window_verified(uint32_t index,const uint8_t sha256[32]);
 #endif
 #endif

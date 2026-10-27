@@ -330,10 +330,10 @@ python -B scripts/run_z7_nano_usb_live.py stop
 1. PS 平台（只在 PS 配置变化时重做）：在 `output/z7_nano/sd_boot/` 中运行 `vivado -mode batch -source ../../../scripts/build_sd_boot_platform.tcl -tclargs .`，得到 `sd_boot_ps.xsa`。
 2. FSBL：`cmd /c "chcp 65001 >nul && vitis -s scripts\build_sd_boot_fsbl.py output\z7_nano\sd_boot"`。不切 UTF-8 代码页时，中文 Windows 上 Vitis 接口会因服务输出的 GBK 文字崩溃。
 3. 应用：按当前产品参数加 `--sd-boot` 构建到 `output/network_history/microphone`；PL 平台与 CPU1 沿用已验证产物。
-4. 打包：`python -B scripts/build_sd_boot.py`，生成 `output/z7_nano/sd_boot/BOOT.BIN` 与记录各输入哈希的 `sd_boot.json`。Qwen 资产须已按 model_tools 放在 `models/`。
-5. 写卡：把 `BOOT.BIN` 复制到 FAT32 卡根目录（卡没有盘符时可用卷路径 `\\?\Volume{…}\`），回读核对 SHA256 并刷新写缓存。
+4. 打包：`python -B scripts/build_sd_boot.py`，生成约 5 MB 的 `output/z7_nano/sd_boot/BOOT.BIN`（不含 Qwen）与记录各输入哈希的 `sd_boot.json`。
+5. 写卡：`python -B scripts/write_sd_card.py <卡根目录>`，复制 `BOOT.BIN`、`qwen.tok`、`qwen.tqw`（Qwen 资产须已按 model_tools 放在 `models/`）并逐个回读核对 SHA256；只换程序时加 `--boot-only`。卡没有盘符时用卷路径 `\\?\Volume{…}\`（PowerShell `Get-Volume` 的 Path），并在 PowerShell 中运行：Git Bash 会改写这种参数。不要加 `-I`（脚本要导入同目录模块）。
 6. 配置：用户在终端运行 `python -B scripts/make_sd_config.py <卡根目录>`，亲自输入 Wi-Fi 与百炼 Key，工作空间与模型路径直接回车用默认值。不要加 `-I`（脚本要导入同目录模块）。
-7. 上电：J1 跳到 SD，确认音频模块插好且 5 V 接好，完全断电后上电。可用 JTAG 只读检查 BOOT_MODE=5、OCM `0x2F000` 启动信息、`sd_boot_diag`、网络阶段、CPU1 报告与 Qwen 复核状态，不要停核或写内存。
+7. 上电：J1 跳到 SD，确认音频模块插好且 5 V 接好，完全断电后上电。可用 JTAG 只读检查 BOOT_MODE=5、OCM `0x2F000` 启动信息、`sd_boot_diag`、网络阶段、CPU1 报告与卡上模型加载 `sd_model_diag`（地址按本次构建的 `symbols.log`），不要停核或写内存。
 8. 回到 JTAG 开发：J1 放回 JTAG，再按“当前产品构建与运行范围”加载。
 
 ## Git 维护

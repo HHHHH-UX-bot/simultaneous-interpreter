@@ -9,7 +9,7 @@ static void draw(struct ui_state *s,uint32_t n){
  struct ui_render_stats stats;for(uint32_t i=0;i<32u;++i)memory[i]=memory[1024u*600u+32u+i]=0xa5c35a3cu;
  ui_render(memory+32,s,1000,0,&stats);assert(!stats.missing_glyphs && !stats.clipped_glyph_pixels);
  for(uint32_t i=0;i<32u;++i)assert(memory[i]==0xa5c35a3cu && memory[1024u*600u+32u+i]==0xa5c35a3cu);
- const char *folder=getenv("SPEAKER_UI_PREVIEW");if(folder && (n==0 || n==2 || n==6)){
+ const char *folder=getenv("SPEAKER_UI_PREVIEW");if(folder && (n==0 || n==2 || n==6 || n==32 || n==34 || n==40 || n==41)){
   char name[1024];snprintf(name,sizeof(name),"%s/ui_%u.rgbx",folder,n);FILE *f=fopen(name,"wb");assert(f);assert(fwrite(memory+32,4,1024u*600u,f)==1024u*600u);fclose(f);
  }
 }
@@ -24,5 +24,12 @@ int main(void){
  assert(ui_touch_remote(&s,120,168,120,168)==UI_AI_CLOUD+1u);assert(s.model_mode==0u);
  assert(ui_touch_remote(&s,112,554,112,554)==UI_CLOSE_AI+1u);assert(s.settings_page && !s.ai_page);
  s.settings_page=0;s.speaker_id=2u;s.speaker_score=78u;draw(&s,20u);
- puts("PASS_SPEAKER_UI_11_STATES_4_ENROLL_TOUCH_MODE_SWITCH_BOUNDED_RENDER");return 0;
+ /* Board model states on the model page (30..37, 38: verified, engine starting),
+    then the ready notice over the main page (40) and the model page (41). */
+ s.ai_page=1;
+ for(uint32_t load=0;load<8u;++load){s.model_load=load;s.model_percent=load==UI_MODEL_LOADING?45u:0u;draw(&s,30u+load);}
+ s.model_load=UI_MODEL_LOADING;s.model_percent=100u;draw(&s,38u);
+ s.ai_page=0;s.model_load=UI_MODEL_READY;s.model_notice=1;draw(&s,40u);
+ s.ai_page=1;draw(&s,41u);
+ puts("PASS_SPEAKER_UI_11_STATES_4_ENROLL_TOUCH_MODE_SWITCH_8_MODEL_STATES_NOTICE_BOUNDED_RENDER");return 0;
 }

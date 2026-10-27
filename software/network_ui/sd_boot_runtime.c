@@ -108,6 +108,8 @@ static void fresh_seed(const uint8_t stored[64],uint8_t out[64]) {
     sd_boot_diag[4]=taken;   /* 2048 when the codec clock was live */
 }
 
+int sd_boot_settled(void) {return config_state!=0u;}
+
 void sd_boot_tick(void) {
     if(config_state || !host_started) return;
     if(network_info.phase==1u) return;   /* same idle wait as configure_cloud_runtime.py */

@@ -179,6 +179,9 @@ int ui_control(struct ui_state *state, enum ui_command command)
         for(uint32_t i=0;i<33u;++i)wifi_name[i]=state->wifi_name[i];
 #ifdef Z7_LOCAL_AI
         uint32_t ai_page=state->ai_page,mode=state->model_mode,mask=state->speaker_mask;
+#ifdef Z7_TINYQWEN
+        uint32_t load=state->model_load,percent=state->model_percent,notice=state->model_notice;
+#endif
 #endif
 #endif
         next_epoch = state->epoch + 1;
@@ -198,6 +201,9 @@ int ui_control(struct ui_state *state, enum ui_command command)
         for(uint32_t i=0;i<33u;++i)state->wifi_name[i]=wifi_name[i];
 #ifdef Z7_LOCAL_AI
         state->ai_page=ai_page;state->model_mode=mode;state->speaker_mask=mask;
+#ifdef Z7_TINYQWEN
+        state->model_load=load;state->model_percent=percent;state->model_notice=notice;
+#endif
 #endif
 #endif
         state->change_sequence = next_sequence;

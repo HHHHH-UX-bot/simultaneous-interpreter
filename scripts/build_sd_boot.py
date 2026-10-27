@@ -1,10 +1,12 @@
 """Assemble the SD-card BOOT.BIN for the Z7-Nano interpreter.
 
-Partitions: FSBL, the verified PL bitstream, the relocation stub, payload.bin
-(CPU0 + CPU1 ELF segments, placed by the stub as xsdb dow would), then the
-pinned Qwen weights and tokenizer at the firmware's fixed DDR windows. The
-firmware rehashes both assets itself. No credentials go into BOOT.BIN;
-z7cfg.bin (scripts/make_sd_config.py) is a separate file on the card.
+Partitions: FSBL, the verified PL bitstream, the relocation stub and
+payload.bin (CPU0 + CPU1 ELF segments, placed by the stub as xsdb dow would).
+The pinned Qwen weights and tokenizer are not partitions: they sit on the card
+as qwen.tqw / qwen.tok (CARD_FILES, written by scripts/write_sd_card.py) and
+the firmware loads and hashes them after startup, so the FSBL hands over in
+seconds. No credentials go into BOOT.BIN; z7cfg.bin
+(scripts/make_sd_config.py) is a separate file on the card.
 
 Prerequisites: scripts/build_sd_boot_platform.tcl and build_sd_boot_fsbl.py
 (output/z7_nano/sd_boot/fsbl.elf), an application built with --sd-boot, the
@@ -19,6 +21,8 @@ TOOLS = Path("D:/AMDDesignTools/2026.1/Vitis")
 GCC = TOOLS / "gnu/aarch32/nt/gcc-arm-none-eabi/bin/arm-none-eabi-gcc.exe"
 MODEL = ("models/qwen2.5-0.5b-instruct-g64-q6.tqw", 0x04000000, "e7ebb0a8435ac90173ef9cefa753adc7fe2f6a5fb8fa86757a98f1344dcf4863")
 TOKENIZER = ("models/qwen2_0.5b.tokenizer.bin", 0x1C000000, "b6aa0fa09ec4913e8892cc1f25c0c76f24a72dbd3074131782bea58b6a944aea")
+# Card root name -> pinned source; the 8.3 names are what software/network_ui/sd_model.c looks up.
+CARD_FILES = {"qwen.tok": TOKENIZER, "qwen.tqw": MODEL}
 STUB_ADDRESS, PAYLOAD_ADDRESS, PAYLOAD_LIMIT = 0x1F800000, 0x1F900000, 0x00600000
 PAYLOAD_MAGIC = 0x4C50375A
 
@@ -103,6 +107,8 @@ def main():
         raise RuntimeError("A passed --sd-boot application build is required")
     if any(sha(ROOT / f) != h for f, h in build["InputSHA256"].items()):
         raise RuntimeError("Application sources changed; rebuild first")
+    if build.get("TinyQwen") and "software/network_ui/sd_model.c" not in build["InputSHA256"]:
+        raise RuntimeError("This application expects Qwen in BOOT.BIN; rebuild it with the TF card loader")
     platform = ROOT / "output/z7_nano/remote_display"
     pl = json.loads((platform / "build.json").read_text(encoding="utf-8"))
     bit = platform / "z7_nano_audio_top.bit"
@@ -113,9 +119,6 @@ def main():
     if cpu1.get("status") != "passed" or sha(host / "host.elf") != cpu1["elf_sha256"]:
         raise RuntimeError("Matching verified CPU1 touch host required")
     fsbl = out / "fsbl.elf"
-    for name, _, digest in (MODEL, TOKENIZER):
-        if sha(ROOT / name) != digest:
-            raise RuntimeError("Firmware-pinned asset required: " + name)
     stub = build_stub(out)
     payload, layout = build_payload(out, elf, host / "host.elf")
     bif = out / "boot.bif"
@@ -124,8 +127,6 @@ def main():
                    f"\t{bit.as_posix()}\n"
                    f"\t{stub.as_posix()}\n"
                    f"\t[load=0x{PAYLOAD_ADDRESS:08x}] {payload.as_posix()}\n"
-                   f"\t[load=0x{MODEL[1]:08x}] {(ROOT / MODEL[0]).as_posix()}\n"
-                   f"\t[load=0x{TOKENIZER[1]:08x}] {(ROOT / TOKENIZER[0]).as_posix()}\n"
                    "}\n", encoding="ascii")
     image = out / "BOOT.BIN"
     subprocess.run([str(TOOLS / "bin/bootgen.bat"), "-arch", "zynq", "-image", str(bif), "-o", str(image), "-w", "on"],
@@ -133,7 +134,7 @@ def main():
     record = dict(status="built", built_at_utc=datetime.now(timezone.utc).isoformat(), boot_bin_sha256=sha(image),
                   boot_bin_bytes=image.stat().st_size, fsbl_sha256=sha(fsbl), bitstream_sha256=sha(bit),
                   stub_sha256=sha(stub), payload_sha256=sha(payload), app_elf_sha256=build["ELFSHA256"],
-                  cpu1_elf_sha256=cpu1["elf_sha256"], model_sha256=MODEL[2], tokenizer_sha256=TOKENIZER[2], layout=layout,
+                  cpu1_elf_sha256=cpu1["elf_sha256"], card_files={n: d for n, (_, _, d) in CARD_FILES.items()}, layout=layout,
                   scope="built only; not a boot or board result")
     (out / "sd_boot.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: record[k] for k in ("boot_bin_bytes", "layout")}))

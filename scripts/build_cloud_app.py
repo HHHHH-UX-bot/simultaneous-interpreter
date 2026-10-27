@@ -132,7 +132,7 @@ def main():
     local_model.add_argument("--local-ai",action="store_true",help="integer phrase model and enrolled speaker comparison on Cortex-A9")
     local_model.add_argument("--tinyqwen",action="store_true",help="on-board Qwen inference; requires --remote-display --touch --arm-tls")
     parser.add_argument("--speaker-cnn",action="store_true",help="FPGA MFCC and CNN; requires the matching speaker platform and --tinyqwen")
-    parser.add_argument("--sd-boot",action="store_true",help="when BOOT_MODE is SD, start CPU1 and apply z7cfg.bin itself; JTAG boots unchanged")
+    parser.add_argument("--sd-boot",action="store_true",help="when BOOT_MODE is SD, start CPU1, apply z7cfg.bin and (with --tinyqwen) load qwen.tok/qwen.tqw from the card itself; JTAG boots unchanged")
     parser.add_argument("--speech", action="store_true",help="translated audio on lineout (requires playback PL; automatic for enzh)")
     parser.add_argument("--text-only-response", action="store_true", help="diagnostic: request text only while retaining the same audio upload/playback build")
     parser.add_argument("--output-dir", type=Path, help="separate build directory, including ELF, symbols and metadata")
@@ -271,6 +271,7 @@ def main():
     if args.sd_boot:
         if not args.arm_tls or not args.touch:parser.error("--sd-boot requires --arm-tls --touch")
         flags.append("-DZ7_SD_BOOT");sources.append("software/network_ui/sd_boot_runtime.c")
+        if args.tinyqwen:sources.append("software/network_ui/sd_model.c")   # Qwen assets read from the TF card
     if args.remote_display:
         if not args.arm_tls or not args.touch or args.mode not in ("zhen","enzh"):parser.error("--remote-display requires --arm-tls --touch and a bilingual mode")
         flags.append("-DZ7_REMOTE_DISPLAY");sources.append("software/network_ui/remote_display.c")

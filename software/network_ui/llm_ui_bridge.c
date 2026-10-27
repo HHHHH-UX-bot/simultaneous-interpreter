@@ -13,8 +13,12 @@ size_t tbl_network_info(uint8_t *out,size_t capacity) {
 #include "speech_playback.h"
 #include "remote_display.h"
 #include "local_voice.h"
+#include "tiny_board_llm.h"
 #ifdef Z7_SPEAKER_CNN
 #include "speaker_local.h"
+#endif
+#ifdef Z7_SD_BOOT
+#include "sd_model.h"
 #endif
 #include <stddef.h>
 #include <string.h>
@@ -69,12 +73,30 @@ void local_ai_init(struct ui_state *state) {
 #endif
 }
 void local_ai_feed(const int16_t *pcm,uint32_t count) {(void)pcm;(void)count;}
+/* Model page status, and a four-second notice the first time the engine is
+   usable (TF card load, PC upload or warm restore alike). */
+static void model_view(uint32_t now) {
+    static uint32_t announced,notice_at;
+    uint32_t load=UI_MODEL_IDLE,percent=0;
+#ifdef Z7_SD_BOOT
+    load=sd_model_status(&percent);
+#endif
+    int engine=tbl_engine_state();
+    if(engine==1) {load=UI_MODEL_READY;percent=100u;}
+    else if(engine==2) load=UI_MODEL_INIT_ERROR;
+    else if(load==UI_MODEL_READY) load=UI_MODEL_LOADING;   /* verified, engine starting */
+    view->model_load=load;view->model_percent=percent;
+    if(load==UI_MODEL_READY && !announced) {announced=1;view->model_notice=1;notice_at=now;}
+    if(view->model_notice && now-notice_at>=4000u) view->model_notice=0;
+}
 void local_ai_tick(uint32_t now) {
     local_voice_tick(now);
 #ifdef Z7_SPEAKER_CNN
     speaker_local_tick(now);
 #endif
-    if(!view || !view->model_mode)return;
+    if(!view)return;
+    model_view(now);
+    if(!view->model_mode)return;
     uint32_t ready=remote_llm_assets_ready()?1u:0u;
     if(view->local_result!=ready && view->stage!=UI_TRANSLATING && view->stage!=UI_FINAL) {
         view->local_result=ready;++view->change_sequence;

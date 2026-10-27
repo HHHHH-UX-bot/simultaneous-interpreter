@@ -31,6 +31,8 @@ enum {TBL_FINISH_NONE=0,TBL_FINISH_EOS=1,TBL_FINISH_LIMIT=2,
  * validated upload profiles are marked ready. No automatic inference prompt. */
 void tbl_init(void);
 void tbl_set_assets_ready(int model_ready,int tokenizer_ready);
+/* 0 waiting for assets, 1 initialized and usable, 2 initialization failed. */
+int tbl_engine_state(void);
 /* TOP-LEVEL MAIN LOOP ONLY: synchronous inference; never invoke from a network,
  * render-service, interrupt, or pump callback. Reentry is ignored defensively. */
 void tbl_tick(void);

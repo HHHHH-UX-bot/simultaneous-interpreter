@@ -4,9 +4,11 @@
 
 ## 使用
 
-1. TF 卡（FAT32）根目录放 `BOOT.BIN` 与 `z7cfg.bin`。
+1. TF 卡（FAT32，SDHC/SDXC）根目录放 `BOOT.BIN`、`qwen.tqw`、`qwen.tok` 与 `z7cfg.bin`；前三个由 `scripts/write_sd_card.py` 写入并回读核对。
 2. J1 启动跳线（4 针，丝印 JTAG/QSPI/SD）的跳线帽放到最右侧 SD；回到 JTAG 开发时放回最左侧 JTAG。
-3. 音频模块、屏幕 HDMI/TOUCH、ESP8266 接好后上电。FSBL 读约 412 MB 的 `BOOT.BIN` 需要 30–60 秒，期间屏幕黑；界面出来约 5 秒后触摸可用，联网随后完成；板上 Qwen 再用约 3 分钟复核权重。
+3. 音频模块、屏幕 HDMI/TOUCH、ESP8266 接好后上电。`BOOT.BIN` 约 5 MB，不再含 Qwen；界面出来约 5 秒后触摸可用，联网随后完成；之后固件在后台从卡上读取并校验板上 Qwen，见下文“板上模型后台加载”。
+
+2026-10-27 实测：上电到应用启动 5.5 秒（旧版约 412 MB、含 Qwen 的 `BOOT.BIN` 为 28.8 秒，之后还要复核约 3 分钟），再约 0.8 秒出画面；模型约 25 秒读完，会话进行中校验到应用 128 秒就绪。见[验证](../validation/sd-model-20261027/README.md)。
 
 切跳线需要拔下音频模块时，务必在上电前插回并接好 5 V；否则 WM8731 不应答或晶振不起振，识别没有输入。
 
@@ -17,15 +19,15 @@
 | BootROM | 读 TF 卡 `BOOT.BIN`，运行 FSBL | 芯片固化 |
 | FSBL | `ps7_init`（与 JTAG 相同，另开 SD0 MIO40–45、UART0 MIO14–15）、配置 PL 位流、把分区装入 DDR；交接前由钩子把 `z7cfg.bin` 复制到 OCM `0x2F100` | [平台](../../scripts/build_sd_boot_platform.tcl)、[FSBL](../../scripts/build_sd_boot_fsbl.py)、[钩子](../../software/sd_boot/fsbl_hooks.c) |
 | 跳板 | 校验装载包 CRC，按 xsdb `dow` 方式放置 CPU0/CPU1 各段（有数据的复制，其余清零），在 OCM `0x2F000` 写启动信息，跳到 CPU0 `0x10000` | [stub.c](../../software/sd_boot/stub.c)、[握手定义](../../software/sd_boot/sd_boot.h) |
-| CPU0 应用 | 先给屏幕 USB 供电（复刻 JTAG 加载器的 `usb_port_power`），显示就绪且通电满 5 秒后唤醒 CPU1；网络空闲时应用配置 | [sd_boot_runtime.c](../../software/network_ui/sd_boot_runtime.c) |
+| CPU0 应用 | 先给屏幕 USB 供电（复刻 JTAG 加载器的 `usb_port_power`），显示就绪且通电满 5 秒后唤醒 CPU1；网络空闲时应用配置；之后从卡上后台读取 Qwen | [sd_boot_runtime.c](../../software/network_ui/sd_boot_runtime.c)、[sd_model.c](../../software/network_ui/sd_model.c) |
 | CPU1 | 原触摸主机程序，与 JTAG 流程相同 | `software/z7_nano_usb` |
 
 FSBL 自身占用 OCM 0x0–0x1C8D0，与 CPU0 启动代码（0x10000）和 CPU1 程序（0x1000）重叠，所以两者先作为装载包进 DDR，再由跳板放置。
 
 | DDR / OCM | 内容 |
 | --- | --- |
-| `0x04000000` | Qwen Q6 权重（401,637,888 字节），固件开机后自行全量 SHA256 复核 |
-| `0x1C000000` | 分词器（5,277,796 字节），同上 |
+| `0x04000000` | Qwen Q6 权重（401,637,888 字节），固件启动稳定后从卡上 `qwen.tqw` 读入，边读边做 SHA256 |
+| `0x1C000000` | 分词器（5,277,796 字节），从 `qwen.tok` 读入，同上；最后一个不满 512 字节的扇区多写的 412 字节落在推理区 `0x1C800000` 之前的空隙 |
 | `0x1F800000` | 跳板程序 |
 | `0x1F900000` | 装载包（CPU0 11 段 + CPU1 2 段，约 2.7 MB，另清零约 10.7 MB） |
 | OCM `0x2F000` / `0x2F100` | 启动信息 / 配置文件副本（固件应用后清零） |
@@ -40,6 +42,17 @@ FSBL 自身占用 OCM 0x0–0x1C8D0，与 CPU0 启动代码（0x10000）和 CPU1
 
 TLS 只在 SD 启动时忽略证书的“尚未生效”标志（板子时钟落后于真实时间）；证书链、域名和过期检查不变。
 
+## 板上模型后台加载（2026-10-27）
+
+决定见 [D26](../context/DECISIONS.md#d26-sd-启动后台加载板上模型2026-10-27)。以前 FSBL 把 Qwen 当作 `BOOT.BIN` 分区读进 DDR，屏幕要等它读完才亮。现在 Qwen 是卡上的两个普通文件，由 CPU0 在屏幕、触摸和运行期配置都完成后（`sd_boot_settled`）自己读：
+
+- 文件：FAT32 根目录的 8.3 短名 `QWEN.TOK`、`QWEN.TQW`，大小必须等于固件固定的分词器/权重长度。支持 MBR 分区或整卡格式化；文件可以不连续，按簇链读取。只支持 SDHC/SDXC（块地址），≤2 GB 的 SDSC 卡不支持。
+- 读取：沿用 FSBL 已选中、4 位高速的卡，不重新初始化。每次 CMD18 最多读 4 MiB 连续簇，ADMA2 直接写进固定窗口；完成后按地址作废 L1 行（L2 已关）。先读分词器，再读权重。
+- 校验：已读入的部分在服务循环里分片做 SHA256，会话运行时每次约 150 µs，空闲时约 600 µs；两份都与固件固定摘要一致才就绪，然后才允许引擎初始化。加载期间锁住电脑 UDP 上传入口；失败时解锁，仍可从电脑上传。
+- 界面：**设置 → 模型与本地声纹** 在引擎按钮右侧显示“等待启动完成 / 加载中 xx% + 进度条 / 已就绪 / 文件缺失或损坏 / 读取失败 / 校验失败 / 初始化失败”。引擎第一次可用时，任意页面底部弹出约 4 秒的“本地模型已就绪”通知。本地模式下主页面在就绪前显示“本地模型正在准备”。
+- 诊断：`sd_model_diag[8]` = 魔数 `SDM1`、状态、出错时的 SD 中断状态、开始/就绪毫秒、已读字节、已校验字节、读命令数。
+- SD 启动时不再运行 JTAG 热重载用的 DDR 复核（`remote_llm_restore_tick`）；JTAG 流程不变。
+
 ## 构建
 
-全部用 Vivado/Vitis 2026.1，命令见 [RUNBOOK](../context/RUNBOOK.md#sd-卡独立启动)。应用需带 `--sd-boot`（JTAG 下行为不变，可同一 ELF 两用）。`BOOT.BIN` 不含凭据；`z7cfg.bin` 由 `scripts/make_sd_config.py` 在用户输入后直接写到卡上，不在电脑留副本。
+全部用 Vivado/Vitis 2026.1，命令见 [RUNBOOK](../context/RUNBOOK.md#sd-卡独立启动)。应用需带 `--sd-boot`（JTAG 下行为不变，可同一 ELF 两用）；带 `--tinyqwen` 时同时编入卡上模型加载器，`build_sd_boot.py` 拒绝打包不含加载器的旧应用。`BOOT.BIN` 不含凭据与 Qwen；`scripts/write_sd_card.py` 写 `BOOT.BIN`、`qwen.tok`、`qwen.tqw` 并逐个回读核对 SHA256（只换程序时加 `--boot-only`）。`z7cfg.bin` 由 `scripts/make_sd_config.py` 在用户输入后直接写到卡上，不在电脑留副本。

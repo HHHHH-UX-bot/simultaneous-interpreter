@@ -32,7 +32,10 @@ struct ui_snapshot {
 _Static_assert(sizeof(struct display_result)==64,"Display ABI");
 _Static_assert(sizeof(struct ui_information)==64,"UI ABI");
 #ifdef Z7_HISTORY_UI
-#ifdef Z7_LOCAL_AI
+#ifdef Z7_TINYQWEN
+_Static_assert(sizeof(struct ui_state)==135996u,"Board Qwen model ABI (model load status)");
+_Static_assert(sizeof(struct ui_snapshot)==136060u,"Board Qwen snapshot ABI");
+#elif defined(Z7_LOCAL_AI)
 _Static_assert(sizeof(struct ui_state)==135984u,"Local AI model ABI");
 _Static_assert(sizeof(struct ui_snapshot)==136048u,"Local AI snapshot ABI");
 #else

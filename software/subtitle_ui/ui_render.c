@@ -315,6 +315,30 @@ static void speaker_badge(struct paint *p,const struct ui_state *s,int x,int y,i
 #endif
     one_line(p,label(key),14,x,y,width,ACTION);
 }
+#ifdef Z7_TINYQWEN
+/* Right of the engine buttons: board Qwen asset state, with a bar while the
+   TF card loader reads and verifies them. */
+static void model_status(struct paint *p,const struct ui_state *s) {
+    static const char *keys[]={"model_idle","model_waiting","model_loading","model_ready",
+        "model_missing","model_read_error","model_bad_digest","model_init_error"};
+    one_line(p,label(keys[s->model_load<8u?s->model_load:0u]),18,560,140,340,s->model_load==UI_MODEL_READY?ACTION:INK);
+    if(s->model_load!=UI_MODEL_LOADING) return;
+    uint32_t percent=s->model_percent>100u?100u:s->model_percent,number[8];
+    decimal(percent,number);uint32_t n=0;while(number[n]) ++n;number[n++]='%';number[n]=0;
+    one_line(p,number,18,976-(int)text_width(font(18),number),140,64,INK);
+    int fill=(int)(416u*percent/100u);
+    round_rect(p,560,180,416,8,4,LINE);
+    if(percent) round_rect(p,560,180,fill<8?8:fill,8,4,ACTION);
+}
+/* Drawn last on every page while firmware holds model_notice (a few seconds). */
+static void model_notice(struct paint *p,const struct ui_state *s) {
+    if(!s->model_notice) return;
+    const uint32_t *text=label("model_notice");
+    int w=(int)text_width(font(18),text)+56,x=((int)UI_WIDTH-w)/2;
+    round_rect(p,x,436,w,52,26,INK);
+    one_line(p,text,18,x+28,450,w-56,PAPER);
+}
+#endif
 static void ai_view(struct paint *p,const struct ui_state *s) {
     one_line(p,label("ai_title"),28,24,14,850,INK);
     round_rect(p,24,84,976,168,12,PAPER);round_rect(p,24,264,976,224,12,PAPER);
@@ -322,6 +346,9 @@ static void ai_view(struct paint *p,const struct ui_state *s) {
     button_at(p,44,140,210,label("ai_cloud"),!s->model_mode);
     button_at(p,276,140,260,label("ai_local"),s->model_mode);
     one_line(p,label("ai_local_hint"),14,44,218,910,MUTED);
+#ifdef Z7_TINYQWEN
+    model_status(p,s);
+#endif
     one_line(p,label("ai_speaker_title"),18,44,278,700,INK);
 #if defined(Z7_TINYQWEN) && !defined(Z7_SPEAKER_CNN)
     one_line(p,label("ai_text_input"),18,44,328,900,INK);
@@ -563,6 +590,11 @@ static void network_strip(struct paint *p,const struct ui_state *s) {
     one_line(p,text,14,24,65,976,MUTED);
 }
 #endif
+#if defined(Z7_HISTORY_UI) && defined(Z7_TINYQWEN)
+#define MODEL_NOTICE(p,s) model_notice(p,s)
+#else
+#define MODEL_NOTICE(p,s) ((void)0)
+#endif
 void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
                uint32_t requested_page,struct ui_render_stats *stats) {
     uint32_t *words=(uint32_t *)stats;for(uint32_t i=0;i<sizeof(*stats)/4u;++i) words[i]=0;
@@ -571,10 +603,10 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
 #ifdef Z7_HISTORY_UI
     network_strip(&p,s);
 #ifdef Z7_LOCAL_AI
-    if(s->ai_page) {ai_view(&p,s);return;}
+    if(s->ai_page) {ai_view(&p,s);MODEL_NOTICE(&p,s);return;}
 #endif
-    if(s->settings_page) {settings_view(&p,s);return;}
-    if(s->history_page) {history_view(&p,s);return;}
+    if(s->settings_page) {settings_view(&p,s);MODEL_NOTICE(&p,s);return;}
+    if(s->history_page) {history_view(&p,s);MODEL_NOTICE(&p,s);return;}
 #endif
     round_rect(&p,24,13,36,36,8,ACTION);
     rect(&p,32,22,20,3,PAPER);rect(&p,32,29,16,3,PAPER);rect(&p,32,36,10,3,PAPER);
@@ -698,7 +730,9 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     const char *connection=s->stage==UI_CONNECTING?"connection_wait":
         (s->stage==UI_OFFLINE?"connection_offline":(s->session==UI_IDLE?"connection_start":
         (s->session==UI_PAUSED?"connection_paused":"connection_ready")));
-#ifdef Z7_LOCAL_AI
+#ifdef Z7_TINYQWEN
+    if(s->model_mode)connection=s->model_load==UI_MODEL_READY?"ai_local_ready":"ai_unrecognized";
+#elif defined(Z7_LOCAL_AI)
     if(s->model_mode)connection=s->local_result==2u?"ai_unrecognized":"ai_local_ready";
 #endif
     paragraph(&p,label(connection),14,(struct clip){760,274,220,25},MUTED,0,0,0);
@@ -738,4 +772,5 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
 #ifdef Z7_LANGUAGE_SWITCH
     language_menu(&p,s); /* Last layer: menu rows cover the subtitle card. */
 #endif
+    MODEL_NOTICE(&p,s);
 }

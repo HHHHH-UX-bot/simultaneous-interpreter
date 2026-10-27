@@ -27,6 +27,9 @@ static uint32_t llm_restore_enabled;
 #endif
 #ifdef Z7_SD_BOOT
 #include "sd_boot_runtime.h"
+#ifdef Z7_TINYQWEN
+#include "sd_model.h"
+#endif
 #endif
 #include "../subtitle_ui/ui_demo.h"
 #include "../subtitle_ui/ui_render.h"
@@ -257,6 +260,11 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
     #ifdef Z7_REMOTE_DISPLAY
     remote_display_tick(now);
 #ifdef Z7_TINYQWEN
+#ifdef Z7_SD_BOOT
+    /* An SD boot starts with empty windows; the TF card loader owns them. */
+    if(sd_boot_active()) sd_model_tick(now,s->session==UI_RUNNING);
+    else
+#endif
     if(llm_restore_enabled>=5u)remote_llm_restore_tick();
 #endif
 #endif

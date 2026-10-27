@@ -17,6 +17,8 @@ MEMORY {
 }
 SECTIONS {
     .remote_runtime (NOLOAD) : { *(.remote_runtime) } > REMOTE_DDR
+    /* TF card model loader: ADMA2 descriptors and its sector buffer. */
+    .sd_runtime (NOLOAD) : { *(.sd_runtime) } > REMOTE_DDR
     .vectors : { KEEP(*(.vectors)) } > OCM
     .boot : { KEEP(*(.boot)) } > OCM
     .text : { *(.text*) *(.rodata*) } > APP_DDR

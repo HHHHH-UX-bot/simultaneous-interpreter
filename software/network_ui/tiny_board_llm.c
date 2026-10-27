@@ -117,6 +117,7 @@ void tbl_set_assets_ready(int model_ready,int tokenizer_ready) {
     board.model_ready=!!model_ready;board.tokenizer_ready=!!tokenizer_ready;
     /* Initialized assets are locked and cannot change under inference. */
 }
+int tbl_engine_state(void) {return board.initialized?1:(board.attempted?2:0);}
 static void failed(uint32_t code,int detail) {
     board.phase=TBL_FAILED;board.error=code;board.detail=detail;
     board.reason=TBL_FINISH_ERROR;ui();
