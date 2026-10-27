@@ -14,11 +14,8 @@ def main():
     parser.add_argument("--mode", choices=("zhzh", "zhen"), default="zhzh")
     parser.add_argument("--speech", action="store_true")
     parser.add_argument("--selftest-clock", action="store_true")
-    parser.add_argument("--tls-passthrough", action="store_true")
     parser.add_argument("--arm-tls", action="store_true", help="verify ASR data and Ping/Pong use the TLS boundary")
     args = parser.parse_args()
-    if args.arm_tls:
-        args.tls_passthrough = True
     temp = ROOT / "tmp/asr_accuracy"
     out = ROOT / ("output/zhen" if args.mode == "zhen" else "output/asr_accuracy")
     temp.mkdir(parents=True, exist_ok=True)
@@ -38,8 +35,6 @@ def main():
         command.insert(1,"-DZ7_TRANSLATE_AUDIO")
     if args.selftest_clock:
         command.insert(1,"-DZ7_SELFTEST_AUDIO")
-    if args.tls_passthrough:
-        command.insert(1,"-DZ7_TLS_PASSTHROUGH")
     if args.arm_tls:
         command.insert(1,"-DZ7_ARM_TLS")
     result = subprocess.run(command, capture_output=True)

@@ -17,7 +17,7 @@ def main():
     if a.text_only_response and a.mode!='enzh':p.error('--text-only-response requires --mode enzh')
     out=a.output_dir or ROOT/'output'/a.mode/'validation';out.mkdir(parents=True,exist_ok=True)
     temp=ROOT/'tmp'/a.mode/('text_only' if a.text_only_response else 'default');temp.mkdir(parents=True,exist_ok=True)
-    defines=['-DZ7_ARM_TLS','-DZ7_TLS_PASSTHROUGH','-DZ7_SOURCE_EN']+(['-DZ7_TRANSLATE_ZH','-DZ7_TRANSLATE_AUDIO'] if a.mode=='enzh' else ['-DZ7_ASR_SUBTITLE','-DZ7_RECOGNIZE_EN'])
+    defines=['-DZ7_ARM_TLS','-DZ7_SOURCE_EN']+(['-DZ7_TRANSLATE_ZH','-DZ7_TRANSLATE_AUDIO'] if a.mode=='enzh' else ['-DZ7_ASR_SUBTITLE','-DZ7_RECOGNIZE_EN'])
     if a.text_only_response:defines.append('-DZ7_TEXT_ONLY_RESPONSE')
     sources=['tests/english_profile_test.c','software/network_ui/ogg_opus.c','software/network_ui/cloud_events.c','software/network_ui/cloud_wire.c','software/network_ui/cloud_frame.c','software/network_ui/speech_playback.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','software/subtitle_ui/ui_render.c','output/subtitle_ui/ui_assets.c']
     exe=temp/'profile.exe'

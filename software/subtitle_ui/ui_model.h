@@ -25,6 +25,7 @@ enum ui_command {
     UI_OPEN_AI, UI_CLOSE_AI, UI_AI_CLOUD, UI_AI_LOCAL,
     UI_AI_ENROLL_1, UI_AI_ENROLL_2, UI_AI_ENROLL_3, UI_AI_ENROLL_4,
     UI_AI_CANCEL_ENROLL, UI_AI_ERASE,
+    UI_TOGGLE_DEBUG, UI_OPEN_CONVERSATION, UI_CLOSE_CONVERSATION,
     UI_COMMAND_COUNT
 };
 enum ui_language { UI_EN_ZH, UI_ZH_EN };
@@ -85,9 +86,13 @@ struct ui_state {
     uint32_t settings_page,tts_enabled,output_volume,output_muted,rate_index;
     uint32_t voice_status,voice_latency_ms,voice_latency_valid,voice_buffer_ms;
     uint32_t wifi_connected,wifi_name[33];
+    /* show_debug: latency cards and direction badge (settings toggle, off by
+       default). conversation: face-to-face split screen. glossary_terms: TF
+       card glossary pairs in use, written by firmware. */
+    uint32_t show_debug,conversation,glossary_terms;
 #ifdef Z7_LOCAL_AI
     uint32_t ai_page,model_mode,speaker_id,speaker_score,speaker_mask,speaker_enroll,speaker_progress;
-    uint32_t speaker_status,local_result,local_phrase,local_cost;
+    uint32_t speaker_status,local_result;
 #ifdef Z7_TINYQWEN
     /* Written by firmware each service tick; model_notice is the few-second
        "model ready" toast drawn over any page. */

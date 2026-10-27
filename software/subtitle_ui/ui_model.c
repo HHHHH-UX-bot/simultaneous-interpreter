@@ -135,11 +135,12 @@ int ui_history_scroll(struct ui_state *state,int delta) {
 uint32_t ui_view_context(const struct ui_state *state)
 {
 #ifdef Z7_LOCAL_AI
-    return (state->epoch<<5)|(state->settings_page?1u:0u)|(state->history_page?2u:0u)|
-           (state->language_menu?4u:0u)|(state->history_confirm?8u:0u)|(state->ai_page?16u:0u);
+    return (state->epoch<<6)|(state->settings_page?1u:0u)|(state->history_page?2u:0u)|
+           (state->language_menu?4u:0u)|(state->history_confirm?8u:0u)|(state->ai_page?16u:0u)|
+           (state->conversation?32u:0u);
 #else
-    return (state->epoch<<4)|(state->settings_page?1u:0u)|(state->history_page?2u:0u)|
-           (state->language_menu?4u:0u)|(state->history_confirm?8u:0u);
+    return (state->epoch<<5)|(state->settings_page?1u:0u)|(state->history_page?2u:0u)|
+           (state->language_menu?4u:0u)|(state->history_confirm?8u:0u)|(state->conversation?16u:0u);
 #endif
 }
 #endif
@@ -177,6 +178,7 @@ int ui_control(struct ui_state *state, enum ui_command command)
         uint32_t settings_page=state->settings_page;
         uint32_t wifi_connected=state->wifi_connected,wifi_name[33];
         for(uint32_t i=0;i<33u;++i)wifi_name[i]=state->wifi_name[i];
+        uint32_t debug=state->show_debug,conversation=state->conversation,terms=state->glossary_terms;
 #ifdef Z7_LOCAL_AI
         uint32_t ai_page=state->ai_page,mode=state->model_mode,mask=state->speaker_mask;
 #ifdef Z7_TINYQWEN
@@ -199,6 +201,7 @@ int ui_control(struct ui_state *state, enum ui_command command)
         state->settings_page=settings_page;
         state->wifi_connected=wifi_connected;
         for(uint32_t i=0;i<33u;++i)state->wifi_name[i]=wifi_name[i];
+        state->show_debug=debug;state->conversation=conversation;state->glossary_terms=terms;
 #ifdef Z7_LOCAL_AI
         state->ai_page=ai_page;state->model_mode=mode;state->speaker_mask=mask;
 #ifdef Z7_TINYQWEN
@@ -254,7 +257,7 @@ int ui_control(struct ui_state *state, enum ui_command command)
 #ifdef Z7_HISTORY_UI
 #ifdef Z7_LOCAL_AI
     case UI_OPEN_AI:
-        state->ai_page=1;state->settings_page=state->history_page=state->language_menu=0;
+        state->ai_page=1;state->settings_page=state->history_page=state->language_menu=state->conversation=0;
         break;
     case UI_CLOSE_AI:
         if(!state->ai_page)return 0;
@@ -286,7 +289,7 @@ int ui_control(struct ui_state *state, enum ui_command command)
         break;
 #endif
     case UI_OPEN_HISTORY:
-        state->settings_page=0;
+        state->settings_page=state->conversation=0;
         state->history_page=1;state->history_confirm=0;state->history_follow=1;state->language_menu=0;
         break;
     case UI_CLOSE_HISTORY:
@@ -312,7 +315,7 @@ int ui_control(struct ui_state *state, enum ui_command command)
     case UI_HISTORY_NEWER:
         return ui_history_scroll(state,UI_HISTORY_BODY_HEIGHT-60);
     case UI_OPEN_SETTINGS:
-        state->settings_page=1;state->history_page=state->history_confirm=state->language_menu=0;
+        state->settings_page=1;state->history_page=state->history_confirm=state->language_menu=state->conversation=0;
         break;
     case UI_CLOSE_SETTINGS:
         if(!state->settings_page) return 0;
@@ -339,6 +342,20 @@ int ui_control(struct ui_state *state, enum ui_command command)
     case UI_RATE_PLUS:
         if(state->rate_index>=2u) return 0;
         ++state->rate_index;
+        break;
+    case UI_TOGGLE_DEBUG:
+        state->show_debug=!state->show_debug;
+        break;
+    case UI_OPEN_CONVERSATION:
+        if(state->conversation) return 0;
+        state->conversation=1;state->language_menu=state->settings_page=state->history_page=state->history_confirm=0;
+#ifdef Z7_LOCAL_AI
+        state->ai_page=0;
+#endif
+        break;
+    case UI_CLOSE_CONVERSATION:
+        if(!state->conversation) return 0;
+        state->conversation=0;
         break;
 #endif
     default:

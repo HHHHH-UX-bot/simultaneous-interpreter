@@ -9,7 +9,8 @@
 | 改动后跑全部电脑端回归（不接板、不联网） | [run_host_tests.py](scripts/run_host_tests.py)、[操作](docs/context/RUNBOOK.md#当前产品构建与运行范围2026-10-27) | 一条命令跑 26 组测试并汇总；未纳入的脚本及原因写在脚本开头 |
 | 脱离电脑从 TF 卡启动、更新卡内容或排查自启问题 | [SD_BOOT](docs/design/SD_BOOT.md)、[操作](docs/context/RUNBOOK.md#sd-卡独立启动)、[验证](docs/validation/sd-boot-20261026/README.md) | 启动链路、FSBL 钩子与跳板、固件补做的 USB 预上电/CPU1/配置、卡上 Qwen 后台加载（`sd_model.c`、`write_sd_card.py`）、卡内容生成与安全取舍 |
 | 在只有 Vivado/Vitis 2026.1 的机器上重建、烧录当前版本 | [本轮验证](docs/validation/merge-pr7-2026-20261026/README.md)、[D24](docs/context/DECISIONS.md#d24-合并-pr-7本机以-vivadovitis-20261-重建2026-10-26)、[NOW 使用入口](docs/context/NOW.md#使用入口) | 2026.1 适配点、JTAG 预置 Qwen 资产、实板检查与未验证范围 |
-| 声纹登记、云端/板上离线切换与 SpeechBrain 对照 | [LOCAL_AI](docs/design/LOCAL_AI.md)、[验证](docs/validation/local-ai-20261022/README.md) | Cortex-A9 整数 MFCC/DTW、12 个固定短句、四位内存声纹、实际触摸/电脑画面与独立 PC ECAPA |
+| 已删除的 12 短句离线识别、PC 上的 SpeechBrain 对照 | [LOCAL_AI](docs/design/LOCAL_AI.md) | 删除范围与归档标签；SpeechBrain 为独立电脑工具。现行声纹见 LOCAL_SPEAKER_CNN |
+| 调试信息开关、面对面对话、术语表 | [UI_SPEC](docs/design/UI_SPEC.md#调试信息开关与面对面对话2026-10-27)、[SD_BOOT 术语表](docs/design/SD_BOOT.md#术语表2026-10-27)、[glossary.c](software/network_ui/glossary.c) | 设置页开关、分屏旋转与触摸区、`glossary.txt` 格式与容量 |
 | PL网口电脑画面、鼠标控制、历史另存为 | [REMOTE_DISPLAY](docs/design/REMOTE_DISPLAY.md)、[本轮验证](docs/validation/remote-display-20261022/README.md) | 实际帧缓冲无损传输、共用触摸命中、CSV/TXT/JSON定稿导出、2018.3平台及实机证据 |
 | 优化连续长句的字幕/译音、上传与下行缓冲 | [长句验证](docs/validation/long-speech-20261022/README.md)、[前轮延迟验证](docs/validation/tts-latency-20261021/README.md)、[TTS_SETTINGS](docs/design/TTS_SETTINGS.md) | 六句自动实测、2Mbaud、IPD空行修复、Opus O2、计时取舍与真人长句验收边界 |
 | 修改设置页、译音、真实输出音量及 T2 | [译音与设置](docs/design/TTS_SETTINGS.md)、[设置页规范](docs/design/UI_SPEC.md#板端设置页2026-10-21)、[NOW](docs/context/NOW.md) | 当前设置、DAC 增益/静音/速度、云端文本与译音、延迟定义、构建与证据边界 |

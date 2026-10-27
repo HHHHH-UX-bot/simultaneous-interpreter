@@ -31,6 +31,9 @@ static uint32_t llm_restore_enabled;
 #include "sd_model.h"
 #endif
 #endif
+#ifdef Z7_GLOSSARY
+#include "glossary.h"
+#endif
 #include "../subtitle_ui/ui_demo.h"
 #include "../subtitle_ui/ui_render.h"
 static void render_service(void);
@@ -220,10 +223,8 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
 #ifdef Z7_HISTORY_UI
     uint8_t wifi_name[33];uint32_t wifi_connected=network_wifi_name(wifi_name);
     ui_wifi_identity(s,wifi_connected,wifi_name);
-#endif
-#ifdef Z7_LOCAL_AI
-#ifndef Z7_TINYQWEN
-    if(!s->model_mode)
+#ifdef Z7_GLOSSARY
+    if(s->glossary_terms!=glossary_terms()) {s->glossary_terms=glossary_terms();++s->change_sequence;}
 #endif
 #endif
     cloud_live_tick(now);
@@ -243,11 +244,6 @@ static void network_background_tick(struct ui_state *s,uint32_t now) {
 #endif
 #ifdef Z7_LATENCY_PROBE
     service_measure(4u,perf_stage);perf_stage=gt_ticks();
-#endif
-#ifdef Z7_LOCAL_AI
-#ifndef Z7_TINYQWEN
-    if(!s->model_mode)
-#endif
 #endif
     cloud_client_tick(now);
 #ifdef Z7_LATENCY_PROBE

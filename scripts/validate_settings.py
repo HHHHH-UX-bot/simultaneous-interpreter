@@ -10,7 +10,7 @@ def main():
     for name,sources,flags in [
         ('settings',['tests/settings_ui_test.c','software/subtitle_ui/ui_model.c','software/subtitle_ui/ui_touch.c','software/subtitle_ui/ui_render.c','output/subtitle_ui/ui_assets.c'],['-DZ7_ARM_TLS','-DZ7_SOURCE_EN','-DZ7_TRANSLATE_ZH']),
         ('tts_controls',['tests/tts_controls_test.c'],['-DZ7_TRANSLATE_AUDIO']),
-        ('late_preview',['tests/late_preview_test.c','software/network_ui/ogg_opus.c','software/network_ui/cloud_events.c','software/network_ui/cloud_wire.c','software/network_ui/cloud_frame.c','software/network_ui/speech_playback.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','software/subtitle_ui/ui_render.c','output/subtitle_ui/ui_assets.c'],['-DZ7_ARM_TLS','-DZ7_TLS_PASSTHROUGH','-DZ7_TRANSLATE_EN','-DZ7_TRANSLATE_AUDIO'])]:
+        ('late_preview',['tests/late_preview_test.c','software/network_ui/ogg_opus.c','software/network_ui/cloud_events.c','software/network_ui/cloud_wire.c','software/network_ui/cloud_frame.c','software/network_ui/speech_playback.c','software/network_ui/protocol.c','software/subtitle_ui/ui_model.c','software/subtitle_ui/ui_render.c','output/subtitle_ui/ui_assets.c'],['-DZ7_ARM_TLS','-DZ7_TRANSLATE_EN','-DZ7_TRANSLATE_AUDIO'])]:
         exe=out/(name+'.exe')
         r=subprocess.run([str(a.gcc),'-std=c11','-O2','-Wall','-Wextra','-Werror',*flags,'-I',str(ROOT/'software/subtitle_ui'),'-I',str(ROOT/'software/z7_nano_usb'),'-I',str(ROOT/'third_party/wslay/lib/includes'),*[str(ROOT/f) for f in sources],'-o',str(exe)],capture_output=True)
         (out/(name+'_build.log')).write_bytes(r.stdout+r.stderr);r.check_returncode()

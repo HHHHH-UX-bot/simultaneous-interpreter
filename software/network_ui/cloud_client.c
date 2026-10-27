@@ -20,19 +20,11 @@
 #include "speech_playback.h"
 #ifdef Z7_OPUS
 #include "opus_codec.h"
-#ifdef Z7_LOCAL_AI
-#include "local_ai.h"
-#endif
 #include "../ps_bringup/cache.h"
 #include "ogg_opus.h"
 #endif
 #include <string.h>
 static struct cloud_client_state client;
-#ifdef Z7_TLS_PASSTHROUGH
-static uint32_t last_rx_ms,ping_sent,ping_ms;
-__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t keepalive_diag[5];
-static void keepalive_clean(void) {cache_clean_range((const void *)keepalive_diag,sizeof(keepalive_diag));}
-#endif
 
 /* Microphone debug dump: the 16 kHz/16-bit PCM that is actually encoded and
    uploaded is mirrored into a fixed DDR ring (header at 0x01D3F000, 768 KiB at
@@ -288,6 +280,19 @@ int cloud_client_tts_finish(void) {
 }
 #endif
 
+#ifdef Z7_GLOSSARY
+#include "glossary.h"
+/* Translation sessions carry the TF card glossary as hot words, keyed by the
+   language being spoken; without pairs (or if it would not fit) the base goes as is. */
+static int send_translation(const char *base,uint32_t bytes) {
+    char json[2034];
+    uint32_t n=glossary_session(base,bytes,cloud_live_language()==UI_EN_ZH,json,sizeof(json));
+    return n?send_json(json,n):send_json(base,bytes);
+}
+#define SEND_TRANSLATION(base) send_translation(base,(uint32_t)sizeof(base)-1u)
+#else
+#define SEND_TRANSLATION(base) send_json(base,(uint32_t)sizeof(base)-1u)
+#endif
 static int send_session_config(void) {
 #ifdef Z7_TINYQWEN
     if(local_voice_role()==2) {
@@ -311,7 +316,7 @@ static int send_session_config(void) {
 #else
        UI_EN_ZH
 #endif
-    ) return send_json(alternate_session_json,(uint32_t)sizeof(alternate_session_json)-1u);
+    ) return SEND_TRANSLATION(alternate_session_json);
 #endif
 #if defined(Z7_OPUS) && defined(Z7_ASR_SUBTITLE)
     uint32_t i=0;
@@ -319,7 +324,7 @@ static int send_session_config(void) {
     if(!asr_model_path[i] && !cloud_client_config.path[i])
         return send_json(asr_session_update_json,(uint32_t)sizeof(asr_session_update_json)-1u);
 #endif
-    return send_json(session_update_json,(uint32_t)sizeof(session_update_json)-1u);
+    return SEND_TRANSLATION(session_update_json);
 }
 
 static void send_session_update(void) {
@@ -404,10 +409,6 @@ static void send_handshake(void) {
 
 int cloud_client_ready(void) {return client.phase==CLOUD_STREAMING;}
 void cloud_client_init(void) {
-#ifdef Z7_TLS_PASSTHROUGH
-    for(uint32_t i=0;i<5u;++i) keepalive_diag[i]=0;
-    keepalive_diag[0]=0x31414c4bu;last_rx_ms=ping_sent=ping_ms=0;keepalive_clean();
-#endif
     memset(&client,0,sizeof(client));
     client.phase=CLOUD_IDLE;
     memset((void *)&final_diag,0,sizeof(final_diag));
@@ -422,9 +423,6 @@ void cloud_client_init(void) {
 void cloud_client_start(uint32_t now) {
     if(client.phase!=CLOUD_IDLE) return;
     client.now_ms=now;
-#ifdef Z7_TLS_PASSTHROUGH
-    last_rx_ms=now;ping_sent=0;
-#endif
     cloud_live_begin(now);                     // model session + wire mapper
 #ifdef Z7_ARM_TLS
     arm_tls_attach_bytes(cloud_client_receive_bytes);
@@ -450,9 +448,6 @@ int cloud_client_handshake_complete(const char *response,uint32_t bytes) {
 }
 
 void cloud_client_receive(uint8_t byte) {
-#ifdef Z7_TLS_PASSTHROUGH
-    last_rx_ms=client.now_ms;keepalive_diag[3]=last_rx_ms;
-#endif
     if(client.phase==CLOUD_HANDSHAKE) {
         if(client.response_used<sizeof(client.response)-1u) client.response[client.response_used++]=byte;
         if(cloud_client_handshake_complete(client.response,client.response_used)) {
@@ -467,9 +462,6 @@ void cloud_client_receive(uint8_t byte) {
     }
 }
 void cloud_client_receive_bytes(const uint8_t *data,uint32_t bytes) {
-#ifdef Z7_TLS_PASSTHROUGH
-    last_rx_ms=client.now_ms;keepalive_diag[3]=last_rx_ms;
-#endif
     uint32_t at=0;
     while(at<bytes && client.phase==CLOUD_HANDSHAKE) cloud_client_receive(data[at++]);
     if(at<bytes && (client.phase==CLOUD_WAITING_SESSION || client.phase==CLOUD_WAITING_UPDATE || client.phase==CLOUD_STREAMING))
@@ -599,9 +591,6 @@ static int send_ogg_page(void) {
 
 #ifdef Z7_OPUS
 static void queue_opus_frame(const int16_t *samples) {
-#ifdef Z7_LOCAL_AI
-    local_ai_feed(samples,320u);
-#endif
     dump_pcm(samples,320u);
     for(uint32_t i=0;i<320u;++i) {int32_t v=samples[i];if(v<0) v=-v;if((uint32_t)v>diag_peak) diag_peak=(uint32_t)v;}
     uint8_t packet[128];
@@ -640,24 +629,6 @@ void cloud_client_tick(uint32_t now) {
     if((client.phase==CLOUD_HANDSHAKE || client.phase==CLOUD_WAITING_SESSION) && now-client.handshake_ms>15000u) {
         cloud_client_stop();network_stream_failed();return;
     }
-#ifdef Z7_TLS_PASSTHROUGH
-    if(client.phase!=CLOUD_IDLE) {
-        if(ping_sent && (int32_t)(last_rx_ms-ping_ms)>=0) ping_sent=0;
-        if(ping_sent && now-ping_ms>=5000u) {
-            ++keepalive_diag[2];keepalive_clean();cloud_client_stop();network_stream_failed();return;
-        }
-        if(!ping_sent && now-last_rx_ms>=15000u && client.phase!=CLOUD_STREAMING) {
-            ++keepalive_diag[2];keepalive_clean();cloud_client_stop();network_stream_failed();return;
-        }
-        if(!ping_sent && now-last_rx_ms>=15000u && client.phase==CLOUD_STREAMING) {
-            uint8_t ping[14];uint32_t size=build_frame(ping,sizeof(ping),(const uint8_t *)"",0);
-            ping[0]=0x89u;
-            if(size && network_send(ping,size)) {
-                ping_sent=1;ping_ms=now;++keepalive_diag[1];keepalive_diag[4]=now;keepalive_clean();
-            }
-        }
-    }
-#endif
     if(dump_deadline && (int32_t)(now-dump_deadline)>=0) cloud_client_capture_freeze();
     if(client.phase==CLOUD_WAITING_UPDATE) {
         if(client.update_pending) {

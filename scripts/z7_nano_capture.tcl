@@ -2,7 +2,7 @@
 set serial [lindex $argv 0]
 set folder [lindex $argv 1]
 set model_bytes [expr {[llength $argv]>2?[lindex $argv 2]:11392}]
-if {$model_bytes ni {11392 135768 135804 135848 135940 135984 135996}} {error "Unsupported expected model ABI"}
+if {$model_bytes ni {11392 135768 135804 135848 135940 135952 135984 135996 136000}} {error "Unsupported expected model ABI"}
 set stride [expr {$model_bytes+64}]
 connect -url TCP:127.0.0.1:3121
 after 1000

@@ -33,14 +33,11 @@ _Static_assert(sizeof(struct display_result)==64,"Display ABI");
 _Static_assert(sizeof(struct ui_information)==64,"UI ABI");
 #ifdef Z7_HISTORY_UI
 #ifdef Z7_TINYQWEN
-_Static_assert(sizeof(struct ui_state)==135996u,"Board Qwen model ABI (model load status)");
-_Static_assert(sizeof(struct ui_snapshot)==136060u,"Board Qwen snapshot ABI");
-#elif defined(Z7_LOCAL_AI)
-_Static_assert(sizeof(struct ui_state)==135984u,"Local AI model ABI");
-_Static_assert(sizeof(struct ui_snapshot)==136048u,"Local AI snapshot ABI");
+_Static_assert(sizeof(struct ui_state)==136000u,"Board Qwen model ABI (debug/conversation/glossary)");
+_Static_assert(sizeof(struct ui_snapshot)==136064u,"Board Qwen snapshot ABI");
 #else
-_Static_assert(sizeof(struct ui_state)==135940u,"History/settings model ABI");
-_Static_assert(sizeof(struct ui_snapshot)==136004u,"History/settings snapshot ABI");
+_Static_assert(sizeof(struct ui_state)==135952u,"History/settings model ABI");
+_Static_assert(sizeof(struct ui_snapshot)==136016u,"History/settings snapshot ABI");
 #endif
 #else
 _Static_assert(sizeof(struct ui_state)==11392u,"ARM/native model ABI requires 32-bit enums");
@@ -165,12 +162,17 @@ static void draw(uint32_t index,uint32_t elapsed,uint32_t page) {
     snapshot->model_bytes=sizeof(state);snapshot->elapsed_ms=elapsed;snapshot->requested_page=page;
     snapshot->generation=++generation;snapshot->reserved=0;snapshot->state=state;
 #ifdef UI_LATENCY_READING
-    snapshot->version=2;snapshot->reserved=UI_LATENCY_READING();
+    /* Version 2 snapshots carry the L1/T1 cards; they are debug information. */
+    int latency_cards=1;
+#ifdef Z7_HISTORY_UI
+    latency_cards=state.show_debug && !state.conversation;
+#endif
+    if(latency_cards) {snapshot->version=2;snapshot->reserved=UI_LATENCY_READING();}
 #endif
     uint32_t start=now_ms();
     ui_render((uint32_t *)(index?FB_BASE1:FB_BASE0),&snapshot->state,elapsed,page,&snapshot->stats);
 #ifdef UI_LATENCY_READING
-    ui_render_latency((uint32_t *)(index?FB_BASE1:FB_BASE0),snapshot->reserved,&snapshot->stats);
+    if(latency_cards) ui_render_latency((uint32_t *)(index?FB_BASE1:FB_BASE0),snapshot->reserved,&snapshot->stats);
 #endif
     last_render_ms=now_ms()-start;if(last_render_ms>max_render_ms) max_render_ms=last_render_ms;
     if(snapshot->stats.missing_glyphs || snapshot->stats.clipped_glyph_pixels) fail(32);

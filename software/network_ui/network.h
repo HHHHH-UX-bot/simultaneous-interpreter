@@ -36,11 +36,6 @@ int network_owns_ui(void);
 uint32_t network_wifi_name(uint8_t out[33]);
 /* Queue at most 2048 bytes; the caller may reuse its input after success. */
 int network_send(const uint8_t *data,uint32_t size);
-#ifdef Z7_TLS_TRACE
-void network_tls_trace_begin(uint32_t session);
-void network_tls_trace_clean(void);
-void network_tls_trace_freeze(void);
-#endif
 /* Adopt an already established MUX=1 link 0. The AT owner hands over only
    after its last response is consumed. IPD bytes go to receive, not LAN UI. */
 int network_stream_attach(void (*receive)(uint8_t));

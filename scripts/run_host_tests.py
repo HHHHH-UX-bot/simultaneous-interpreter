@@ -9,7 +9,6 @@ Not run here, and why:
   validate_arm_tls              online certificate checks
   validate_subtitle_controls/epoch  read a live board over JTAG
   validate_translation_service  starts the LAN translation service
-  validate_local_ai             needs the generated phrase model (old --local-ai build)
   validate_z7_nano_stream/upload/uart_baud  model the stream pilot, ESP-side TLS
       passthrough and 921600 profiles, which the product build does not compile;
       their expectations predate 2026-10-17 and are kept only as history.
@@ -25,6 +24,7 @@ DEFAULT_GCC = Path("D:/cenvironment/mingw64/bin/gcc.exe")
 SUITES = {
     "pytest": None,
     "test_sd_model": "gcc",
+    "test_glossary": "gcc",
     "test_network_history": "gcc",
     "test_speaker_ui": "env",
     "test_speaker_driver": "env",

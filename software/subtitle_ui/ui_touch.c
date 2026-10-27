@@ -13,6 +13,19 @@ static int inside(uint32_t x,int left,int width) {return x>=(uint32_t)left && x<
 #endif
 static int button(uint32_t x,uint32_t y,const struct ui_state *state) {
 #ifdef Z7_HISTORY_UI
+    if(state->conversation) {
+        /* Lower half: exit, "speak Chinese". The upper half is the same layout
+           turned 180 degrees for the person opposite: x'=1023-x, y'=599-y. */
+        if(y>=530u && y<586u) {
+            if(inside(x,24,176)) return 35;
+            if(inside(x,744,256)) return 7;
+        }
+        if(y>=14u && y<70u) {
+            if(inside(x,824,176)) return 35;
+            if(inside(x,24,256)) return 6;
+        }
+        return -1;
+    }
 #ifdef Z7_LOCAL_AI
     if(state->ai_page) {
         if(y>=530u && y<586u && inside(x,24,176))return 24;
@@ -51,7 +64,10 @@ static int button(uint32_t x,uint32_t y,const struct ui_state *state) {
             if(inside(x,540,204)) return 6;
             if(inside(x,764,212)) return 7;
         }
-        if(y>=400u && y<456u && inside(x,44,180)) return 20;
+        if(y>=400u && y<456u) {
+            if(inside(x,44,180)) return 20;
+            if(inside(x,380,96)) return 33;
+        }
         return -1;
     }
     if(state->history_page) {
@@ -74,8 +90,10 @@ static int button(uint32_t x,uint32_t y,const struct ui_state *state) {
        y>=UI_LANGUAGE_Y && y<UI_LANGUAGE_Y+UI_LANGUAGE_HEIGHT) return 5;
     if(state->language_menu) {
         if(x>=UI_LANGUAGE_X && x<UI_LANGUAGE_X+UI_LANGUAGE_WIDTH &&
-           y>=UI_LANGUAGE_MENU_Y && y<UI_LANGUAGE_MENU_Y+2u*UI_LANGUAGE_ROW_HEIGHT)
-            return 6+(int)((y-UI_LANGUAGE_MENU_Y)/UI_LANGUAGE_ROW_HEIGHT);
+           y>=UI_LANGUAGE_MENU_Y && y<UI_LANGUAGE_MENU_Y+UI_LANGUAGE_ROWS*UI_LANGUAGE_ROW_HEIGHT) {
+            uint32_t row=(y-UI_LANGUAGE_MENU_Y)/UI_LANGUAGE_ROW_HEIGHT;
+            return row<2u?6+(int)row:34;   /* two directions, then face-to-face */
+        }
         return 8; /* Dismiss only; never activate an obscured/underlying control. */
     }
 #else
@@ -106,12 +124,16 @@ static int pointer_command(const struct touch_tap *tap,const struct ui_state *st
                 UI_TOGGLE_MUTE,UI_RATE_MINUS,UI_RATE_PLUS,
                 UI_OPEN_AI,UI_CLOSE_AI,UI_AI_CLOUD,UI_AI_LOCAL,
                 UI_AI_ENROLL_1,UI_AI_ENROLL_2,UI_AI_ENROLL_3,UI_AI_ENROLL_4,
-                UI_AI_CANCEL_ENROLL,UI_AI_ERASE};
+                UI_AI_CANCEL_ENROLL,UI_AI_ERASE,
+                UI_TOGGLE_DEBUG,UI_OPEN_CONVERSATION,UI_CLOSE_CONVERSATION};
             command=controls[pressed];
             if((command==UI_SELECT_EN_ZH && state->language==UI_EN_ZH) ||
                (command==UI_SELECT_ZH_EN && state->language==UI_ZH_EN)) {
 #ifdef Z7_HISTORY_UI
-                command=state->settings_page?-1:UI_LANGUAGE_MENU;
+                /* Face to face, tapping the side that already speaks (re)starts listening. */
+                if(state->conversation)
+                    command=state->session==UI_PAUSED?UI_RESUME:(state->session==UI_IDLE?UI_START:-1);
+                else command=state->settings_page?-1:UI_LANGUAGE_MENU;
 #else
                 command=UI_LANGUAGE_MENU;
 #endif

@@ -1,5 +1,6 @@
 #ifndef SUBTITLE_UI_LAYOUT_H
 #define SUBTITLE_UI_LAYOUT_H
+#include "ui_model.h"   /* Z7_HISTORY_UI selects the picker rows */
 /* Shared by the language picker renderer and its touch hit regions. */
 #define UI_LANGUAGE_X 156
 #define UI_LANGUAGE_Y 12
@@ -7,6 +8,11 @@
 #define UI_LANGUAGE_HEIGHT 42
 #define UI_LANGUAGE_MENU_Y 68
 #define UI_LANGUAGE_ROW_HEIGHT 52
+#ifdef Z7_HISTORY_UI
+#define UI_LANGUAGE_ROWS 3u   /* EN->ZH, ZH->EN, face-to-face conversation */
+#else
+#define UI_LANGUAGE_ROWS 2u
+#endif
 /* History geometry is shared by rendering and touch, independent of subtitle size. */
 #define UI_HISTORY_BODY_Y 140
 #define UI_HISTORY_BODY_HEIGHT 348

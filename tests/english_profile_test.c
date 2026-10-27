@@ -268,10 +268,5 @@ int main(void){
     network_info.phase=4;const uint8_t ping[]={0x89u,1u,'x'};
     for(unsigned i=0;i<sizeof(ping);++i) {cloud_wire_byte(ping[i]);}
     cloud_live_tick(3001);CHECK(pongs==1);
-    client.phase=CLOUD_STREAMING;last_rx_ms=0;ping_sent=0;blocked=1;
-    cloud_client_tick(16000);CHECK(!ping_sent);
-    blocked=0;cloud_client_tick(16001);CHECK(ping_sent && pings==1);
-    cloud_client_receive(0x8au);cloud_client_receive(0);cloud_client_tick(16002);CHECK(!ping_sent);
-    cloud_client_tick(31002);CHECK(ping_sent);cloud_client_tick(36003);CHECK(client.phase==CLOUD_IDLE && failures==1);
     printf("PASS_ENGLISH_PROFILE checks=%u finals=500\n",checks);return 0;
 }

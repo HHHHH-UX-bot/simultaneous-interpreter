@@ -1,0 +1,7 @@
+# 术语表示例。TF 卡根目录放一份，文件名 glossary.txt，UTF-8 保存，不超过 4 KB。
+# 每行“中文 = English”；空行和 # 开头的行跳过。中译英以中文为键，英译中反过来。
+译声 = EchoLingo
+现场可编程门阵列 = FPGA
+板上模型 = on-board model
+声纹 = voiceprint
+同声传译 = simultaneous interpretation

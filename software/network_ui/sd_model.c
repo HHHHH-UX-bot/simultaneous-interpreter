@@ -11,6 +11,7 @@
 #include "remote_display.h"
 #include "sd_boot_runtime.h"
 #include "mbedtls/sha256.h"
+#include "glossary.h"
 #include "../subtitle_ui/ui_model.h"
 
 #define RUN_BYTES (4u*1024u*1024u)   /* one CMD18: 8192 blocks, 64 ADMA2 lines of 64 KiB */
@@ -84,6 +85,7 @@ static void publish(void) {cache_clean_range((const void *)sd_model_diag,sizeof(
 #endif
 
 static uint8_t sector[512] RUNTIME;
+static uint8_t glossary_file[GLOSSARY_FILE_BYTES] RUNTIME;
 /* Load order: the tokenizer (window 1), then the model (window 0). */
 static const char names[2][12]={"QWEN    TOK","QWEN    TQW"};
 static const uint32_t windows[2]={1u,0u};
@@ -137,7 +139,7 @@ static uint32_t mount(void) {
     sd.spc=spc;sd.fat=part+reserved;sd.data=sd.fat+fats*fat_size;
     sd.clusters=2u+(total-reserved-fats*fat_size)/spc;
     if(sd.clusters>fat_size*128u) sd.clusters=fat_size*128u;
-    uint32_t found=0;
+    uint32_t found=0,glossary_first=0,glossary_size=0;
     for(uint32_t cluster=root,hops=0;cluster>=2u && cluster<sd.clusters && hops<sd.clusters;++hops) {
         for(uint32_t s=0;s<spc;++s) {
             if(!read_sector(cluster_lba(cluster)+s)) return UI_MODEL_READ_ERROR;
@@ -148,12 +150,27 @@ static uint32_t mount(void) {
                 for(uint32_t i=0;i<2u;++i) if(!memcmp(e,names[i],11)) {
                     sd.first[i]=le16(e+20)<<16|le16(e+26);sd.size[i]=le32(e+28);found|=1u<<i;
                 }
+                if(!memcmp(e,"GLOSSARYTXT",11)) {glossary_first=le16(e+20)<<16|le16(e+26);glossary_size=le32(e+28);}
             }
         }
         cluster=fat_next(cluster);
         if(sd.io_error) return UI_MODEL_READ_ERROR;
     }
 listed:
+    /* Optional glossary.txt, small enough to read here before the session. */
+    if(glossary_size && glossary_size<=GLOSSARY_FILE_BYTES) {
+        uint32_t got=0;
+        for(uint32_t cluster=glossary_first;got<glossary_size;) {
+            if(cluster<2u || cluster>=sd.clusters) break;   /* a broken glossary is skipped, not fatal */
+            for(uint32_t s=0;s<spc && got<glossary_size;++s) {
+                if(!read_sector(cluster_lba(cluster)+s)) return UI_MODEL_READ_ERROR;
+                uint32_t n=glossary_size-got>512u?512u:glossary_size-got;
+                memcpy(glossary_file+got,sector,n);got+=n;
+            }
+            if(got<glossary_size) {cluster=fat_next(cluster);if(sd.io_error) return UI_MODEL_READ_ERROR;}
+        }
+        if(got==glossary_size) (void)glossary_load(glossary_file,glossary_size);
+    }
     for(uint32_t i=0;i<2u;++i) {
         uint32_t bytes;(void)remote_llm_window(windows[i],&bytes);
         if(!(found&(1u<<i)) || sd.size[i]!=bytes || sd.first[i]<2u || sd.first[i]>=sd.clusters) return UI_MODEL_MISSING;

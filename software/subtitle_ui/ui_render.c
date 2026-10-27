@@ -260,13 +260,13 @@ static const uint32_t language_directions[2][19]={
 #ifdef Z7_LANGUAGE_SWITCH
 static void language_menu(struct paint *p,const struct ui_state *s) {
     if(!s->language_menu) return;
-    int x=UI_LANGUAGE_X,y=UI_LANGUAGE_MENU_Y,w=UI_LANGUAGE_WIDTH,h=2*UI_LANGUAGE_ROW_HEIGHT;
+    int x=UI_LANGUAGE_X,y=UI_LANGUAGE_MENU_Y,w=UI_LANGUAGE_WIDTH,h=(int)UI_LANGUAGE_ROWS*UI_LANGUAGE_ROW_HEIGHT;
     round_rect(p,x+3,y,w,h+7,10,LINE);
     round_rect(p,x,y-4,w,h+8,10,PAPER);
-    for(uint32_t row=0;row<2u;++row) {
-        int selected=s->language==row,at=y+(int)row*UI_LANGUAGE_ROW_HEIGHT;
+    for(uint32_t row=0;row<UI_LANGUAGE_ROWS;++row) {
+        int selected=row<2u && s->language==row,at=y+(int)row*UI_LANGUAGE_ROW_HEIGHT;
         if(selected) round_rect(p,x+6,at+3,w-12,UI_LANGUAGE_ROW_HEIGHT-6,7,TINT);
-        one_line(p,language_directions[row],18,x+16,at+15,w-56,selected?ACTION:INK);
+        one_line(p,row<2u?language_directions[row]:label("conversation"),18,x+16,at+15,w-56,selected?ACTION:INK);
         if(selected) round_rect(p,x+w-30,at+21,10,10,5,ACTION);
     }
 }
@@ -388,6 +388,8 @@ static void settings_view(struct paint *p,const struct ui_state *s) {
     button_at(p,168,288,64,minus,0);one_line(p,rates[s->rate_index<3?s->rate_index:1],24,252,302,72,INK);button_at(p,328,288,64,plus,0);
     one_line(p,label("settings_dac_only"),14,44,366,412,MUTED);
     button_at(p,44,400,180,label(s->output_muted?"settings_unmute":"settings_mute"),s->output_muted);
+    one_line(p,label("settings_debug"),18,244,416,130,INK);
+    button_at(p,380,400,96,label(s->show_debug?"on":"off"),s->show_debug);
     one_line(p,label("settings_display"),28,540,100,400,INK);
     one_line(p,label("font"),18,540,158,100,INK);
     button_at(p,660,142,64,minus,0);button_at(p,912,142,64,plus,0);
@@ -395,6 +397,15 @@ static void settings_view(struct paint *p,const struct ui_state *s) {
     one_line(p,label("settings_source"),18,540,230,250,INK);
     button_at(p,824,212,152,label(s->show_source?"on":"off"),s->show_source);
     one_line(p,label("settings_language"),18,540,306,400,INK);
+    /* Pairs from glossary.txt on the TF card, sent as translation hot words. */
+    uint32_t terms[40];const uint32_t *head=label(s->glossary_terms?"glossary":"glossary_none");
+    n=0;while(head[n] && n<24u) {terms[n]=head[n];++n;}
+    if(s->glossary_terms) {
+        decimal(s->glossary_terms,terms+n);while(terms[n]) ++n;
+        for(const uint32_t *unit=label("glossary_unit");*unit && n<38u;++unit) terms[n++]=*unit;
+    }
+    terms[n]=0;
+    one_line(p,terms,14,976-(int)text_width(font(14),terms),310,260,MUTED);
     button_at(p,540,360,204,language_directions[0],s->language==UI_EN_ZH);
     button_at(p,764,360,212,language_directions[1],s->language==UI_ZH_EN);
 #ifdef Z7_LOCAL_AI
@@ -590,6 +601,60 @@ static void network_strip(struct paint *p,const struct ui_state *s) {
     one_line(p,text,14,24,65,976,MUTED);
 }
 #endif
+#ifdef Z7_HISTORY_UI
+/* Face to face: the device owner reads Chinese on the lower half and the
+   person opposite reads English on the upper half, which is the same layout
+   turned 180 degrees. Each half shows its own language whoever is speaking:
+   the speaker's recognised words, or the translation of the other side. */
+/* The latest lines that fit, like a live subtitle; paragraph() pages instead. */
+static void tail_text(struct paint *p,const uint32_t *text,uint32_t size,struct clip c,uint32_t color) {
+    struct text_lines lines;const struct ui_font *f=font(size);
+    int left=0,right=0;
+    for(uint32_t i=0;i<f->count;++i) {
+        const struct ui_glyph *g=&f->glyphs[i];
+        if(-g->x_offset>left) left=-g->x_offset;
+        int overhang=g->x_offset+(int)g->width-(int)g->advance;
+        if(overhang>right) right=overhang;
+    }
+    uint32_t height=(size*145u+99u)/100u,rows=(uint32_t)c.h/height;if(!rows) rows=1;
+    wrap(text,f,(uint32_t)(c.w-left-right),&lines);
+    uint32_t first=lines.count>rows?lines.count-rows:0;
+    for(uint32_t row=first;row<lines.count;++row)
+        draw_line(p,f,text,lines.begin[row],lines.end[row],c.x+left,c.y+(int)((row-first)*height),color,c);
+}
+/* One person's half, laid out in rows 300..599 of p. */
+static void conversation_half(struct paint *p,const struct ui_state *s,int english) {
+    static const uint32_t title_en[]={'E','n','g','l','i','s','h',0},exit_en[]={'E','x','i','t',0};
+    static const uint32_t speak_en[]={'S','p','e','a','k',' ','E','n','g','l','i','s','h',0};
+    static const uint32_t listen_en[]={'S','p','e','a','k',' ','n','o','w',0};
+    static const uint32_t other_en[]={'T','h','e',' ','o','t','h','e','r',' ','s','i','d','e',' ','i','s',' ','s','p','e','a','k','i','n','g',0};
+    static const uint32_t sizes[]={28,36,44};
+    int speaking=english?s->language==UI_EN_ZH:s->language==UI_ZH_EN;
+    rect(p,0,300,UI_WIDTH,220,CANVAS);
+    round_rect(p,24,312,976,200,12,PAPER);
+    one_line(p,english?title_en:label("conv_title"),18,44,324,300,INK);
+    const uint32_t *status=0;
+    if(!speaking) status=english?other_en:label("conv_other");
+    else if(s->session==UI_RUNNING) status=english?listen_en:label("conv_listen");
+    if(status) one_line(p,status,14,980-(int)text_width(font(14),status),328,400,speaking?ACTION:MUTED);
+    tail_text(p,speaking?s->source:s->translated,sizes[s->font_index<3u?s->font_index:1u],(struct clip){44,356,936,148},INK);
+    rect(p,0,520,UI_WIDTH,80,PAPER);rect(p,0,520,UI_WIDTH,1,LINE);
+    button_at(p,24,530,176,english?exit_en:label("conv_exit"),0);
+    button_at(p,744,530,256,english?speak_en:label("conv_speak"),speaking);
+}
+/* The English half is drawn in the lower rows first, turned into the upper
+   rows, then overdrawn by the Chinese half; no second buffer is needed. */
+static void conversation_view(struct paint *p,const struct ui_state *s) {
+    conversation_half(p,s,1);
+    for(uint32_t y=0;y<300u;++y) {
+        const uint32_t *from=p->pixels+(UI_HEIGHT-1u-y)*UI_WIDTH;
+        uint32_t *to=p->pixels+y*UI_WIDTH;
+        for(uint32_t x=0;x<UI_WIDTH;++x) to[x]=from[UI_WIDTH-1u-x];
+        if(render_service && (y&3u)==0) render_service();
+    }
+    conversation_half(p,s,0);
+}
+#endif
 #if defined(Z7_HISTORY_UI) && defined(Z7_TINYQWEN)
 #define MODEL_NOTICE(p,s) model_notice(p,s)
 #else
@@ -599,6 +664,9 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
                uint32_t requested_page,struct ui_render_stats *stats) {
     uint32_t *words=(uint32_t *)stats;for(uint32_t i=0;i<sizeof(*stats)/4u;++i) words[i]=0;
     struct paint p={pixels,stats,0};
+#ifdef Z7_HISTORY_UI
+    if(s->conversation) {conversation_view(&p,s);MODEL_NOTICE(&p,s);return;}
+#endif
     rect(&p,0,0,UI_WIDTH,UI_HEIGHT,CANVAS);rect(&p,0,0,UI_WIDTH,64,PAPER);rect(&p,0,63,UI_WIDTH,1,LINE);
 #ifdef Z7_HISTORY_UI
     network_strip(&p,s);
@@ -641,20 +709,27 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
     one_line(&p,label("language"),18,156,21,320,MUTED);
 #endif
 #ifdef Z7_HISTORY_UI
-    round_rect(&p,716,8,104,48,8,LINE);round_rect(&p,717,9,102,46,7,0xf1f6f6u);
-    static const uint32_t voice_label[]={'T','2',' ','V','O','I','C','E',0},ms[]={'m','s',0};
-    uint32_t voice_number[16]={'-','-',0};
-    if(s->voice_latency_valid) decimal(s->voice_latency_ms>99999u?99999u:s->voice_latency_ms,voice_number);
-    one_line(&p,voice_label,14,726,11,84,MUTED);one_line(&p,voice_number,18,726,28,62,INK);one_line(&p,ms,14,792,32,22,MUTED);
+    /* Developer readings and the direction badge only with 调试信息 on. */
+    int debug=(int)s->show_debug;
+    if(debug) {
+        round_rect(&p,716,8,104,48,8,LINE);round_rect(&p,717,9,102,46,7,0xf1f6f6u);
+        static const uint32_t voice_label[]={'T','2',' ','V','O','I','C','E',0},ms[]={'m','s',0};
+        uint32_t voice_number[16]={'-','-',0};
+        if(s->voice_latency_valid) decimal(s->voice_latency_ms>99999u?99999u:s->voice_latency_ms,voice_number);
+        one_line(&p,voice_label,14,726,11,84,MUTED);one_line(&p,voice_number,18,726,28,62,INK);one_line(&p,ms,14,792,32,22,MUTED);
+    }
 #else
+    int debug=1;
     one_line(&p,label("touch"),14,720,24,116,MUTED);
 #endif
-    round_rect(&p,850,17,150,30,15,TINT);
+    if(debug) {
+        round_rect(&p,850,17,150,30,15,TINT);
 #ifdef Z7_UI_ENGLISH
-    one_line(&p,mode_badge,14,894,22,96,ACTION);
+        one_line(&p,mode_badge,14,894,22,96,ACTION);
 #else
-    one_line(&p,label("demo"),14,894,22,96,ACTION);
+        one_line(&p,label("demo"),14,894,22,96,ACTION);
 #endif
+    }
     round_rect(&p,24,84,696,404,12,PAPER);round_rect(&p,740,84,260,404,12,0xe5eef0u);
 #ifdef Z7_UI_ENGLISH
     one_line(&p,english_caption,18,44,100,220,INK);
@@ -732,8 +807,6 @@ void ui_render(uint32_t *pixels,const struct ui_state *s,uint32_t elapsed_ms,
         (s->session==UI_PAUSED?"connection_paused":"connection_ready")));
 #ifdef Z7_TINYQWEN
     if(s->model_mode)connection=s->model_load==UI_MODEL_READY?"ai_local_ready":"ai_unrecognized";
-#elif defined(Z7_LOCAL_AI)
-    if(s->model_mode)connection=s->local_result==2u?"ai_unrecognized":"ai_local_ready";
 #endif
     paragraph(&p,label(connection),14,(struct clip){760,274,220,25},MUTED,0,0,0);
 #elif defined(Z7_UI_ENGLISH)

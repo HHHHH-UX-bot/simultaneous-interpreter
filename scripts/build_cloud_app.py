@@ -128,27 +128,18 @@ def main():
     parser.add_argument("--selftest-once",action="store_true",help="send the synthetic speech once, then continue streaming silence")
     parser.add_argument("--touch",action="store_true",help="enable the Z7-Nano CPU1 touch consumer")
     parser.add_argument("--remote-display",action="store_true",help="PL Ethernet framebuffer and mouse input; requires ARM TLS and touch profile")
-    local_model = parser.add_mutually_exclusive_group()
-    local_model.add_argument("--local-ai",action="store_true",help="integer phrase model and enrolled speaker comparison on Cortex-A9")
-    local_model.add_argument("--tinyqwen",action="store_true",help="on-board Qwen inference; requires --remote-display --touch --arm-tls")
+    parser.add_argument("--tinyqwen",action="store_true",help="on-board Qwen inference; requires --remote-display --touch --arm-tls")
     parser.add_argument("--speaker-cnn",action="store_true",help="FPGA MFCC and CNN; requires the matching speaker platform and --tinyqwen")
     parser.add_argument("--sd-boot",action="store_true",help="when BOOT_MODE is SD, start CPU1, apply z7cfg.bin and (with --tinyqwen) load qwen.tok/qwen.tqw from the card itself; JTAG boots unchanged")
     parser.add_argument("--speech", action="store_true",help="translated audio on lineout (requires playback PL; automatic for enzh)")
     parser.add_argument("--text-only-response", action="store_true", help="diagnostic: request text only while retaining the same audio upload/playback build")
     parser.add_argument("--output-dir", type=Path, help="separate build directory, including ELF, symbols and metadata")
-    parser.add_argument("--link-diagnostics", action="store_true", help="sample ESP heap at idle AT boundaries")
     parser.add_argument("--event-id-trace", action="store_true", help="record bounded hashed event IDs/lengths; no speech text")
     parser.add_argument("--latency-probe", action="store_true", help="record queue and transport timing metadata; no audio/text payloads")
     parser.add_argument("--low-latency-playback", action="store_true", help="adapt 1.28 s / 2 s voice prefill to observed PCM receive cadence")
-    parser.add_argument("--tls-passthrough", action="store_true", help="single verified TLS connection with raw duplex UART")
     parser.add_argument("--arm-tls", action="store_true", help="verified TLS on Zynq; ESP carries raw TCP")
-    parser.add_argument("--arm-tls-packets", action="store_true", help="ARM TLS over acknowledged CIPSEND blocks, without UART passthrough")
+    parser.add_argument("--arm-tls-packets", action="store_true", help="ARM TLS over acknowledged CIPSEND blocks; required with --arm-tls")
     parser.add_argument("--arm-tls-active-recv", action="store_true", help="ARM TCP packet transport with active IPD receive, avoiding passive read round trips")
-    parser.add_argument("--arm-tls-recv-probe", action="store_true", help="diagnostic: query passive TCP length once after 60 seconds without payload")
-    parser.add_argument("--tls-relay", help="diagnostic IPv4:port TCP relay; ARM still verifies the real cloud certificate")
-    parser.add_argument("--tls-wire-trace",action="store_true",help="requires the matching TX_TRACE diagnostic PL")
-    parser.add_argument("--drain-before-upload", action="store_true", help="experimental SSL receive-first scheduling")
-    parser.add_argument("--ssl-read-until-empty", action="store_true", help="experimental SSL reads without encrypted-length queries")
     parser.add_argument("--uart-baud", type=int, choices=(460800,921600,1000000,1666666,2000000),default=2000000)
     args = parser.parse_args()
     if args.speaker_cnn and not args.tinyqwen:parser.error('--speaker-cnn requires --tinyqwen')
@@ -163,16 +154,13 @@ def main():
     if args.text_only_response and not args.speech:
         parser.error("--text-only-response requires translated-audio mode")
 
-    if args.arm_tls_packets and (not args.arm_tls or args.tls_passthrough):
-        parser.error("--arm-tls-packets requires --arm-tls without --tls-passthrough")
-    if args.arm_tls_recv_probe and not args.arm_tls_packets:
-        parser.error("--arm-tls-recv-probe requires --arm-tls-packets")
+    if args.arm_tls != args.arm_tls_packets:
+        parser.error("--arm-tls and --arm-tls-packets go together")
     if args.arm_tls_active_recv and not args.arm_tls_packets:
         parser.error("--arm-tls-active-recv requires --arm-tls-packets")
     if args.arm_tls:
         if args.mode == "zhen" and not args.speech:
             parser.error("--mode zhen --arm-tls requires --speech")
-        args.tls_passthrough=not args.arm_tls_packets
     if args.mode == "zhen":
         OUT = ROOT / "output/cloud_app_zhen"
     if args.speech:
@@ -205,37 +193,11 @@ def main():
     if args.latency_probe:flags.append('-DZ7_LATENCY_PROBE')
     if args.low_latency_playback:flags.append('-DZ7_LOW_LATENCY_PLAYBACK')
     if args.arm_tls_active_recv:flags.append('-DZ7_ARM_TCP_ACTIVE_RECV')
-    if args.tls_wire_trace:
-        if not args.tls_relay:parser.error('--tls-wire-trace requires --tls-relay')
-        if args.arm_tls_packets:parser.error('--tls-wire-trace requires UART passthrough; packet AT bytes are not TLS bytes')
-        flags.append('-DZ7_TLS_WIRE_TRACE')
-    if args.tls_relay:
-        import ipaddress
-        if not args.arm_tls:parser.error('--tls-relay requires --arm-tls')
-        host,port=args.tls_relay.rsplit(':',1);host=str(ipaddress.IPv4Address(host));port=int(port)
-        if not 1<=port<=65535:parser.error('relay port must be 1..65535')
-        flags += ['-DZ7_TLS_TRACE','-DZ7_TLS_RELAY_IP="'+host+'"','-DZ7_TLS_RELAY_PORT='+str(port)]
     if args.arm_tls:
         flags += ["-DZ7_ARM_TLS", "-ffunction-sections", "-fdata-sections", "-Wl,--gc-sections",
                   '-DMBEDTLS_CONFIG_FILE="tls_config.h"', "-I", str(ROOT / "software/network_ui"),
                   "-I", str(ROOT / "third_party/mbedtls/include")]
         flags = [str(ROOT / "software/network_ui/link_arm_tls.ld") if f==str(ROOT / "software/network_ui/link.ld") else f for f in flags]
-    if args.link_diagnostics:
-        flags.append("-DZ7_LINK_DIAGNOSTICS")
-    if args.arm_tls_recv_probe:
-        flags.append("-DZ7_PASSIVE_RECV_PROBE")
-    if args.tls_passthrough:
-        if not args.speech and not args.arm_tls:
-            parser.error("--tls-passthrough requires --speech or --arm-tls")
-        flags.append("-DZ7_TLS_PASSTHROUGH")
-    if args.drain_before_upload:
-        if not args.speech or args.tls_passthrough:
-            parser.error("--drain-before-upload requires --speech without --tls-passthrough")
-        flags.append("-DZ7_SSL_DRAIN_FIRST")
-    if args.ssl_read_until_empty:
-        if not args.speech or args.tls_passthrough:
-            parser.error("--ssl-read-until-empty requires --speech without --tls-passthrough")
-        flags.append("-DZ7_SSL_NO_LENGTH_QUERY")
     if args.uart_baud==921600:
         flags.append("-DZ7_UART_LEGACY_STREAM")
     elif args.uart_baud==460800:
@@ -263,15 +225,11 @@ def main():
     if args.speaker_cnn:
         flags.append('-DZ7_SPEAKER_CNN')
         sources += ['software/network_ui/speaker_local.c','output/speaker_cnn/model_weights.c']
-    if args.local_ai:
-        if not args.arm_tls or not args.touch or args.mode not in ('zhen','enzh'):parser.error('--local-ai requires bilingual --arm-tls --touch')
-        flags.append('-DZ7_LOCAL_AI')
-        if args.selftest:flags.append('-DZ7_LOCAL_SELFTEST')
-        sources += ['software/network_ui/local_ai.c','software/network_ui/tiny_features.c','output/local_ai/tiny_model.c']
     if args.sd_boot:
         if not args.arm_tls or not args.touch:parser.error("--sd-boot requires --arm-tls --touch")
         flags.append("-DZ7_SD_BOOT");sources.append("software/network_ui/sd_boot_runtime.c")
-        if args.tinyqwen:sources.append("software/network_ui/sd_model.c")   # Qwen assets read from the TF card
+        if args.tinyqwen:   # Qwen assets and the optional glossary.txt read from the TF card
+            flags.append("-DZ7_GLOSSARY");sources += ["software/network_ui/sd_model.c","software/network_ui/glossary.c"]
     if args.remote_display:
         if not args.arm_tls or not args.touch or args.mode not in ("zhen","enzh"):parser.error("--remote-display requires --arm-tls --touch and a bilingual mode")
         flags.append("-DZ7_REMOTE_DISPLAY");sources.append("software/network_ui/remote_display.c")
@@ -380,7 +338,6 @@ def main():
         "OpusOptimization": "O2",
         "Touch": bool(args.touch),
         "RemoteDisplay":bool(args.remote_display),
-        "LocalAI":bool(args.local_ai),
         "TinyQwen":bool(args.tinyqwen),
         "SpeakerCNN":bool(args.speaker_cnn),
         "SDBoot":bool(args.sd_boot),
@@ -391,8 +348,6 @@ def main():
         "ArmTLS": bool(args.arm_tls),
         "ArmTLSPackets": bool(args.arm_tls_packets),
         "ArmTLSActiveReceive": bool(args.arm_tls_active_recv),
-        "ArmTLSReceiveProbe": bool(args.arm_tls_recv_probe),
-        "TLSWireTrace": bool(args.tls_wire_trace),
         "UARTBaud": args.uart_baud,
         "ELFSHA256": hashlib.sha256(elf_path.read_bytes()).hexdigest(),
         "InputSHA256": {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in sorted(set(sources) | {"scripts/build_cloud_app.py", "software/network_ui/language_profile.h", "software/network_ui/link_arm_tls.ld", "software/z7_nano_usb/touch_link.h", "hardware/z7_nano/source.json"} | {p.relative_to(ROOT).as_posix() for d in ("software/network_ui", "software/subtitle_ui") for p in (ROOT / d).glob("*.h")})},

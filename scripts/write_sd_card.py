@@ -3,6 +3,7 @@
 BOOT.BIN comes from scripts/build_sd_boot.py; qwen.tok and qwen.tqw are the
 firmware-pinned Qwen assets (CARD_FILES) that the firmware loads itself after
 startup. z7cfg.bin is left alone (scripts/make_sd_config.py writes it).
+--glossary also copies a glossary file to glossary.txt (format in docs/design/SD_BOOT.md).
 A card without a drive letter can be given as its volume path \\\\?\\Volume{...}\\.
 Run without -I: it imports build_sd_boot from this directory.
 """
@@ -21,6 +22,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("card", help=r"card root, e.g. E:\ or \\?\Volume{...}\ ")
     p.add_argument("--boot-only", action="store_true", help="replace only BOOT.BIN and keep the model files")
+    p.add_argument("--glossary", help="UTF-8 term list to write as glossary.txt, e.g. assets/glossary.example.txt")
     a = p.parse_args()
     out = ROOT / "output/z7_nano/sd_boot"
     record = json.loads((out / "sd_boot.json").read_text(encoding="utf-8"))
@@ -32,6 +34,10 @@ def main():
             if sha(ROOT / path) != digest:
                 raise RuntimeError("Firmware-pinned asset required: " + path)
             files[name] = (ROOT / path, digest)
+    if a.glossary:
+        if os.path.getsize(a.glossary) > 4096:
+            raise RuntimeError("The firmware ignores a glossary over 4096 bytes")
+        files["glossary.txt"] = (a.glossary, sha(a.glossary))
     card = a.card.strip()
     card = card if card.endswith(("\\", "/")) else card + "\\"
     for name, (source, digest) in files.items():

@@ -40,45 +40,6 @@ enum setup_state { SETUP_ECHO,SETUP_VERSION,SETUP_STOP_SERVER,SETUP_VOLATILE,
 #endif
     SETUP_ACTIVE_RECEIVE,SETUP_SERVER,SETUP_COUNT };
 static uint8_t frame[NET_FRAME_BYTES],ack[2048];
-#ifdef Z7_TLS_TRACE
-#include "tls_tx_trace.h"
-__attribute__((section(".cloud_runtime"),used)) volatile uint32_t network_tx_queue_trace[260],network_tx_uart_trace[260];
-#ifdef Z7_TLS_WIRE_TRACE
-__attribute__((section(".cloud_runtime"),used)) volatile uint32_t network_tx_wire_trace[262];
-#endif
-static uint32_t tx_trace_frozen;
-void network_tls_trace_begin(uint32_t session) {
-    tls_tx_trace_begin(network_tx_queue_trace,session);tls_tx_trace_begin(network_tx_uart_trace,session);tx_trace_frozen=0;
-#ifdef Z7_TLS_WIRE_TRACE
-    write_reg(0x34,(session<<1)|1u);
-#endif
-}
-void network_tls_trace_clean(void) {
-    cache_clean_range((const void *)network_tx_queue_trace,sizeof(network_tx_queue_trace));
-    cache_clean_range((const void *)network_tx_uart_trace,sizeof(network_tx_uart_trace));
-#ifdef Z7_TLS_WIRE_TRACE
-    if(network_tx_queue_trace[0]) {
-        uint32_t count=read_reg(0x38),last=count/256u;
-        network_tx_wire_trace[0]=0x31545854u;network_tx_wire_trace[1]=read_reg(0x44);
-        network_tx_wire_trace[2]=count;network_tx_wire_trace[3]=read_reg(0x3c);
-        for(uint32_t slot=0;slot<128u;++slot) {
-            uint32_t block=last>slot?slot+1u+((last-slot-1u)/128u)*128u:0;
-            network_tx_wire_trace[4u+2u*slot]=block;
-            network_tx_wire_trace[5u+2u*slot]=block?read_reg(0x100u+4u*slot):0;
-        }
-        network_tx_wire_trace[260]=read_reg(0x40);network_tx_wire_trace[261]=read_reg(0x48);
-        cache_clean_range((const void *)network_tx_wire_trace,sizeof(network_tx_wire_trace));
-    }
-#endif
-}
-void network_tls_trace_freeze(void) {
-    tx_trace_frozen=1;
-#ifdef Z7_TLS_WIRE_TRACE
-    write_reg(0x34,0);
-#endif
-    network_tls_trace_clean();
-}
-#endif
 static uint32_t send_size;
 static uint32_t peer,peer_port,raw_state,raw_deadline;
 #define RAW_UNCONFIRMED 8u
@@ -95,24 +56,6 @@ static uint32_t uart_sync_needed,uart_recovery,uart_recovery_pos,uart_recovery_d
 static uint32_t passive_enabled,passive_pending,passive_read,passive_header;
 static uint32_t passive_retry_at;
 static uint32_t passive_unread,upload_yield_started,upload_yielding;
-#ifdef Z7_PASSIVE_RECV_PROBE
-static uint32_t last_tcp_payload_ms,receive_probe_active;
-/* One diagnostic query per boot; metadata only, never AT or TLS payloads.
-   magic, queries, request_ms, last_payload_ms, pending, unread, read,
-   command, ack, ipd, line, uart_rx, returned_bytes, reply_ms, result, new_notices.
-   result: 0 pending, 1 success, 2 failed. */
-__attribute__((section(".cloud_runtime"),used)) volatile uint32_t network_receive_probe_diag[16];
-static void receive_probe_done(uint32_t result,uint32_t count) {
-    if(!receive_probe_active) return;
-    receive_probe_active=0;
-    network_receive_probe_diag[12]=count;network_receive_probe_diag[13]=current_time;
-    network_receive_probe_diag[14]=result;
-    cache_clean_range((const void *)network_receive_probe_diag,sizeof(network_receive_probe_diag));
-}
-#endif
-#ifdef Z7_SSL_NO_LENGTH_QUERY
-static uint32_t passive_empty_attempts,passive_poll_at;
-#endif
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t receive_priority_diag[5];
 static uint32_t link_recovering,link_recovery_started;
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t link_recovery_diag[7];
@@ -130,11 +73,6 @@ __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t first_u
 #endif
 static void (*stream_receive)(uint8_t);
 __attribute__((section(".cloud_runtime"),used)) static volatile uint32_t link_quality[5];
-#ifdef Z7_LINK_DIAGNOSTICS
-static uint32_t heap_query,heap_query_at;
-__attribute__((section(".cloud_runtime"),used)) static volatile uint32_t network_heap[9];
-static void heap_clean(void) {cache_clean_range((const void *)network_heap,sizeof(network_heap));}
-#endif
 #ifdef Z7_STREAM_TRANSPORT
 /* Metadata only: collect locally and read once after playback, never log
    command/reply bytes or credentials. */
@@ -160,43 +98,22 @@ static void duplex_snapshot(volatile struct duplex_snapshot *out) {
    reserved=1 is the explicit wrong-CN diagnostic; no API key is involved. */
 #define CLOUD_HOST "ws-zckg39zhbiii3yrv.cn-beijing.maas.aliyuncs.com"
 static uint32_t tls_mode,tls_step,tls_wait_until,tls_time_deadline,tls_connected,tls_closing;
-#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+#ifdef Z7_ARM_TLS
 static uint32_t packet_close_pending;
 #endif
 static const char *const tls_commands[]={
 #ifdef Z7_ARM_TLS
-#ifdef Z7_TLS_PASSTHROUGH
-#define ARM_TCP_ID ""
-#else
 #define ARM_TCP_ID "0,"
-#endif
     "AT+CIPDOMAIN=\"" CLOUD_HOST "\"\r\n",
-#ifdef Z7_TLS_RELAY_IP
-#define TLS_PORT_TEXT_(n) #n
-#define TLS_PORT_TEXT(n) TLS_PORT_TEXT_(n)
-    "AT+CIPSTART=" ARM_TCP_ID "\"TCP\",\"" Z7_TLS_RELAY_IP "\"," TLS_PORT_TEXT(Z7_TLS_RELAY_PORT) "\r\n",
-#else
     "AT+CIPSTART=" ARM_TCP_ID "\"TCP\",\"" CLOUD_HOST "\",443\r\n",
-#endif
-#ifdef Z7_TLS_PASSTHROUGH
-    "AT+CIPMODE=1\r\n","AT+CIPSEND\r\n"
-#endif
 #else
     "AT+CIPDOMAIN=\"" CLOUD_HOST "\"\r\n",
     "AT+CIPSNTPCFG=1,0,\"ntp.aliyun.com\",\"ntp1.aliyun.com\"\r\n",
     "AT+CIPSNTPTIME?\r\n",
-#ifdef Z7_TLS_PASSTHROUGH
-    "AT+CIPSSLCCONF=2,0,0\r\n","AT+CIPSSLCCONF?\r\n",
-    "AT+CIPSSLCSNI=\"" CLOUD_HOST "\"\r\n",
-    "AT+CIPSSLCCN=\"" CLOUD_HOST "\"\r\n",
-    "AT+CIPSTART=\"SSL\",\"" CLOUD_HOST "\",443\r\n",
-    "AT+CIPMODE=1\r\n","AT+CIPSEND\r\n"
-#else
     "AT+CIPSSLCCONF=0,2,0,0\r\n","AT+CIPSSLCCONF?\r\n",
     "AT+CIPSSLCSNI=0,\"" CLOUD_HOST "\"\r\n",
     "AT+CIPSSLCCN=0,\"" CLOUD_HOST "\"\r\n",
     "AT+CIPSTART=0,\"SSL\",\"" CLOUD_HOST "\",443\r\n"
-#endif
 #endif
 };
 #endif
@@ -250,12 +167,6 @@ static void remove_notification_reply(void) {
     reply[reply_size]=0;
 }
 static void fault(uint32_t error) {
-#ifdef Z7_PASSIVE_RECV_PROBE
-    receive_probe_done(2,0);
-#endif
-#ifdef Z7_LINK_DIAGNOSTICS
-    network_heap[6]=network_heap[2];network_heap[7]=network_heap[3];heap_query=0;heap_clean();
-#endif
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
     if(error==32u && !first_uart_fault[0]) {
         first_uart_fault[0]=0x31554657u;first_uart_fault[1]=error;
@@ -341,11 +252,6 @@ static void send_ack_command(void) {
 int network_send(const uint8_t *data,uint32_t size) {
     if(network_info.phase!=4 || command_phase || ack_pending || frame_ready || line_used || !size || size>sizeof(ack)) return 0;
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
-#ifdef Z7_SSL_DRAIN_FIRST
-    /* Finish the SSL receive transaction and its availability query before
-       asking the small ESP to allocate another transmit record. */
-    if(passive_enabled && (passive_pending || passive_unread || passive_read || ipd_left)) return 0;
-#endif
     /* Prefer draining large audio bursts, but never starve microphone uploads
        for an entire spoken response. Recheck at the next idle AT boundary. */
     if(passive_enabled && passive_unread>4096u) {
@@ -358,9 +264,6 @@ int network_send(const uint8_t *data,uint32_t size) {
     upload_yielding=0;
 #endif
     for(uint32_t i=0;i<size;++i) ack[i]=data[i];
-#ifdef Z7_TLS_TRACE
-    if(tls_mode && !tx_trace_frozen) tls_tx_trace_add(network_tx_queue_trace,ack,size);
-#endif
     send_size=size;ack_pending=1;
 #ifdef Z7_LATENCY_PROBE
     perf_tx_ms=current_time;
@@ -376,9 +279,6 @@ int network_stream_attach(void (*receive)(uint8_t)) {
        network_config.request_sequence!=network_info.config_ack ||
        command_phase || ack_pending || (raw_state && !(raw_state==1 && network_info.phase==8)) || stream_receive) return 0;
     stream_receive=receive;network_info.phase=4;network_info.client=0;resync=0;send_failures=0;
-#ifdef Z7_PASSIVE_RECV_PROBE
-    last_tcp_payload_ms=current_time;
-#endif
     return 1;
 }
 int network_stream_busy(void) {return command_phase || ack_pending;}
@@ -397,7 +297,7 @@ void network_stop(void) {
         raw_state=2;raw_deadline=current_time+4000;network_info.phase=7;
         (void)ui_control(model,UI_PAUSE);
     }
-#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+#ifdef Z7_ARM_TLS
     /* Latch close even if the user resumes before the accepted block finishes. */
     else if(!raw_state && tls_mode && (network_info.phase==4 || network_info.phase==8)) packet_close_pending=1;
 #endif
@@ -417,9 +317,6 @@ static void issue_setup(void) {
     network_info.last_code=setup_step;
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
     if(passive_enabled && setup_step==SETUP_ACTIVE_RECEIVE) {begin_command("AT+CIPRECVMODE=1\r\n",4000);return;}
-#endif
-#ifdef Z7_TLS_PASSTHROUGH
-    if(tls_mode && setup_step==SETUP_MULTIPLEX) {begin_command("AT+CIPMUX=0\r\n",4000);return;}
 #endif
         if(peer) {
         if(setup_step==SETUP_STOP_SERVER) {begin_command("AT+CIPSERVER=0,1\r\n",4000);return;}
@@ -441,11 +338,7 @@ static void tls_issue(void) {
     network_info.last_code=100u+tls_step;
     const char *text=tls_commands[tls_step];
     if(tls_step==6 && tls_mode==2) {
-#ifdef Z7_TLS_PASSTHROUGH
-        text="AT+CIPSSLCCN=\"wrong.invalid\"\r\n";
-#else
         text="AT+CIPSSLCCN=0,\"wrong.invalid\"\r\n";
-#endif
     }
     begin_command(text,tls_step==7?25000u:4000u);
 }
@@ -570,14 +463,6 @@ static void configuration(void) {
     uint32_t request=network_config.request_sequence;
     if(request==network_info.config_ack || wifi_info.phase!=2) return;
     fence();
-#ifdef Z7_TLS_PASSTHROUGH
-    if(network_config.action==4 && tls_mode && raw_state==1 &&
-       (network_info.phase==4 || network_info.phase==8) &&
-       network_config.magic==0x3146434eu && !network_config.ssid_bytes &&
-       !network_config.password_bytes && !network_config.reserved && !network_config.port) {
-        network_info.config_ack=request;stream_receive=0;network_stop();return;
-    }
-#endif
     // Faults with unfinished framing require an application restart. A new
     // configuration must not reinterpret unread payload as command replies.
     if(command_phase || ipd_left || frame_used || frame_ready || line_used || ack_pending) {
@@ -672,15 +557,12 @@ static void configuration(void) {
     if(cloud_tls) {tls_mode=1u+network_config.reserved;tls_step=tls_wait_until=tls_connected=tls_closing=0;peer=0;}
 #endif
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
-#if defined(Z7_TLS_PASSTHROUGH) || defined(Z7_ARM_TCP_ACTIVE_RECV)
+#ifdef Z7_ARM_TCP_ACTIVE_RECV
     passive_enabled=0;
 #else
     passive_enabled=cloud_tls;
 #endif
     passive_pending=passive_read=passive_header=passive_retry_at=passive_unread=0;
-#ifdef Z7_SSL_NO_LENGTH_QUERY
-    passive_empty_attempts=0;passive_poll_at=current_time+100u;
-#endif
 #endif
     if(enabled) (void)ui_control(model,UI_PAUSE);
     setup_step=0;frame_used=frame_ready=ipd_left=line_used=last_request=ack_pending=0;
@@ -712,13 +594,7 @@ static void line_event(void) {
         uint32_t n=7,count=0;
         while(line[n]>='0' && line[n]<='9') {count=count*10u+(uint32_t)(line[n++]-'0');if(count>65535u) {fault(24);return;}}
         if(n==7 || line[n]) {fault(24);return;}
-#ifdef Z7_PASSIVE_RECV_PROBE
-        if(count && receive_probe_active) ++network_receive_probe_diag[15];
-#endif
         if(count) passive_pending=1;
-#ifdef Z7_SSL_NO_LENGTH_QUERY
-        if(count) passive_empty_attempts=0;
-#endif
         if(count>passive_unread) passive_unread=count;
         if(passive_unread>receive_priority_diag[2]) receive_priority_diag[2]=passive_unread;
         /* A prior SEND OK may have cleared reply while this notification was
@@ -770,9 +646,6 @@ static void receive(uint8_t byte) {
     if(ipd_left) {
         --ipd_left;
         if(network_info.phase==4 && ipd_client==network_info.client) {
-#ifdef Z7_PASSIVE_RECV_PROBE
-            last_tcp_payload_ms=current_time;
-#endif
             if(stream_receive) stream_receive(byte);else frame_byte(byte);
         }
         return;
@@ -804,13 +677,8 @@ static void receive(uint8_t byte) {
         passive_unread=count && passive_unread>count?passive_unread-count:0;
         /* A short SSL plaintext block can still leave buffered data. Query
            availability before another read instead of waiting for a new IPD. */
-#ifdef Z7_SSL_NO_LENGTH_QUERY
-        passive_pending=count?1u:0u;passive_empty_attempts=0;
-        if(!count) passive_poll_at=current_time+100u;
-#else
         if(count==PASSIVE_READ_BYTES) passive_pending=1;
         else if(count && !passive_pending) passive_pending=2;
-#endif
         remove_notification_reply();
         return;
     }
@@ -878,9 +746,6 @@ static void command_tick(void) {
 #endif
         for(uint32_t budget=0;budget<tx_budget && command_pos<send_size && (read_reg(4)&2u);++budget) {
             uint8_t byte=ack[command_pos++];write_reg(16,byte);
-#ifdef Z7_TLS_TRACE
-            if(tls_mode && !tx_trace_frozen) tls_tx_trace_add(network_tx_uart_trace,&byte,1);
-#endif
         }
         if(command_pos<send_size || (read_reg(4)&4u)) return;
         if(raw_state==1 || raw_state==2) {command_phase=ack_pending=0;return;}
@@ -908,54 +773,13 @@ static void command_tick(void) {
         return;
     }
     if(command_phase!=2) return;
-#ifdef Z7_TLS_PASSTHROUGH
-    if(tls_mode && network_info.phase==1 && setup_step==SETUP_COUNT && tls_step==(sizeof(tls_commands)/sizeof(tls_commands[0]))-1u) {
-        if(contains(reply,"ERROR") || contains(reply,"FAIL")) {fault(43);return;}
-        if(!contains(reply,">")) return;
-        command_phase=0;reply_size=line_used=0;clear_reply();
-        raw_state=1;network_info.phase=8;network_info.client=0;
-        tls_step=(uint32_t)(sizeof(tls_commands)/sizeof(tls_commands[0]));
-        saved_retry_count=saved_retry_at=0;return;
-    }
-#endif
-#ifdef Z7_LINK_DIAGNOSTICS
-    if(heap_query) {
-        int failed=contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n");
-        if(!failed && !contains(reply,"\r\nOK\r\n")) return;
-        const char *p=reply;
-        while(*p && !starts(p,"+SYSRAM:")) ++p;
-        if(!failed && *p) {
-            p+=8;uint32_t free_bytes=0,minimum=0;
-            while(*p>='0' && *p<='9') free_bytes=free_bytes*10u+(uint32_t)(*p++-'0');
-            if(*p==',') {++p;while(*p>='0' && *p<='9') minimum=minimum*10u+(uint32_t)(*p++-'0');}
-            ++network_heap[1];network_heap[2]=free_bytes;network_heap[3]=minimum;
-            if(!network_heap[4] || free_bytes<network_heap[4]) network_heap[4]=free_bytes;
-            network_heap[5]=current_time;network_heap[8]=1;
-        } else network_heap[8]=2;
-        network_heap[0]=0x31504845u;heap_clean();
-        heap_query=command_phase=0;clear_reply();return;
-    }
-#endif
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
     if(passive_read) {
         if(contains(reply,"\r\nERROR\r\n") || contains(reply,"\r\nFAIL\r\n")) {
             if(passive_read==2u || passive_header) {fault(43);return;}
-#ifdef Z7_SSL_NO_LENGTH_QUERY
-            /* ERROR can mean an empty socket or a transient allocation miss.
-               Retry once, then poll at a low rate; never query encrypted length. */
-            passive_read=command_phase=0;clear_reply();
-            if(++passive_empty_attempts<2u) {
-                passive_pending=1;passive_retry_at=current_time+20u;
-            } else {
-                passive_pending=passive_unread=passive_empty_attempts=0;
-                passive_poll_at=current_time+100u;
-            }
-            return;
-#else
             /* An empty socket or a temporary allocation failure can reject a
                read without closing SSL. Query availability, don't tear it down. */
             passive_read=2u;begin_command("AT+CIPRECVLEN?\r\n",4000);return;
-#endif
         }
         if(contains(reply,"\r\nOK\r\n")) {
             if(passive_read==2u) {
@@ -966,9 +790,6 @@ static void command_tick(void) {
                 while(*p>='0' && *p<='9') {count=count*10u+(uint32_t)(*p++-'0');++n;if(count>65535u) {fault(24);return;}}
                 if(!n || (*p!=',' && *p!='\r')) {fault(24);return;}
                 passive_unread=count;
-#ifdef Z7_PASSIVE_RECV_PROBE
-                receive_probe_done(1,count);
-#endif
                 if(count>receive_priority_diag[2]) receive_priority_diag[2]=count;
                 if(count) passive_pending=1;
                 passive_retry_at=current_time+(count?0u:20u);
@@ -1086,9 +907,6 @@ static void raw_cleanup(void) {
             if((int32_t)(current_time-raw_deadline)>=0) {raw_state=RAW_UNCONFIRMED;command_phase=ack_pending=0;network_info.phase=6;network_info.error=42;}
             return;
         }
-#ifdef Z7_TLS_WIRE_TRACE
-        write_reg(0x34,0); // Exclude the following AT escape from the wire trace.
-#endif
         raw_state=3;raw_deadline=current_time+1100;
     } else if(raw_state==3 && (int32_t)(current_time-raw_deadline)>=0) {
         write_reg(16,'+');write_reg(16,'+');write_reg(16,'+');raw_state=4;raw_deadline=current_time+4000;
@@ -1122,22 +940,13 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
     words=(volatile uint32_t *)&network_capabilities;for(uint32_t i=0;i<16;++i) words[i]=0;
     network_capabilities.magic=0x43415031u;capability_query=0;
     tls_mode=tls_step=tls_wait_until=tls_time_deadline=tls_connected=tls_closing=0;
-#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+#ifdef Z7_ARM_TLS
     packet_close_pending=0;
 #endif
 #endif
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
     uart_sync_needed=uart_recovery=uart_recovery_pos=uart_recovery_deadline=0;
     passive_enabled=passive_pending=passive_read=passive_header=passive_retry_at=passive_unread=0;
-#ifdef Z7_PASSIVE_RECV_PROBE
-    last_tcp_payload_ms=receive_probe_active=0;
-    for(uint32_t i=0;i<16u;++i) network_receive_probe_diag[i]=0;
-    network_receive_probe_diag[0]=0x3150524eu;
-    cache_clean_range((const void *)network_receive_probe_diag,sizeof(network_receive_probe_diag));
-#endif
-#ifdef Z7_SSL_NO_LENGTH_QUERY
-    passive_empty_attempts=passive_poll_at=0;
-#endif
     upload_yield_started=upload_yielding=0;
     for(uint32_t i=0;i<5u;++i) receive_priority_diag[i]=0;
     receive_priority_diag[0]=0x31505852u;
@@ -1145,10 +954,6 @@ void network_init(wifi_read_fn r,wifi_write_fn w) {
     for(uint32_t i=0;i<8u;++i) first_uart_fault[i]=0;
     for(uint32_t i=0;i<7u;++i) link_recovery_diag[i]=0;
     link_recovery_diag[0]=0x314b4e4cu;link_recovering=link_recovery_started=0;
-#endif
-#ifdef Z7_LINK_DIAGNOSTICS
-    for(uint32_t i=0;i<9u;++i) network_heap[i]=0;
-    network_heap[0]=0x31504845u;heap_query=heap_query_at=0;heap_clean();
 #endif
     network_info.magic=0x3154454eu;network_info.client=0xffffffffu;network_config.magic=0x3146434eu;
     /* The ESP8266 AT firmware runs at 115200 (divider 434); force it at init
@@ -1167,19 +972,13 @@ static void retry_setup(void) {
     /* Counters are sticky. A stale UART error must not invalidate the new
        configuration between re-arming it and its next service tick. */
     write_reg(12,8);network_info.overflow=network_info.framing=0;
-#ifdef Z7_LINK_DIAGNOSTICS
-    heap_query=0;
-#endif
 #ifdef Z7_STREAM_TRANSPORT
     upload_yielding=0;
     passive_pending=passive_read=passive_header=passive_retry_at=passive_unread=0;
-#ifdef Z7_SSL_NO_LENGTH_QUERY
-    passive_empty_attempts=0;passive_poll_at=current_time+100u;
-#endif
 #endif
     stream_receive=0;
     tls_mode=tls_step=tls_wait_until=tls_connected=tls_closing=0;
-#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+#ifdef Z7_ARM_TLS
     packet_close_pending=0;
 #endif
     enabled=0;command_phase=ack_pending=resync=0;
@@ -1211,7 +1010,7 @@ void network_cloud_run(int run) {
     if(cloud_resume_pending && network_info.phase==0 && saved_ssid_bytes) {
         cloud_resume_pending=0;retry_setup();
     } else if((network_info.phase==4 || network_info.phase==8)
-#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+#ifdef Z7_ARM_TLS
               && !packet_close_pending
 #endif
     ) cloud_resume_pending=0;
@@ -1343,36 +1142,9 @@ void network_tick(struct ui_state *state,uint32_t now) {
         if(network_info.phase==4) {
             commit_frame();
             if(ack_pending && !command_phase) send_ack_command();
-#ifdef Z7_LINK_DIAGNOSTICS
-            if(stream_receive && !command_phase && !ack_pending && !ipd_left && !line_used &&
-               (int32_t)(current_time-heap_query_at)>=0 && network_heap[8]!=2u) {
-                heap_query=1;heap_query_at=current_time+5000u;begin_command("AT+SYSRAM?\r\n",4000);
-            }
-#endif
 #if defined(Z7_STREAM_TRANSPORT) && defined(Z7_NETWORK_CAPABILITIES)
             /* Return ownership once after each read, so the microphone can
                queue a due upload before the next receive transaction. */
-#ifdef Z7_PASSIVE_RECV_PROBE
-            /* Diagnose a missing passive notification at an owned AT boundary.
-               Opt-in only: no periodic polling or automatic reconnect. */
-            if(passive_enabled && stream_receive && !network_receive_probe_diag[1] &&
-               !passive_pending && !passive_unread && !passive_read && !was_reading &&
-               !command_phase && !ack_pending && !ipd_left && !line_used &&
-               !packet_close_pending && !(read_reg(4)&1u) &&
-               (uint32_t)(current_time-last_tcp_payload_ms)>=60000u) {
-                uint32_t snapshot[]={0x3150524eu,1,current_time,last_tcp_payload_ms,
-                    passive_pending,passive_unread,passive_read,command_phase,
-                    ack_pending,ipd_left,line_used,read_reg(24),0,0,0,0};
-                for(uint32_t i=0;i<16u;++i) network_receive_probe_diag[i]=snapshot[i];
-                cache_clean_range((const void *)network_receive_probe_diag,sizeof(network_receive_probe_diag));
-                receive_probe_active=1;
-                passive_pending=2;
-            }
-#endif
-#ifdef Z7_SSL_NO_LENGTH_QUERY
-            if(passive_enabled && stream_receive && !passive_pending && !passive_read &&
-               (int32_t)(current_time-passive_poll_at)>=0) passive_pending=1;
-#endif
             if(passive_enabled && passive_pending && !passive_read && !was_reading &&
                stream_receive && !command_phase && !ack_pending && !line_used &&
                (int32_t)(current_time-passive_retry_at)>=0) {
@@ -1394,7 +1166,7 @@ done:
         cache_clean_range((const void *)transport_perf,sizeof(transport_perf));
     }
 #endif
-#if defined(Z7_ARM_TLS) && !defined(Z7_TLS_PASSTHROUGH)
+#ifdef Z7_ARM_TLS
     /* Complete the owned binary transaction before issuing the close command. */
     if(packet_close_pending && (network_info.phase==4 || network_info.phase==8) &&
        !command_phase && !ack_pending && !ipd_left && !line_used && !(read_reg(4)&1u)) {

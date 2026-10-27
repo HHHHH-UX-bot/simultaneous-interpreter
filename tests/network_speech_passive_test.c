@@ -100,13 +100,8 @@ int main(void) {
         network_tick(&state,++clock_ms);
         if(pending_bytes && !network_stream_busy()) (void)network_send(audio,sizeof(audio));
     }
-#ifdef Z7_SSL_DRAIN_FIRST
-    (void)stress_start;
-    check(!fair_uploads && uploads==previous_uploads,"receive-first mode completes buffered SSL data before upload");
-#else
     check(fair_uploads>0 && uploads>previous_uploads,"sustained downlink cannot starve microphone");
     check(first_fair_upload-stress_start>=150u && first_fair_upload-stress_start<220u,"bounded receive priority at idle AT boundary");
-#endif
     check(delivered==52507u && !pending_bytes && !network_info.error,"fair uploads preserve byte-exact downlink");
     fair_stress=short_reads=0;
     /* Complete the availability query scheduled by the last short SSL read. */

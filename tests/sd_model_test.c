@@ -8,6 +8,7 @@
 #include <string.h>
 #include "mbedtls/sha256.h"
 #include "../software/network_ui/sd_model.h"
+#include "../software/network_ui/glossary.h"
 #include "../software/subtitle_ui/ui_model.h"
 
 void sd_model_reset(void);
@@ -118,8 +119,12 @@ int main(void) {
     file("QWEN    TOK",source[1],bytes[1],tok,1);
     file("QWEN    TQW",source[0],bytes[0],model,3);
     entry("QWEN    TQW",0x10,5,0);
+    static const char words[]="\xef\xbb\xbf# terms\n\xe4\xbc\x9a\xe8\xae\xae = meeting\r\nbad line\n\xe6\xb5\x8b\xe8\xaf\x95=test\n";
+    static const uint32_t glossary_extent[][2]={{60,1}};
+    file("GLOSSARYTXT",(const uint8_t *)words,sizeof(words)-1u,glossary_extent,1);
     assert(roots==2u);
     assert(run()==UI_MODEL_READY);loaded();
+    assert(glossary_terms()==2u && glossary_skipped()==1u);
     uint32_t data_commands=sd_model_diag[7];
     assert(data_commands==5u);   /* tokenizer 1, model 1024+176, 200, 136 clusters */
     /* Broken chain: a free FAT entry in the middle of the model. */

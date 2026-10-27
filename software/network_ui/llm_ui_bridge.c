@@ -72,7 +72,6 @@ void local_ai_init(struct ui_state *state) {
     speaker_local_init(state);
 #endif
 }
-void local_ai_feed(const int16_t *pcm,uint32_t count) {(void)pcm;(void)count;}
 /* Model page status, and a four-second notice the first time the engine is
    usable (TF card load, PC upload or warm restore alike). */
 static void model_view(uint32_t now) {

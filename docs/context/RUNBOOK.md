@@ -11,7 +11,7 @@
 - JTAG 运行：先启动 2026.1 hw_server，`scripts/load_tts.py --xsct <2026.1 xsdb>` 核对并加载匹配的位流、应用与 CPU1 触摸，再由用户在终端运行 `scripts/configure_cloud_runtime.py --xsdb <同一 xsdb>` 输入凭据。根目录 `.cmd` 入口默认 2018.3。电脑画面、直连地址和历史另存为见 [REMOTE_DISPLAY](../design/REMOTE_DISPLAY.md)。
 - 提交前回归：`python -B scripts/run_host_tests.py`（默认 `D:/cenvironment/mingw64/bin/gcc.exe`，可用 `--gcc` 指定），一条命令跑完全部电脑端测试，不接板、不联网；没有纳入的脚本及原因写在该脚本开头。
 - 暖换 ELF：受控关闭云连接、确认普通 AT/TCP 已关闭、停止匹配 CPU1 并确认 USB DMA Halt；同一 PL 时复用位流，不为 UI 改动重做 FPGA。操作前核对线缆/PL/CPU/ELF，不读取私有凭据区。
-- UI 模型/快照大小要与捕获工具和主机解析器一起更新，旧 ABI 拒绝混用：板上 Qwen 构建 135996/136060，仅本地 AI 135984/136048，历史/设置 135940/136004。`z7_nano_capture.tcl` 需显式传期望模型大小（默认仍是旧版 11392）。
+- UI 模型/快照大小要与捕获工具和主机解析器一起更新，旧 ABI 拒绝混用：板上 Qwen 构建 136000/136064，历史/设置 135952/136016（2026-10-27 起；旧“仅本地 AI”构建已删除）。`z7_nano_capture.tcl` 需显式传期望模型大小（默认仍是旧版 11392）。
 - 示例夹具只验证 UI，不能当作真实采音/云译；板上正常识别不等于定稿/历史可靠（R28）。旧 RevB P/W、电脑 P5 和独立 ASR/译音命令只对各自对象有效。连续长句验证与测量入口见[长句验证](../validation/long-speech-20261022/README.md)。
 
 ## 英语输入模式（2026-10-20）
@@ -331,7 +331,7 @@ python -B scripts/run_z7_nano_usb_live.py stop
 2. FSBL：`cmd /c "chcp 65001 >nul && vitis -s scripts\build_sd_boot_fsbl.py output\z7_nano\sd_boot"`。不切 UTF-8 代码页时，中文 Windows 上 Vitis 接口会因服务输出的 GBK 文字崩溃。
 3. 应用：按当前产品参数加 `--sd-boot` 构建到 `output/network_history/microphone`；PL 平台与 CPU1 沿用已验证产物。
 4. 打包：`python -B scripts/build_sd_boot.py`，生成约 5 MB 的 `output/z7_nano/sd_boot/BOOT.BIN`（不含 Qwen）与记录各输入哈希的 `sd_boot.json`。
-5. 写卡：`python -B scripts/write_sd_card.py <卡根目录>`，复制 `BOOT.BIN`、`qwen.tok`、`qwen.tqw`（Qwen 资产须已按 model_tools 放在 `models/`）并逐个回读核对 SHA256；只换程序时加 `--boot-only`。卡没有盘符时用卷路径 `\\?\Volume{…}\`（PowerShell `Get-Volume` 的 Path），并在 PowerShell 中运行：Git Bash 会改写这种参数。不要加 `-I`（脚本要导入同目录模块）。
+5. 写卡：`python -B scripts/write_sd_card.py <卡根目录>`，复制 `BOOT.BIN`、`qwen.tok`、`qwen.tqw`（Qwen 资产须已按 model_tools 放在 `models/`）并逐个回读核对 SHA256；只换程序时加 `--boot-only`，要放术语表时加 `--glossary <文件>`（格式见 [SD_BOOT](../design/SD_BOOT.md#术语表2026-10-27)）。卡没有盘符时用卷路径 `\\?\Volume{…}\`（PowerShell `Get-Volume` 的 Path），并在 PowerShell 中运行：Git Bash 会改写这种参数。不要加 `-I`（脚本要导入同目录模块）。
 6. 配置：用户在终端运行 `python -B scripts/make_sd_config.py <卡根目录>`，亲自输入 Wi-Fi 与百炼 Key，工作空间与模型路径直接回车用默认值。不要加 `-I`（脚本要导入同目录模块）。
 7. 上电：J1 跳到 SD，确认音频模块插好且 5 V 接好，完全断电后上电。可用 JTAG 只读检查 BOOT_MODE=5、OCM `0x2F000` 启动信息、`sd_boot_diag`、网络阶段、CPU1 报告与卡上模型加载 `sd_model_diag`（地址按本次构建的 `symbols.log`），不要停核或写内存。
 8. 回到 JTAG 开发：J1 放回 JTAG，再按“当前产品构建与运行范围”加载。

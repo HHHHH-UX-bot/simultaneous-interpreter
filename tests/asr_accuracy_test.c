@@ -277,17 +277,6 @@ int main(void) {
     CHECK(cloud_health[8]==8 && cloud_health[15]==1000);
     cloud_live_tick(7201);CHECK(transport_failures==failures_before+1);
     cloud_live_begin(7300);CHECK(cloud_health[8]==8 && !cloud.live.error);
-#ifdef Z7_TLS_PASSTHROUGH
-    client.phase=CLOUD_STREAMING;last_rx_ms=0;ping_sent=0;blocked=1;
-    cloud_client_tick(16000);CHECK(!ping_sent);
-    blocked=0;cloud_client_tick(16001);CHECK(ping_sent && keepalive_diag[1]==1);
-    cloud_client_receive(0x8au);cloud_client_receive(0);
-    cloud_client_tick(16002);CHECK(!ping_sent && client.phase==CLOUD_STREAMING);
-    cloud_client_tick(31002);CHECK(ping_sent && keepalive_diag[1]==2);
-    unsigned before_timeout=transport_failures;
-    cloud_client_tick(36003);
-    CHECK(client.phase==CLOUD_IDLE && keepalive_diag[2]==1 && transport_failures==before_timeout+1);
-#endif
     /* A refused upgrade request is resent; a server silent for 15 s fails the link. */
     cloud_client_stop();blocked=1;cloud_client_start(40000);
     CHECK(client.phase==CLOUD_HANDSHAKE && client.handshake_pending);

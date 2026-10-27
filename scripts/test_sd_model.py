@@ -12,7 +12,7 @@ def main():
     work = ROOT / "tmp/sd_model"
     work.mkdir(parents=True, exist_ok=True)
     exe = work / "sd_model_test.exe"
-    sources = ["tests/sd_model_test.c", "software/network_ui/sd_model.c",
+    sources = ["tests/sd_model_test.c", "software/network_ui/sd_model.c", "software/network_ui/glossary.c",
                "third_party/mbedtls/library/sha256.c", "third_party/mbedtls/library/platform_util.c"]
     subprocess.run([a.gcc, "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-DSD_MODEL_HOST", "-DZ7_TINYQWEN",
                     "-I", str(ROOT / "software/network_ui"), "-I", str(ROOT / "third_party/mbedtls/include"),
