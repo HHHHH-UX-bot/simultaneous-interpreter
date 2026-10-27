@@ -8,6 +8,8 @@ static uint32_t cap_read(uint32_t offset) {
     return reg_read(offset);
 }
 static void cap_write(uint32_t offset,uint32_t value) {
+    /* network_init/retry_setup reset the UART: clear (12) and 115200 (8 = 434). */
+    if(offset==12 || (offset==8 && value==434u)) return;
     check(offset==16,"capability task only writes UART TX");
     check(query_used+1<sizeof(query),"query bounded");query[query_used++]=(char)value;query[query_used]=0;
     if(value!='\n') return;

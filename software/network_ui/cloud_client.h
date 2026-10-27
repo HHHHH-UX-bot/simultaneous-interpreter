@@ -23,6 +23,7 @@ struct cloud_client_state {
     uint32_t ogg_header_step, ogg_seq, ogg_granule;
     /* Diagnostics visible to the host: the last append's JSON size and head. */
     uint32_t tx_len, tx_frames;
+    uint32_t handshake_pending, handshake_ms;
     char tx_head[40];
     uint8_t pcm[1440];
     char response[512];

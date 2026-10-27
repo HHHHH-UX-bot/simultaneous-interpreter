@@ -16,8 +16,10 @@
 #define SD_BOOT_PAYLOAD_MAGIC   0x4C50375Au   /* "Z7PL" */
 
 /* Written by the stub after placing both images; payload_crc holds 0xbad0000N
-   instead when the payload was rejected (the stub then stops). */
-struct sd_boot_info {uint32_t magic,version,cpu1_entry,payload_crc;};
+   instead when the payload was rejected (the stub then stops). stub_start and
+   stub_end are the global timer's low word, which the FSBL runtime started at
+   zero: start is the FSBL's own time, end-start the stub's (333333 per ms). */
+struct sd_boot_info {uint32_t magic,version,cpu1_entry,payload_crc,stub_start,stub_end;};
 
 /* z7cfg.bin, copied verbatim by the FSBL hook. crc32 covers net..seed. */
 struct sd_boot_config {

@@ -10,6 +10,8 @@ static uint32_t raw_read(uint32_t offset) {
     return reg_read(offset);
 }
 static void raw_write(uint32_t offset,uint32_t value) {
+    /* network_init/retry_setup reset the UART: clear (12) and 115200 (8 = 434). */
+    if(offset==12 || (offset==8 && value==434u)) return;
     check(offset==16,"raw writes TX only");
     if(wire_raw) {
         if(network_info.phase==7 && value=='+') {

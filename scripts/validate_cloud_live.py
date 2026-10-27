@@ -85,13 +85,17 @@ def main():
     lib.cloud_host_start()
     for e in events[:3]:event(e)
     event({'type':'response.done','response':{'id':'R1','status':'incomplete'}})
-    check(lib.cloud_host_final_count()==0 and sample()[5]!=0,'incomplete response never finalizes')
+    # The service cancels an in-flight response when the speaker starts again:
+    # the partial sentence is dropped and the session keeps listening (cloud_live.c).
+    check(lib.cloud_host_final_count()==0 and sample()[5]==0,'cancelled response is dropped without failing the session')
     lib.cloud_host_request(2);check(sample()[3:6]==[2,0,0],'explicit stop clears prior error and detaches consumer')
     lib.cloud_host_request(1);check(sample()[3:6]==[1,1,0],'next cloud session starts without a board reload')
     lib.cloud_host_start()
     for e in events[:3]:event(dict(e,text='\U0001f600') if e['type']=='response.text.done' else e)
     event(events[3]);state=sample()
-    check(state[5]==0x0101f600 and lib.cloud_host_final_count()==0 and not text('translation'),'missing glyph rejects before mutating UI or stopping its renderer')
+    # A character outside the font subset is shown as a space and the sentence
+    # still commits, instead of failing the session (cloud_live.c cloud_commit).
+    check(state[5]==0 and lib.cloud_host_final_count()==1 and text('translation')==' ','missing glyph commits as a space without failing the session')
     fixture=ROOT/'output/z7_nano/cloud_events/linked_minute_events.jsonl'
     replay=[]
     if fixture.exists():

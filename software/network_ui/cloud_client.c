@@ -379,8 +379,11 @@ void cloud_client_stop(void) {
     speech_playback_disconnect();
 }
 
+/* Kept until accepted: the TLS writer can still own a previous record. */
+static char request[768];
+static uint32_t request_used;
 static void send_handshake(void) {
-    static char request[768];uint32_t used=0;
+    uint32_t used=0;
     append(request,&used,sizeof(request),"GET ");
 #ifdef Z7_TINYQWEN
     append(request,&used,sizeof(request),local_voice_role()?local_voice_path():(const char *)cloud_client_config.path);
@@ -395,8 +398,8 @@ static void send_handshake(void) {
     append(request,&used,sizeof(request),"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n");
     append(request,&used,sizeof(request),"Sec-WebSocket-Version: 13\r\n\r\n");
     client.phase=CLOUD_HANDSHAKE;
-    client.response_used=0;
-    network_send((const uint8_t *)request,used);
+    client.response_used=0;request_used=used;client.handshake_ms=client.now_ms;
+    client.handshake_pending=network_send((const uint8_t *)request,used)?0u:1u;
 }
 
 int cloud_client_ready(void) {return client.phase==CLOUD_STREAMING;}
@@ -418,6 +421,7 @@ void cloud_client_init(void) {
 }
 void cloud_client_start(uint32_t now) {
     if(client.phase!=CLOUD_IDLE) return;
+    client.now_ms=now;
 #ifdef Z7_TLS_PASSTHROUGH
     last_rx_ms=now;ping_sent=0;
 #endif
@@ -628,6 +632,14 @@ extern const uint32_t selftest_speech_ms;
 
 void cloud_client_tick(uint32_t now) {
     client.now_ms=now;
+    /* Resend an upgrade request the TLS writer refused. A server that answers
+       neither the upgrade nor with session.created within 15 s is treated as
+       a broken link, so the network's normal reconnect takes over. */
+    if(client.phase==CLOUD_HANDSHAKE && client.handshake_pending)
+        client.handshake_pending=network_send((const uint8_t *)request,request_used)?0u:1u;
+    if((client.phase==CLOUD_HANDSHAKE || client.phase==CLOUD_WAITING_SESSION) && now-client.handshake_ms>15000u) {
+        cloud_client_stop();network_stream_failed();return;
+    }
 #ifdef Z7_TLS_PASSTHROUGH
     if(client.phase!=CLOUD_IDLE) {
         if(ping_sent && (int32_t)(last_rx_ms-ping_ms)>=0) ping_sent=0;

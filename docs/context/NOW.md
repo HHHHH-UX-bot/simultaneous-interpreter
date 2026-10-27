@@ -4,8 +4,8 @@
 
 用户要求从实用性出发做“脱离电脑独立启动”，范围见 [D25](DECISIONS.md#d25-sd-卡独立启动2026-10-26)；10-27 改为屏幕先亮、本地模型后台加载，见 [D26](DECISIONS.md#d26-sd-启动后台加载板上模型2026-10-27)。设计见 [SD_BOOT](../design/SD_BOOT.md)。
 
-- 板载：TF 卡 `BOOT.BIN` SHA256 `179276c2fe64279b9e3443ed7cc6714e6da36a361028e6aa08b491fb305675d4`（约 5 MB：FSBL、PL 位流 `97ddda29…`、跳板、CPU0/CPU1 装载包），`qwen.tqw`、`qwen.tok`（固件固定摘要），用户生成的 `z7cfg.bin`。CPU0 应用带 `--sd-boot --tinyqwen`，ELF SHA256 `139cc5138db472c2e8326be109cc588a36ffb1af40910677c04fa9f27dba8c40`，JTAG 下行为不变。J1 跳线在 SD。
-- 10-27 冷启动（JTAG 只读计时）：上电到应用启动 5.5 秒（旧版含 Qwen 的 `BOOT.BIN` 为 28.8 秒），之后约 0.8 秒出画面；用户确认触摸、识别正常。模型在应用启动 5.5 秒后开始读卡，128.5 秒校验完成、引擎就绪，就绪通知约 4 秒后撤下；期间无视频欠载。本地模式出过译文。见[验证](../validation/sd-model-20261027/README.md)。
+- 板载：TF 卡 `BOOT.BIN` SHA256 `a9e1a6d03f1f05bcc1d1617bc5064f1ab39a6e0d2ff8c6b54b4d6f87be4eceaa`（约 5 MB：FSBL、PL 位流 `97ddda29…`、跳板、CPU0/CPU1 装载包），`qwen.tqw`、`qwen.tok`（固件固定摘要），用户生成的 `z7cfg.bin`。CPU0 应用带 `--sd-boot --tinyqwen`，ELF SHA256 `3e7bf327d334ec1aee80331bfd5d106d7de47479785e906672de3b2284fbc559`，JTAG 下行为不变。J1 跳线在 SD。板子另有供电线（推测连电脑的 USB），只拔主电源不会重启。
+- 10-27 冷启动（JTAG 只读计时）：上电到应用启动 2.0 秒（同日首版 5.5 秒，旧版含 Qwen 的 `BOOT.BIN` 为 28.8 秒），之后约 0.8 秒出画面。模型在应用启动 5.5 秒后开始读卡，60 秒校验完成、引擎就绪，就绪通知约 4 秒后撤下；期间无视频欠载、麦克风无丢样本。首版时用户确认触摸、识别正常，本地模式出过译文。见[验证](../validation/sd-model-20261027/README.md)。
 - 同次测到两次 ESP8266 发送 30 秒无应答（网络错误 27），PL UART 无溢出或帧错；用户怀疑接线松动，云端模式也出现过。本地模式遇网络错误后不会自行恢复，用户本轮选择不处理，见 [R35](RISKS.md)。
 - 10-26 第 3 次冷启动与历史页成段版（各自的 `BOOT.BIN` 含 Qwen）的结果见 [SD 启动验证](../validation/sd-boot-20261026/README.md)、[成段验证](../validation/history-paragraph-20261026/README.md)。
 - 仍是 RAM：设置、历史和声纹登记断电丢失。凭据明文在卡上；TLS 时间以配置文件生成时刻为基准。见 [R34](RISKS.md)。
@@ -43,7 +43,7 @@
 
 ## 使用入口
 
-- 独立使用：TF 卡放 `BOOT.BIN`、`qwen.tqw`、`qwen.tok` 与 `z7cfg.bin`，J1 跳到 SD，接好音频模块后上电；本地模型约 2 分钟后可用，进度在 **设置 → 模型与本地声纹**。生成与更新卡内容见 [RUNBOOK](RUNBOOK.md#sd-卡独立启动)。
+- 独立使用：TF 卡放 `BOOT.BIN`、`qwen.tqw`、`qwen.tok` 与 `z7cfg.bin`，J1 跳到 SD，接好音频模块后上电；本地模型约 1 分钟后可用，进度在 **设置 → 模型与本地声纹**。改动后提交前运行 `python -B scripts/run_host_tests.py`。生成与更新卡内容见 [RUNBOOK](RUNBOOK.md#sd-卡独立启动)。
 - 根目录 `启动FPGA声纹.cmd`：重新 JTAG 加载当前声纹/网络名称固件并输入运行期 Wi-Fi 和百炼配置；整板断电后用 `断电后启动本地LLM.cmd`。这些入口默认调用 SDK 2018.3 的 xsct/hw_server；只有 2026.1 的机器需改用 `scripts/load_tts.py --xsct <Vitis 2026.1 xsdb>`，再用 `scripts/configure_cloud_runtime.py --xsdb <同一 xsdb>` 输入凭据，并先启动 2026.1 的 hw_server。
 - 根目录 `打开电脑画面.cmd`：启动本机服务并打开 `http://127.0.0.1:8787`，点击/拖动操作同步到板端；下方导出按钮可选 CSV/TXT/JSON 和保存位置。该文件写死了队友电脑的 Python 路径，本机需改用 `machine` 环境运行 `scripts/start_remote_display.py`。
 - 构建：`scripts/build_cloud_app.py` 现在由 `hardware/z7_nano/source.json` 直接生成显示头文件，干净克隆不再需要手工拷贝 `output/display/framebuffer_hw.h`；声纹 PL 平台与仿真参数见 [LOCAL_SPEAKER_CNN](../design/LOCAL_SPEAKER_CNN.md)，2026.1 下的做法见[本轮验证](../validation/merge-pr7-2026-20261026/README.md)。

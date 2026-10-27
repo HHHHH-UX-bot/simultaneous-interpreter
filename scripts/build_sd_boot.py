@@ -55,7 +55,9 @@ def build_stub(out):
     src = ROOT / "software/sd_boot"
     subprocess.run([str(GCC), "-mcpu=cortex-a9", "-marm", "-O2", "-ffreestanding", "-fno-builtin",
                     "-fno-tree-loop-distribute-patterns", "-nostdlib", "-Wall", "-Wextra", "-Werror",
-                    "-Wl,--build-id=none", "-T", str(src / "stub.ld"), str(src / "stub.S"), str(src / "stub.c"),
+                    # -s: the symbol table would carry the assembler's random temporary
+                    # object name, making the recorded stub hash differ on every build.
+                    "-s", "-Wl,--build-id=none", "-T", str(src / "stub.ld"), str(src / "stub.S"), str(src / "stub.c"),
                     "-o", str(elf)], check=True)
     entry, segments = load_segments(elf)
     if entry != STUB_ADDRESS or any(v < STUB_ADDRESS or v + m > PAYLOAD_ADDRESS for v, _, m in segments):

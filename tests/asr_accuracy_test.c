@@ -288,6 +288,14 @@ int main(void) {
     cloud_client_tick(36003);
     CHECK(client.phase==CLOUD_IDLE && keepalive_diag[2]==1 && transport_failures==before_timeout+1);
 #endif
+    /* A refused upgrade request is resent; a server silent for 15 s fails the link. */
+    cloud_client_stop();blocked=1;cloud_client_start(40000);
+    CHECK(client.phase==CLOUD_HANDSHAKE && client.handshake_pending);
+    cloud_client_tick(40010);CHECK(client.handshake_pending);
+    blocked=0;cloud_client_tick(40020);CHECK(!client.handshake_pending && client.phase==CLOUD_HANDSHAKE);
+    unsigned before_handshake=transport_failures;
+    cloud_client_tick(54999);CHECK(client.phase==CLOUD_HANDSHAKE && transport_failures==before_handshake);
+    cloud_client_tick(55001);CHECK(client.phase==CLOUD_IDLE && transport_failures==before_handshake+1);
     printf("PASS_ASR_ACCURACY checks=%u\n",checks);
     return 0;
 }

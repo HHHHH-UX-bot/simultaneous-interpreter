@@ -169,7 +169,13 @@ def main():
             self.send_response(status);self.send_header('Content-Type',mime);self.send_header('Content-Length',str(len(data)));self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff');
             for k,v in (extra or {}).items():self.send_header(k,str(v))
             self.end_headers();self.wfile.write(data)
+        def local_host(self):
+            # A DNS-rebinding page reaches 127.0.0.1 under its own host name; only
+            # the names this server is opened with may read frames or history.
+            if self.headers.get('Host') in ('127.0.0.1:'+str(a.port),'localhost:'+str(a.port)):return True
+            self.reply(403,b'{}');return False
         def do_GET(self):
+            if not self.local_host():return
             path=self.path.split('?')[0]
             if path=='/':self.reply(200,(Path(__file__).resolve().parents[1]/'assets/remote_display.html').read_bytes(),'text/html; charset=utf-8')
             elif path=='/state':self.reply(200,json.dumps(board.state(),ensure_ascii=False).encode())
@@ -182,6 +188,7 @@ def main():
                 except (ValueError,TimeoutError,OSError) as exc:self.reply(503,json.dumps(dict(error=str(exc)),ensure_ascii=False).encode())
             else:self.reply(503,b'{"error":"frame not ready"}')
         def do_POST(self):
+            if not self.local_host():return
             if self.path not in ('/pointer','/save-history'):self.reply(404,b'{}');return
             origin=self.headers.get('Origin');expected='http://127.0.0.1:'+str(a.port)
             if origin and origin not in (expected,'http://localhost:'+str(a.port)):self.reply(403,b'{}');return

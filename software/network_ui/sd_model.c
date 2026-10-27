@@ -16,8 +16,8 @@
 #define RUN_BYTES (4u*1024u*1024u)   /* one CMD18: 8192 blocks, 64 ADMA2 lines of 64 KiB */
 
 /* magic, state, SD interrupt status on error, start ms, ready ms, DMA bytes,
-   verified bytes, read commands */
-volatile uint32_t sd_model_diag[8];
+   verified bytes, read commands, microseconds spent hashing, hashing slices */
+volatile uint32_t sd_model_diag[10];
 
 #ifdef SD_MODEL_HOST
 /* tests/sd_model_test.c serves the reads from a disk image. */
@@ -188,12 +188,15 @@ static int next_run(uint32_t now) {
     return 1;
 }
 
+/* 2 KiB pieces keep the overshoot past the budget small. */
 static void hash(uint32_t budget) {
     uint32_t start=card_ticks();
+    if(sd.hashed>=sd.loaded) return;
     while(sd.hashed<sd.loaded && card_ticks()-start<budget) {
-        uint32_t n=sd.loaded-sd.hashed;if(n>4096u) n=4096u;
+        uint32_t n=sd.loaded-sd.hashed;if(n>2048u) n=2048u;
         (void)mbedtls_sha256_update(&sd.sha,sd.window+sd.hashed,n);sd.hashed+=n;
     }
+    sd_model_diag[8]+=(card_ticks()-start)*1000u/TICKS_PER_MS;++sd_model_diag[9];
 }
 
 static void stop(uint32_t state) {sd.state=state;sd_model_diag[1]=state;remote_llm_lock(0);publish();}
@@ -220,7 +223,9 @@ void sd_model_tick(uint32_t now,int busy) {
     if(!sd.flight && sd.loaded<sd.size[sd.slot] && !next_run(now)) {
         stop(sd.io_error?UI_MODEL_READ_ERROR:UI_MODEL_MISSING);return;
     }
-    hash((busy?3u:12u)*(TICKS_PER_MS/20u));   /* 150 us while a session runs, else 600 us */
+    /* The cloud session starts by itself after boot, so the busy slice sets the
+       load time: 150 us measured 3.3 MB/s (123 s) with recognition unaffected. */
+    hash((busy?8u:12u)*(TICKS_PER_MS/20u));   /* 400 us while a session runs, else 600 us */
     sd_model_diag[6]=sd.done+sd.hashed;
     if(sd.hashed<sd.size[sd.slot]) return;
     uint8_t digest[32];(void)mbedtls_sha256_finish(&sd.sha,digest);

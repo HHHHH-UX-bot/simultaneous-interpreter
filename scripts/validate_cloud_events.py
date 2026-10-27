@@ -8,15 +8,31 @@ INPUTS=("software/network_ui/cloud_events.c","software/network_ui/cloud_events.h
         "third_party/jsmn/jsmn.h","third_party/jsmn/LICENSE","third_party/jsmn/source.json",
         "tests/cloud_events_test.c","tests/fixtures/cloud_events_reference.jsonl","scripts/validate_cloud_events.py")
 
+def joined(event,*keys):
+    """Streaming text: concatenated string fields, keeping the latest 255 code points like the C buffer."""
+    return "".join(event[k] for k in keys if isinstance(event.get(k),str))[-255:]
+
 def expected(event):
-    kind=0;done=0;item=response=error=text=previous="";t=event["type"]
+    code=kind=done=0;item=response=error=text=previous="";t=event["type"]
     if t=="conversation.item.input_audio_transcription.completed":kind=1;item=event["item_id"];text=event["transcript"]
+    elif t=="conversation.item.input_audio_transcription.text":
+        kind=11
+        if "item_id" in event:item=event["item_id"];text=joined(event,"text","stash")
+        else:code=2  # CLOUD_SCHEMA: a preview must name its item
+    elif t in ("response.text.text","response.audio_transcript.text"):
+        kind=9;item=event.get("item_id","");response=event.get("response_id","");text=joined(event,"text","stash")
+    elif t=="response.text.delta":kind=9;item=event.get("item_id","");response=event.get("response_id","");text=event.get("delta","")
+    elif t=="input_audio_buffer.speech_started":kind=10
+    elif t=="input_audio_buffer.speech_stopped":kind=12
+    elif t=="session.created":kind=7
+    elif t=="session.updated":kind=8
+    elif t=="response.audio.done":kind=14
     elif t=="response.text.done":kind=2;item=event["item_id"];response=event["response_id"];text=event["text"]
     elif t=="response.done":kind=3;response=event["response"]["id"];done=int(event["response"]["status"]=="completed")
     elif t=="session.finished":kind=4
     elif t=="conversation.item.created" and event.get("previous_item_id"):kind=6;item=event["item"]["id"];previous=event["previous_item_id"]
     elif t in ("error","conversation.item.input_audio_transcription.failed"):kind=5;error=event["error"]["code"]
-    return [0,kind,done,*[list(map(ord,s)) for s in (item,response,error,previous,text.replace("\n"," ").replace("\r"," ").replace("\t"," "))]]
+    return [code,kind,done,*[list(map(ord,s)) for s in (item,response,error,previous,text.replace("\n"," ").replace("\r"," ").replace("\t"," "))]]
 
 def run(command,log,**kwargs):
     result=subprocess.run([str(v) for v in command],capture_output=True,timeout=30,**kwargs)

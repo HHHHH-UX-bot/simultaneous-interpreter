@@ -11,7 +11,7 @@
 #include "../software/subtitle_ui/ui_model.h"
 
 void sd_model_reset(void);
-extern volatile uint32_t sd_model_diag[8];
+extern volatile uint32_t sd_model_diag[10];
 
 #define IMAGE_SECTORS 131072u   /* 64 MiB */
 #define EOC 0x0fffffffu

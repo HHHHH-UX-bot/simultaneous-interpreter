@@ -22,6 +22,8 @@ static uint32_t read_reg(uint32_t offset) {
     check(0,"unexpected register");return 0;
 }
 static void write_reg(uint32_t offset,uint32_t byte) {
+    /* network_init/retry_setup reset the UART: clear (12) and 115200 (8 = 434). */
+    if(offset==12 || (offset==8 && byte==434u)) return;
     check(offset==16,"only TX writes");
     if(remaining) {sent[used++]=(uint8_t)byte;if(!--remaining && !hold_ack) text("\r\nSEND OK\r\n");return;}
     command[command_bytes++]=(char)byte;

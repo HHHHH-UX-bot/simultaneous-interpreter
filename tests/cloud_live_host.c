@@ -13,6 +13,20 @@ static uint8_t reply[2048];
 void stream_pilot_set_receiver(void (*receive)(uint8_t)) {receive_byte=receive;}
 int network_send(const uint8_t *data,uint32_t bytes) {memcpy(reply,data,bytes);reply_size=bytes;return 1;}
 void network_stream_failed(void) {}
+/* cloud_live.c now also drives the client's timing hooks and translated
+   speech; this boundary checks text/UI only, so they are inert here. */
+void cloud_client_stop(void) {}
+void cloud_client_session_created(void) {}
+void cloud_client_session_updated(void) {}
+void cloud_client_speech_started(uint32_t audio_start_ms) {(void)audio_start_ms;}
+void cloud_client_speech_stopped(void) {}
+void cloud_client_asr_final(void) {}
+void cloud_client_capture_freeze(void) {}
+void cloud_client_translation(uint32_t now_ms) {(void)now_ms;}
+void cloud_client_response_done(void) {}
+int speech_playback_audio(const char *base64,uint32_t bytes) {(void)base64;(void)bytes;return 1;}
+void speech_playback_done(void) {}
+void speech_playback_stop(void) {}
 void cloud_host_start(void) {
     memset((void *)&network_info,0,sizeof(network_info));memset((void *)&stream_pilot,0,sizeof(stream_pilot));
     ui_init(&model);now=0;reply_size=0;cloud_live_init(&model);
